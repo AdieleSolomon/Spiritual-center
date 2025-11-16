@@ -1391,6 +1391,11 @@
                 background-position: center top;
             }
 
+            .hero h1,
+            .hero p:nth-of-type(1) {
+                display: none;
+            }
+
             section {
                 padding: 60px 0;
             }
