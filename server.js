@@ -65,23 +65,31 @@ if (!existsSync(uploadsDir)) {
     console.log('✅ Created uploads directory:', uploadsDir);
 }
 
-// CORS configuration for Vercel frontend
+// UPDATED CORS Configuration - More permissive for Vercel frontend
 const allowedOrigins = process.env.NODE_ENV === 'production' 
     ? [
-        'https://spiritualcenter-pt8asmr5b-solomon-adeles-projects.vercel.app',
         'https://spiritual-center.vercel.app',
         'https://spiritualcenter-*.vercel.app',
-        'https://*.vercel.app',
-        // Add these to catch all Vercel subdomains
         /https:\/\/spiritualcenter-.*\.vercel\.app$/,
-        /https:\/\/.*\.vercel\.app$/
-    ].filter(Boolean)
-    : ['http://localhost:3000', 'http://localhost:5000', 'http://localhost:3001'];
+        /https:\/\/.*-solomon-adeles-projects\.vercel\.app$/,
+        /\.vercel\.app$/  // Allow all Vercel deployments
+    ]
+    : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000'];
+
+console.log('🌐 CORS Configuration:', {
+    environment: process.env.NODE_ENV,
+    allowedOrigins: allowedOrigins
+});
 
 app.use(cors({
     origin: function (origin, callback) {
         // Allow requests with no origin (like mobile apps or curl requests)
-        if (!origin) return callback(null, true);
+        if (!origin) {
+            console.log('🔧 Request with no origin - allowing');
+            return callback(null, true);
+        }
+        
+        console.log('🔍 Checking CORS for origin:', origin);
         
         // Check if origin matches any allowed origins or patterns
         const isAllowed = allowedOrigins.some(allowed => {
@@ -93,19 +101,18 @@ app.use(cors({
             return false;
         });
         
-        if (!isAllowed) {
-            const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-            console.log('🚫 CORS blocked origin:', origin);
-            console.log('📋 Allowed origins:', allowedOrigins);
-            return callback(new Error(msg), false);
+        if (isAllowed) {
+            console.log('✅ CORS allowed for:', origin);
+            return callback(null, true);
+        } else {
+            console.log('🚫 CORS blocked for:', origin);
+            console.log('📋 Allowed patterns:', allowedOrigins);
+            return callback(new Error('The CORS policy for this site does not allow access from the specified Origin.'), false);
         }
-        
-        console.log('✅ CORS allowed origin:', origin);
-        return callback(null, true);
     },
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin']
 }));
 
 // Handle preflight requests
@@ -119,14 +126,13 @@ app.use('/uploads', express.static(uploadsDir));
 // Remove static frontend serving since frontend is on Vercel
 // app.use(express.static(join(__dirname, 'public')));
 
-// Database configuration for Railway MySQL
+// Railway MySQL configuration
 const dbConfig = {
     host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
     user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || 'cnpsqefXfZeOkcZUJXOSAUOuVbkAWNgy',
+    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
     database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'railway',
     port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
-    url: process.env.DB_URL || 'mysql://root:cnpsqefXfZeOkcZUJXOSAUOuVbkAWNgy@mysql.railway.internal:3306/railway',
     ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
     connectTimeout: 60000,
     acquireTimeout: 60000,
@@ -139,7 +145,8 @@ console.log('🔧 Database Configuration:', {
     user: dbConfig.user,
     database: dbConfig.database,
     port: dbConfig.port,
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    platform: 'Render + Railway MySQL'
 });
 
 // Initialize database connection pool
@@ -363,9 +370,7 @@ const requireDatabase = (req, res, next) => {
 
 // Request logging middleware
 app.use((req, res, next) => {
-    if (process.env.NODE_ENV === 'production') {
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - ${req.ip}`);
-    }
+    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin} - IP: ${req.ip}`);
     next();
 });
 

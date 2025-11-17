@@ -4,7 +4,7 @@ const config = {
         API_BASE: 'http://localhost:5000/api'
     },
     production: {
-        API_BASE: 'https://spiritual-center.onrender.com/api'
+        API_BASE: 'https://spiritual-center.onrender.com/api' // Replace with your actual Render URL
     }
 };
 
