@@ -149,12 +149,40 @@ console.log('🔧 Database Configuration:', {
     platform: 'Render + Railway MySQL'
 });
 
+// ADDED: Test MySQL connection (using your provided code)
+async function testMySQLConnection() {
+    try {
+        console.log('🔄 Testing MySQL connection...');
+        const connection = await createConnection(process.env.MYSQL_URL || dbConfig);
+        
+        // Test connection
+        await connection.connect();
+        console.log("✅ Connected to Railway MySQL");
+        
+        // Test query
+        const [rows] = await connection.execute('SELECT 1 as test_value');
+        console.log('✅ MySQL test query successful:', rows);
+        
+        await connection.end();
+        return true;
+    } catch (err) {
+        console.error("❌ MySQL Connection Error:", err);
+        return false;
+    }
+}
+
 // Initialize database connection pool
 let pool;
 
 async function initializeDatabase() {
     try {
         console.log('🔄 Initializing database connection...');
+        
+        // First, test the basic connection
+        const connectionTest = await testMySQLConnection();
+        if (!connectionTest) {
+            throw new Error('Initial MySQL connection test failed');
+        }
         
         // First connect without database to create it if needed
         const tempConnection = await createConnection({
@@ -186,7 +214,7 @@ async function initializeDatabase() {
         while (retries > 0) {
             try {
                 const testConn = await pool.getConnection();
-                console.log('✅ Database connection successful');
+                console.log('✅ Database connection pool successful');
                 await testConn.execute('SELECT 1');
                 testConn.release();
                 break;
@@ -441,6 +469,29 @@ app.get('/api/test-db', requireDatabase, async (req, res) => {
         res.status(500).json({ 
             error: 'Database connection failed: ' + error.message,
             code: 'DATABASE_ERROR'
+        });
+    }
+});
+
+// ADDED: Simple MySQL connection test route
+app.get('/api/test-mysql', async (req, res) => {
+    try {
+        const connection = await createConnection(process.env.MYSQL_URL || dbConfig);
+        await connection.connect();
+        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time');
+        await connection.end();
+        
+        res.json({ 
+            message: 'MySQL connection successful',
+            data: rows,
+            connection: 'single',
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('MySQL connection test error:', error);
+        res.status(500).json({ 
+            error: 'MySQL connection failed: ' + error.message,
+            code: 'MYSQL_CONNECTION_ERROR'
         });
     }
 });
@@ -909,6 +960,8 @@ app.get('/', (req, res) => {
         endpoints: {
             health: '/health',
             test: '/api/test',
+            'test-db': '/api/test-db',
+            'test-mysql': '/api/test-mysql',
             register: '/api/register',
             login: '/api/login',
             profile: '/api/profile',
@@ -984,6 +1037,7 @@ async function startServer() {
         console.log(`✅ Backend API running on port ${PORT}`);
         console.log(`📚 API Base URL: http://localhost:${PORT}/api`);
         console.log(`🔍 Health Check: http://localhost:${PORT}/health`);
+        console.log(`🗄️  MySQL Test: http://localhost:${PORT}/api/test-mysql`);
         
         if (isRender) {
             console.log('🎯 Render Deployment Ready!');
