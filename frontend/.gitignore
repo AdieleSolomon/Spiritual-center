@@ -1,1 +1,3 @@
 .vercel
+DB_URL=mysql://root:ShwaedPFnJeSXSqlkGKxFrIwAHtETXBl@mysql.railway.internal:3306/railway
+.env
