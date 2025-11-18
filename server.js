@@ -66,14 +66,15 @@ if (!existsSync(uploadsDir)) {
     console.log('✅ Created uploads directory:', uploadsDir);
 }
 
-// UPDATED CORS Configuration - More permissive for Vercel frontend
+// FIXED: UPDATED CORS Configuration - More permissive for Vercel frontend
 const allowedOrigins = process.env.NODE_ENV === 'production' 
     ? [
         'https://spiritual-center.vercel.app',
         'https://spiritualcenter-*.vercel.app',
         /https:\/\/spiritualcenter-.*\.vercel\.app$/,
         /https:\/\/.*-solomon-adeles-projects\.vercel\.app$/,
-        /\.vercel\.app$/  // Allow all Vercel deployments
+        /\.vercel\.app$/,  // Allow all Vercel deployments
+        'https://spiritual-center.onrender.com' // Allow Render backend itself
     ]
     : ['http://localhost:3000', 'http://localhost:3001', 'http://localhost:5000', 'http://127.0.0.1:3000'];
 
@@ -124,47 +125,91 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
-// Remove static frontend serving since frontend is on Vercel
-// app.use(express.static(join(__dirname, 'public')));
-
-// Railway MySQL configuration
-const dbConfig = {
-    host: process.env.MYSQLHOST || process.env.DB_HOST || 'localhost',
-    user: process.env.MYSQLUSER || process.env.DB_USER || 'root',
-    password: process.env.MYSQLPASSWORD || process.env.DB_PASSWORD || '',
-    database: process.env.MYSQLDATABASE || process.env.DB_NAME || 'railway',
-    port: process.env.MYSQLPORT || process.env.DB_PORT || 3306,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
-    connectTimeout: 60000,
-    acquireTimeout: 60000,
-    timeout: 60000,
-
+// FIXED: Enhanced Railway MySQL configuration
+const getDbConfig = () => {
+    // Priority 1: Use MYSQL_URL from Railway (most reliable)
+    if (process.env.MYSQL_URL) {
+        console.log('🔧 Using MYSQL_URL for database connection');
+        return {
+            connectionString: process.env.MYSQL_URL,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+        };
+    }
+    
+    // Priority 2: Use individual Railway environment variables
+    if (process.env.MYSQLHOST) {
+        console.log('🔧 Using Railway MySQL individual variables');
+        return {
+            host: process.env.MYSQLHOST,
+            user: process.env.MYSQLUSER,
+            password: process.env.MYSQLPASSWORD,
+            database: process.env.MYSQLDATABASE,
+            port: parseInt(process.env.MYSQLPORT) || 3306,
+            ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+            connectTimeout: 60000,
+            acquireTimeout: 60000,
+            timeout: 60000,
+        };
+    }
+    
+    // Fallback: Local development
+    console.log('🔧 Using local development database config');
+    return {
+        host: 'localhost',
+        user: 'root',
+        password: '',
+        database: 'railway',
+        port: 3306
+    };
 };
 
+const dbConfig = getDbConfig();
 console.log('🔧 Database Configuration:', {
-    host: dbConfig.host,
-    user: dbConfig.user,
-    database: dbConfig.database,
-    port: dbConfig.port,
     environment: process.env.NODE_ENV || 'development',
-    platform: 'Render + Railway MySQL'
+    platform: 'Render + Railway MySQL',
+    usingMysqlUrl: !!process.env.MYSQL_URL,
+    hasMysqlHost: !!process.env.MYSQLHOST
 });
 
-// ADDED: Test MySQL connection (using your provided code)
+// Debug environment variables (safely)
+console.log('🔍 Environment Variables Check:', {
+    MYSQLHOST: process.env.MYSQLHOST ? 'Set' : 'Not set',
+    MYSQLUSER: process.env.MYSQLUSER ? 'Set' : 'Not set', 
+    MYSQLDATABASE: process.env.MYSQLDATABASE ? 'Set' : 'Not set',
+    MYSQLPORT: process.env.MYSQLPORT ? 'Set' : 'Not set',
+    MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not set',
+    RAILWAY_STATIC_URL: process.env.RAILWAY_STATIC_URL ? 'Set' : 'Not set'
+});
+
+// FIXED: Test MySQL connection with better error handling and Railway support
 async function testMySQLConnection() {
     try {
         console.log('🔄 Testing MySQL connection...');
-        const url = process.env.MYSQL_URL;
-        const useUrl = typeof url === 'string' && /^mysql:\/\//.test(url);
-        const connection = await createConnection(useUrl ? url : dbConfig);
         
-        const [rows] = await connection.execute('SELECT 1 as test_value');
+        let connection;
+        
+        if (dbConfig.connectionString) {
+            // Use connection string (Railway MYSQL_URL)
+            console.log('🔧 Using MYSQL_URL connection string');
+            connection = await createConnection(dbConfig.connectionString);
+        } else {
+            // Use individual config
+            console.log('🔧 Using individual database config');
+            connection = await createConnection(dbConfig);
+        }
+        
+        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time, DATABASE() as db_name');
         console.log('✅ MySQL test query successful:', rows);
         
         await connection.end();
         return true;
     } catch (err) {
-        console.error('❌ MySQL Connection Error:', err);
+        console.error('❌ MySQL Connection Error:', err.message);
+        console.error('🔍 Connection details:', {
+            host: dbConfig.host || 'From MYSQL_URL',
+            database: dbConfig.database || 'From MYSQL_URL',
+            hasPassword: !!(dbConfig.password || (process.env.MYSQL_URL && process.env.MYSQL_URL.includes(':')))
+        });
         return false;
     }
 }
@@ -176,52 +221,59 @@ async function initializeDatabase() {
     try {
         console.log('🔄 Initializing database connection...');
         
-        // First, test the basic connection
+        // Test connection first
         const connectionTest = await testMySQLConnection();
         if (!connectionTest) {
-            throw new Error('Initial MySQL connection test failed');
+            console.log('❌ Initial MySQL connection test failed');
+            console.log('💡 Please check:');
+            console.log('   1. Railway MySQL service is running');
+            console.log('   2. MYSQL_URL environment variable is set in Render');
+            console.log('   3. Database credentials are correct');
+            throw new Error('MySQL connection failed');
         }
         
-        // First connect without database to create it if needed
-        const tempConnection = await createConnection({
-            host: dbConfig.host,
-            user: dbConfig.user,
-            password: dbConfig.password,
-            port: dbConfig.port,
-            ssl: dbConfig.ssl
-        });
-
-        if (process.env.NODE_ENV !== 'production') {
-            await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-            console.log(`✅ Database '${dbConfig.database}' created/verified`);
+        // Create connection pool
+        if (dbConfig.connectionString) {
+            // Use connection string for pool
+            pool = createPool({
+                uri: dbConfig.connectionString,
+                waitForConnections: true,
+                connectionLimit: 10,
+                queueLimit: 0,
+                acquireTimeout: 60000,
+                timeout: 60000,
+                ssl: dbConfig.ssl
+            });
+        } else {
+            // Use individual config for pool
+            pool = createPool({
+                ...dbConfig,
+                waitForConnections: true,
+                connectionLimit: 10,
+                queueLimit: 0,
+                acquireTimeout: 60000,
+                timeout: 60000
+            });
         }
-        await tempConnection.end();
 
-        // Now connect to the specific database
-        pool = createPool({
-            ...dbConfig,
-            waitForConnections: true,
-            connectionLimit: process.env.NODE_ENV === 'production' ? 20 : 10,
-            queueLimit: 0,
-            acquireTimeout: 60000,
-            timeout: 60000,
-
-        });
-
-        // Test connection with retry logic
-        let retries = 5;
+        // Test pool connection with retry logic
+        let retries = 3;
         while (retries > 0) {
             try {
                 const testConn = await pool.getConnection();
                 console.log('✅ Database connection pool successful');
-                await testConn.execute('SELECT 1');
+                const [result] = await testConn.execute('SELECT DATABASE() as db_name, NOW() as server_time');
+                console.log('📊 Connected to database:', result[0].db_name);
                 testConn.release();
                 break;
             } catch (error) {
                 retries--;
-                if (retries === 0) throw error;
+                if (retries === 0) {
+                    console.error('❌ Database connection failed after all retries:', error.message);
+                    throw error;
+                }
                 console.log(`⚠️  Database connection failed, retrying... (${retries} attempts left)`);
-                await new Promise(resolve => setTimeout(resolve, 3000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
         }
 
@@ -231,11 +283,7 @@ async function initializeDatabase() {
         return true;
     } catch (error) {
         console.error('❌ Database initialization error:', error.message);
-        console.log('💡 Troubleshooting tips:');
-        console.log('   - Check Railway MySQL connection details');
-        console.log('   - Verify environment variables in Render');
-        console.log('   - Ensure MySQL is running on Railway');
-        
+        console.log('💡 The server will start in limited mode (database operations will fail)');
         return false;
     }
 }
@@ -322,163 +370,68 @@ async function createTables() {
     }
 }
 
-// File upload configuration
-const storage = multer.diskStorage({
-    destination: (req, file, cb) => {
-        cb(null, uploadsDir);
-    },
-    filename: (req, file, cb) => {
-        const uniqueName = Date.now() + '-' + Math.round(Math.random() * 1E9) + extname(file.originalname);
-        cb(null, uniqueName);
-    }
-});
-
-const upload = multer({
-    storage: storage,
-    limits: { 
-        fileSize: 10 * 1024 * 1024,
-        files: 5
-    },
-    fileFilter: (req, file, cb) => {
-        const allowedTypes = /jpeg|jpg|png|gif|mp4|avi|mov|pdf|doc|docx/;
-        const fileExtname = allowedTypes.test(extname(file.originalname).toLowerCase());
-        const mimetype = allowedTypes.test(file.mimetype);
-        
-        if (mimetype && fileExtname) {
-            return cb(null, true);
-        } else {
-            cb(new Error('Invalid file type. Only images, videos, and documents are allowed.'));
-        }
-    }
-});
-
-// JWT configuration
-const JWT_SECRET = process.env.JWT_SECRET || 'spiritual_center_secret_2024_production_fallback';
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-    console.warn('⚠️  WARNING: Using default JWT secret in production! Set JWT_SECRET environment variable.');
-}
-
-// JWT middleware
-const authenticateToken = (req, res, next) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
-
-    if (!token) {
-        return res.status(401).json({ error: 'Access token required' });
-    }
-
-    verify(token, JWT_SECRET, (err, user) => {
-        if (err) {
-            return res.status(403).json({ error: 'Invalid or expired token' });
-        }
-        req.user = user;
-        next();
-    });
-};
-
-// Admin middleware
-const requireAdmin = (req, res, next) => {
-    if (req.user.role !== 'admin') {
-        return res.status(403).json({ error: 'Admin access required' });
-    }
-    next();
-};
-
-// Database connection middleware
-const requireDatabase = (req, res, next) => {
-    if (!pool) {
-        return res.status(503).json({ 
-            error: 'Database not available. Please try again later.',
-            code: 'DATABASE_UNAVAILABLE'
-        });
-    }
-    next();
-};
-
-// Request logging middleware
-app.use((req, res, next) => {
-    console.log(`${new Date().toISOString()} - ${req.method} ${req.path} - Origin: ${req.headers.origin} - IP: ${req.ip}`);
-    next();
-});
-
-// =============================================
-// COMPLETE API ROUTES
-// =============================================
-
-// Health check
+// FIXED: Health check endpoint
 app.get('/health', async (req, res) => {
-    const health = {
+    const healthCheck = {
         status: 'OK',
         timestamp: new Date().toISOString(),
-        uptime: process.uptime(),
         environment: process.env.NODE_ENV || 'development',
         platform: isRender ? 'Render' : 'Local',
-        database: pool ? 'Connected' : 'Disconnected',
-        memory: process.memoryUsage(),
+        database: 'Unknown',
         version: '1.0.0'
     };
 
-    if (pool) {
-        try {
-            const connection = await pool.getConnection();
-            await connection.execute('SELECT 1');
-            connection.release();
-            health.database = 'Healthy';
-        } catch (error) {
-            health.database = 'Unhealthy';
-            health.dbError = error.message;
-            health.status = 'Degraded';
+    try {
+        if (pool) {
+            const [result] = await pool.execute('SELECT 1 as test_value');
+            healthCheck.database = 'Connected';
+        } else {
+            healthCheck.database = 'No pool';
+            healthCheck.status = 'Degraded';
         }
+    } catch (error) {
+        healthCheck.database = 'Error: ' + error.message;
+        healthCheck.status = 'Degraded';
     }
 
-    const statusCode = health.status === 'OK' ? 200 : 503;
-    res.status(statusCode).json(health);
+    res.status(healthCheck.status === 'OK' ? 200 : 503).json(healthCheck);
 });
 
-// Test route
-app.get('/api/test', (req, res) => {
+// Simple test endpoint
+app.get('/test', (req, res) => {
     res.json({ 
-        message: 'API is working!',
+        message: 'Backend is running!', 
         timestamp: new Date().toISOString(),
         environment: process.env.NODE_ENV || 'development',
-        platform: isRender ? 'Render' : 'Local',
-        version: '1.0.0',
-        database: {
-            host: dbConfig.host,
-            database: dbConfig.database,
-            connected: !!pool
-        }
+        platform: isRender ? 'Render' : 'Local'
     });
 });
 
-// Test database route
-app.get('/api/test-db', requireDatabase, async (req, res) => {
-    try {
-        const connection = await pool.getConnection();
-        const [rows] = await connection.execute('SELECT 1 as test, NOW() as time');
-        connection.release();
-        res.json({ 
-            message: 'Database connection successful', 
-            data: rows,
-            pool: true,
-            timestamp: new Date().toISOString()
-        });
-    } catch (error) {
-        console.error('Database test error:', error);
-        res.status(500).json({ 
-            error: 'Database connection failed: ' + error.message,
-            code: 'DATABASE_ERROR'
-        });
-    }
+// Debug endpoint to check environment
+app.get('/debug', (req, res) => {
+    res.json({
+        environment: process.env.NODE_ENV,
+        mysqlHost: process.env.MYSQLHOST,
+        mysqlUser: process.env.MYSQLUSER,
+        mysqlDatabase: process.env.MYSQLDATABASE,
+        mysqlUrl: process.env.MYSQL_URL ? 'Set (hidden)' : 'Not set',
+        platform: isRender ? 'Render' : 'Local',
+        timestamp: new Date().toISOString(),
+        render: isRender
+    });
 });
 
-// ADDED: Simple MySQL connection test route
 app.get('/api/test-mysql', async (req, res) => {
     try {
-        const url = process.env.MYSQL_URL;
-        const useUrl = typeof url === 'string' && /^mysql:\/\//.test(url);
-        const connection = await createConnection(useUrl ? url : dbConfig);
-        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time');
+        let connection;
+        
+        if (dbConfig.connectionString) {
+            connection = await createConnection(dbConfig.connectionString);
+        } else {
+            connection = await createConnection(dbConfig);
+        }
+        
+        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time, DATABASE() as db_name, USER() as user');
         await connection.end();
         
         res.json({ 
@@ -491,508 +444,370 @@ app.get('/api/test-mysql', async (req, res) => {
         console.error('MySQL connection test error:', error);
         res.status(500).json({ 
             error: 'MySQL connection failed: ' + error.message,
-            code: 'MYSQL_CONNECTION_ERROR'
+            code: 'MYSQL_CONNECTION_ERROR',
+            details: {
+                usingMysqlUrl: !!dbConfig.connectionString,
+                hasMysqlHost: !!process.env.MYSQLHOST
+            }
         });
     }
 });
 
-// User registration
-app.post('/api/register', requireDatabase, async (req, res) => {
-    let connection;
+// Authentication routes
+app.post('/api/register', async (req, res) => {
     try {
         const { username, email, password } = req.body;
-        
-        console.log('Registration attempt:', { username, email });
         
         if (!username || !email || !password) {
             return res.status(400).json({ error: 'All fields are required' });
         }
-
+        
         if (password.length < 6) {
             return res.status(400).json({ error: 'Password must be at least 6 characters long' });
         }
-
-        // Email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: 'Please provide a valid email address' });
-        }
-
-        connection = await pool.getConnection();
-
-        const [existing] = await connection.execute(
-            'SELECT id FROM users WHERE email = ? OR username = ?',
-            [email, username]
-        );
-
-        if (existing.length > 0) {
-            return res.status(400).json({ error: 'User already exists with this email or username' });
-        }
-
+        
         const hashedPassword = await hash(password, 12);
-
-        const [result] = await connection.execute(
-            'INSERT INTO users (username, email, password_hash, is_approved) VALUES (?, ?, ?, ?)',
-            [username, email, hashedPassword, false]
+        
+        const [result] = await pool.execute(
+            'INSERT INTO users (username, email, password_hash, role, is_approved) VALUES (?, ?, ?, "user", FALSE)',
+            [username, email, hashedPassword]
         );
-
+        
         res.status(201).json({ 
-            message: 'Registration successful. Please wait for admin approval.',
-            userId: result.insertId 
+            message: 'Registration successful! Please wait for admin approval.',
+            userId: result.insertId
         });
     } catch (error) {
         console.error('Registration error:', error);
-        res.status(500).json({ error: 'Internal server error during registration' });
-    } finally {
-        if (connection) connection.release();
+        
+        if (error.code === 'ER_DUP_ENTRY') {
+            if (error.message.includes('username')) {
+                return res.status(400).json({ error: 'Username already exists' });
+            } else if (error.message.includes('email')) {
+                return res.status(400).json({ error: 'Email already exists' });
+            }
+        }
+        
+        res.status(500).json({ error: 'Registration failed. Please try again.' });
     }
 });
 
-// User login
-app.post('/api/login', requireDatabase, async (req, res) => {
-    let connection;
+app.post('/api/login', async (req, res) => {
     try {
         const { email, password } = req.body;
-        
-        console.log('Login attempt for email:', email);
         
         if (!email || !password) {
             return res.status(400).json({ error: 'Email and password are required' });
         }
-
-        connection = await pool.getConnection();
-
-        const [users] = await connection.execute(
+        
+        const [users] = await pool.execute(
             'SELECT * FROM users WHERE email = ?',
             [email]
         );
-
+        
         if (users.length === 0) {
-            return res.status(400).json({ error: 'Invalid email or password' });
+            return res.status(401).json({ error: 'Invalid email or password' });
         }
-
+        
         const user = users[0];
-
-        // Check if approved (admin is always approved)
-        if (!user.is_approved && user.role !== 'admin') {
-            return res.status(400).json({ error: 'Account pending approval. Please contact administrator.' });
+        
+        if (!user.is_approved) {
+            return res.status(401).json({ error: 'Your account is pending admin approval' });
         }
-
-        const validPassword = await compare(password, user.password_hash);
-        if (!validPassword) {
-            return res.status(400).json({ error: 'Invalid email or password' });
+        
+        const isValidPassword = await compare(password, user.password_hash);
+        
+        if (!isValidPassword) {
+            return res.status(401).json({ error: 'Invalid email or password' });
         }
-
+        
         const token = sign(
             { 
                 id: user.id, 
                 username: user.username, 
                 email: user.email, 
-                role: user.role || 'user'
+                role: user.role 
             },
-            JWT_SECRET,
-            { expiresIn: process.env.NODE_ENV === 'production' ? '7d' : '24h' }
+            process.env.JWT_SECRET || 'fallback-secret',
+            { expiresIn: '24h' }
         );
-
-        console.log('Login successful for user:', user.email, 'Role:', user.role);
-
+        
         res.json({
+            message: 'Login successful',
             token,
             user: {
                 id: user.id,
                 username: user.username,
                 email: user.email,
-                role: user.role || 'user'
+                role: user.role
             }
         });
     } catch (error) {
         console.error('Login error:', error);
-        res.status(500).json({ error: 'Internal server error during login' });
-    } finally {
-        if (connection) connection.release();
+        res.status(500).json({ error: 'Login failed. Please try again.' });
     }
 });
 
-// Get user profile
-app.get('/api/profile', requireDatabase, authenticateToken, async (req, res) => {
-    let connection;
+// Content routes
+app.get('/api/content', async (req, res) => {
     try {
-        connection = await pool.getConnection();
-        const [users] = await connection.execute(
-            'SELECT id, username, email, role, is_approved, created_at FROM users WHERE id = ?',
-            [req.user.id]
-        );
-
-        if (users.length === 0) {
-            return res.status(404).json({ error: 'User not found' });
-        }
-
-        res.json(users[0]);
-    } catch (error) {
-        console.error('Get profile error:', error);
-        res.status(500).json({ error: 'Failed to load profile' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Get all content (requires authentication)
-app.get('/api/content', requireDatabase, authenticateToken, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        const [content] = await connection.execute(`
+        const [content] = await pool.execute(`
             SELECT c.*, u.username as author 
             FROM content c 
             LEFT JOIN users u ON c.created_by = u.id 
             ORDER BY c.created_at DESC
         `);
-
+        
         res.json(content);
     } catch (error) {
-        console.error('Get content error:', error);
-        res.status(500).json({ error: 'Failed to load content' });
-    } finally {
-        if (connection) connection.release();
+        console.error('Content fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch content' });
     }
 });
 
-// Get public content
-app.get('/api/content/public', requireDatabase, async (req, res) => {
-    let connection;
+app.get('/api/content/public', async (req, res) => {
     try {
-        connection = await pool.getConnection();
-        const [content] = await connection.execute(`
+        const [content] = await pool.execute(`
             SELECT c.*, u.username as author 
             FROM content c 
             LEFT JOIN users u ON c.created_by = u.id 
             WHERE c.is_public = TRUE
             ORDER BY c.created_at DESC
-            LIMIT 50
         `);
-
+        
         res.json(content);
     } catch (error) {
-        console.error('Get public content error:', error);
-        res.status(500).json({ error: 'Failed to load public content' });
-    } finally {
-        if (connection) connection.release();
+        console.error('Public content fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch public content' });
     }
 });
 
-// Upload content (admin only)
-app.post('/api/content', requireDatabase, authenticateToken, requireAdmin, upload.single('file'), async (req, res) => {
-    let connection;
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir);
+    },
+    filename: (req, file, cb) => {
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, file.fieldname + '-' + uniqueSuffix + extname(file.originalname));
+    }
+});
+
+const upload = multer({ 
+    storage: storage,
+    limits: {
+        fileSize: 50 * 1024 * 1024 // 50MB limit
+    }
+});
+
+app.post('/api/content', upload.single('file'), async (req, res) => {
     try {
-        const { title, description, type, content_text, is_public } = req.body;
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
         
-        if (!title || !description || !type) {
-            return res.status(400).json({ error: 'Title, description, and type are required' });
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
         }
-
-        let fileUrl = null;
+        
+        const { title, description, type, is_public, content_text } = req.body;
+        
+        let file_url = null;
         if (req.file) {
-            fileUrl = `/uploads/${req.file.filename}`;
-        } else if (type !== 'writeup') {
-            return res.status(400).json({ error: 'File is required for video and image content' });
+            file_url = `/uploads/${req.file.filename}`;
         }
-
-        if (type === 'writeup' && !content_text) {
-            return res.status(400).json({ error: 'Content text is required for writeups' });
-        }
-
-        connection = await pool.getConnection();
-
-        const [result] = await connection.execute(
-            'INSERT INTO content (title, description, type, file_url, content_text, created_by, is_public) VALUES (?, ?, ?, ?, ?, ?, ?)',
-            [title, description, type, fileUrl, content_text || null, req.user.id, is_public === 'true']
+        
+        const [result] = await pool.execute(
+            'INSERT INTO content (title, description, type, file_url, content_text, is_public, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [title, description, type, file_url, content_text, is_public === 'true', decoded.id]
         );
-
+        
         res.status(201).json({ 
             message: 'Content uploaded successfully',
-            contentId: result.insertId 
+            contentId: result.insertId
         });
     } catch (error) {
-        console.error('Upload content error:', error);
+        console.error('Content upload error:', error);
         res.status(500).json({ error: 'Failed to upload content' });
-    } finally {
-        if (connection) connection.release();
     }
 });
 
-// Get users for admin (admin only)
-app.get('/api/users', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        const [users] = await connection.execute(
-            'SELECT id, username, email, role, is_approved, created_at FROM users ORDER BY created_at DESC'
-        );
-
-        res.json(users);
-    } catch (error) {
-        console.error('Get users error:', error);
-        res.status(500).json({ error: 'Failed to load users' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Approve user (admin only)
-app.put('/api/users/:id/approve', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.execute(
-            'UPDATE users SET is_approved = TRUE WHERE id = ?',
-            [req.params.id]
-        );
-
-        res.json({ message: 'User approved successfully' });
-    } catch (error) {
-        console.error('Approve user error:', error);
-        res.status(500).json({ error: 'Failed to approve user' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Delete user (admin only)
-app.delete('/api/users/:id', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
-        res.json({ message: 'User deleted successfully' });
-    } catch (error) {
-        console.error('Delete user error:', error);
-        res.status(500).json({ error: 'Failed to delete user' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Prayer request submission
-app.post('/api/prayer-requests', requireDatabase, async (req, res) => {
-    let connection;
+// Prayer requests routes
+app.post('/api/prayer-requests', async (req, res) => {
     try {
         const { name, email, subject, message, userId } = req.body;
         
         if (!name || !email || !subject || !message) {
             return res.status(400).json({ error: 'All fields are required' });
         }
-
-        // Basic email validation
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            return res.status(400).json({ error: 'Please provide a valid email address' });
-        }
-
-        connection = await pool.getConnection();
-
-        const [result] = await connection.execute(
-            'INSERT INTO prayer_requests (user_id, name, email, subject, message) VALUES (?, ?, ?, ?, ?)',
-            [userId || null, name, email, subject, message]
+        
+        const [result] = await pool.execute(
+            'INSERT INTO prayer_requests (name, email, subject, message, user_id) VALUES (?, ?, ?, ?, ?)',
+            [name, email, subject, message, userId || null]
         );
-
+        
         res.status(201).json({ 
             message: 'Prayer request submitted successfully',
-            requestId: result.insertId 
+            requestId: result.insertId
         });
     } catch (error) {
         console.error('Prayer request error:', error);
         res.status(500).json({ error: 'Failed to submit prayer request' });
-    } finally {
-        if (connection) connection.release();
     }
 });
 
-// Get prayer requests (admin only)
-app.get('/api/prayer-requests', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
+// Admin routes
+app.get('/api/users', async (req, res) => {
     try {
-        connection = await pool.getConnection();
-        const [requests] = await connection.execute(`
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const [users] = await pool.execute('SELECT id, username, email, role, is_approved, created_at FROM users ORDER BY created_at DESC');
+        
+        res.json(users);
+    } catch (error) {
+        console.error('Users fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch users' });
+    }
+});
+
+app.get('/api/prayer-requests', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        const [requests] = await pool.execute(`
             SELECT pr.*, u.username 
             FROM prayer_requests pr 
             LEFT JOIN users u ON pr.user_id = u.id 
             ORDER BY pr.created_at DESC
         `);
-
+        
         res.json(requests);
     } catch (error) {
-        console.error('Get prayer requests error:', error);
-        res.status(500).json({ error: 'Failed to load prayer requests' });
-    } finally {
-        if (connection) connection.release();
+        console.error('Prayer requests fetch error:', error);
+        res.status(500).json({ error: 'Failed to fetch prayer requests' });
     }
 });
 
-// Update prayer request status (admin only)
-app.put('/api/prayer-requests/:id/status', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
+app.put('/api/users/:id/approve', async (req, res) => {
     try {
-        const { status } = req.body;
-        
-        if (!['pending', 'read', 'responded'].includes(status)) {
-            return res.status(400).json({ error: 'Invalid status' });
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
         }
-
-        connection = await pool.getConnection();
-        await connection.execute(
-            'UPDATE prayer_requests SET status = ? WHERE id = ?',
-            [status, req.params.id]
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        await pool.execute(
+            'UPDATE users SET is_approved = TRUE WHERE id = ?',
+            [req.params.id]
         );
-
-        res.json({ message: 'Prayer request status updated successfully' });
+        
+        res.json({ message: 'User approved successfully' });
     } catch (error) {
-        console.error('Update prayer request status error:', error);
-        res.status(500).json({ error: 'Failed to update prayer request status' });
-    } finally {
-        if (connection) connection.release();
+        console.error('User approval error:', error);
+        res.status(500).json({ error: 'Failed to approve user' });
     }
 });
 
-// Mark prayer request as read (admin only)
-app.put('/api/prayer-requests/:id/read', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
+app.put('/api/prayer-requests/:id/read', async (req, res) => {
     try {
-        connection = await pool.getConnection();
-        await connection.execute(
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        await pool.execute(
             'UPDATE prayer_requests SET status = "read" WHERE id = ?',
             [req.params.id]
         );
-
+        
         res.json({ message: 'Prayer request marked as read' });
     } catch (error) {
-        console.error('Mark prayer as read error:', error);
+        console.error('Prayer request update error:', error);
         res.status(500).json({ error: 'Failed to update prayer request' });
-    } finally {
-        if (connection) connection.release();
     }
 });
 
-// Delete prayer request (admin only)
-app.delete('/api/prayer-requests/:id', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
+app.delete('/api/users/:id', async (req, res) => {
     try {
-        connection = await pool.getConnection();
-        await connection.execute('DELETE FROM prayer_requests WHERE id = ?', [req.params.id]);
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        await pool.execute('DELETE FROM users WHERE id = ?', [req.params.id]);
+        
+        res.json({ message: 'User deleted successfully' });
+    } catch (error) {
+        console.error('User deletion error:', error);
+        res.status(500).json({ error: 'Failed to delete user' });
+    }
+});
+
+app.delete('/api/prayer-requests/:id', async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization;
+        if (!authHeader) {
+            return res.status(401).json({ error: 'Authorization header required' });
+        }
+        
+        const token = authHeader.replace('Bearer ', '');
+        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        
+        if (decoded.role !== 'admin') {
+            return res.status(403).json({ error: 'Admin access required' });
+        }
+        
+        await pool.execute('DELETE FROM prayer_requests WHERE id = ?', [req.params.id]);
+        
         res.json({ message: 'Prayer request deleted successfully' });
     } catch (error) {
-        console.error('Delete prayer request error:', error);
+        console.error('Prayer request deletion error:', error);
         res.status(500).json({ error: 'Failed to delete prayer request' });
-    } finally {
-        if (connection) connection.release();
     }
-});
-
-// Update content (admin only)
-app.put('/api/content/:id', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
-    try {
-        const { title, description, is_public } = req.body;
-        
-        if (!title || !description) {
-            return res.status(400).json({ error: 'Title and description are required' });
-        }
-
-        connection = await pool.getConnection();
-        await connection.execute(
-            'UPDATE content SET title = ?, description = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
-            [title, description, is_public === 'true', req.params.id]
-        );
-
-        res.json({ message: 'Content updated successfully' });
-    } catch (error) {
-        console.error('Update content error:', error);
-        res.status(500).json({ error: 'Failed to update content' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Delete content (admin only)
-app.delete('/api/content/:id', requireDatabase, authenticateToken, requireAdmin, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        await connection.execute('DELETE FROM content WHERE id = ?', [req.params.id]);
-        res.json({ message: 'Content deleted successfully' });
-    } catch (error) {
-        console.error('Delete content error:', error);
-        res.status(500).json({ error: 'Failed to delete content' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Get content by ID
-app.get('/api/content/:id', requireDatabase, authenticateToken, async (req, res) => {
-    let connection;
-    try {
-        connection = await pool.getConnection();
-        const [content] = await connection.execute(`
-            SELECT c.*, u.username as author 
-            FROM content c 
-            LEFT JOIN users u ON c.created_by = u.id 
-            WHERE c.id = ?
-        `, [req.params.id]);
-
-        if (content.length === 0) {
-            return res.status(404).json({ error: 'Content not found' });
-        }
-
-        res.json(content[0]);
-    } catch (error) {
-        console.error('Get content by ID error:', error);
-        res.status(500).json({ error: 'Failed to load content' });
-    } finally {
-        if (connection) connection.release();
-    }
-});
-
-// Root endpoint
-app.get('/', (req, res) => {
-    res.json({ 
-        message: 'Spiritual Center Backend API',
-        version: '1.0.0',
-        endpoints: {
-            health: '/health',
-            test: '/api/test',
-            'test-db': '/api/test-db',
-            'test-mysql': '/api/test-mysql',
-            register: '/api/register',
-            login: '/api/login',
-            profile: '/api/profile',
-            content: '/api/content',
-            'public-content': '/api/content/public',
-            'prayer-requests': '/api/prayer-requests',
-            users: '/api/users (admin only)'
-        },
-        documentation: 'See README for complete API documentation'
-    });
-});
-
-// Error handling middleware
-app.use((error, req, res, next) => {
-    if (error instanceof multer.MulterError) {
-        if (error.code === 'LIMIT_FILE_SIZE') {
-            return res.status(400).json({ error: 'File too large (max 10MB)' });
-        }
-    }
-    console.error('Unhandled error:', error);
-    
-    const message = process.env.NODE_ENV === 'production' 
-        ? 'Something went wrong!' 
-        : error.message;
-    
-    res.status(500).json({ error: message });
-});
-
-// 404 handler for API routes
-app.use('/api/*', (req, res) => {
-    res.status(404).json({ error: 'API route not found' });
 });
 
 const PORT = process.env.PORT || 5000;
@@ -1022,14 +837,16 @@ async function startServer() {
     console.log('📊 Environment:', process.env.NODE_ENV || 'development');
     console.log('🏗️  Platform:', isRender ? 'Render' : 'Local');
     console.log('🔧 Port:', PORT);
-    console.log('🗄️ Database Host:', dbConfig.host);
+    console.log('🗄️ Database Config:', dbConfig.connectionString ? 'Using MYSQL_URL' : 'Using individual config');
     
-    // Initialize database
+    // Initialize database (but don't block server startup)
     initializeDatabase().then(success => {
         if (success) {
             console.log('✅ Database initialized successfully');
         } else {
             console.log('⚠️  Database not available, but server is running');
+            console.log('💡 The server will start but database operations will fail');
+            console.log('💡 Check your Railway MySQL connection in Render environment variables');
         }
     });
 
@@ -1037,10 +854,12 @@ async function startServer() {
         console.log(`✅ Backend API running on port ${PORT}`);
         console.log(`📚 API Base URL: http://localhost:${PORT}/api`);
         console.log(`🔍 Health Check: http://localhost:${PORT}/health`);
+        console.log(`🔧 Debug Info: http://localhost:${PORT}/debug`);
         console.log(`🗄️  MySQL Test: http://localhost:${PORT}/api/test-mysql`);
         
         if (isRender) {
             console.log('🎯 Render Deployment Ready!');
+            console.log('🌐 Live URL: https://spiritual-center.onrender.com');
         }
         
         console.log(`👤 Default Admin: Wisdomadiele57@gmail.com / admin123`);
