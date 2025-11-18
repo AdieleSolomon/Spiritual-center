@@ -21,6 +21,7 @@ const __dirname = dirname(__filename);
 dotenv.config();
 
 const app = express();
+app.set('trust proxy', 1);
 
 // Render-specific configuration
 const isRender = process.env.RENDER === 'true';
@@ -137,7 +138,7 @@ const dbConfig = {
     connectTimeout: 60000,
     acquireTimeout: 60000,
     timeout: 60000,
-    reconnect: true
+
 };
 
 console.log('🔧 Database Configuration:', {
@@ -156,7 +157,7 @@ async function testMySQLConnection() {
         const connection = await createConnection(process.env.MYSQL_URL || dbConfig);
         
         // Test connection
-        await connection.connect();
+
         console.log("✅ Connected to Railway MySQL");
         
         // Test query
@@ -193,9 +194,10 @@ async function initializeDatabase() {
             ssl: dbConfig.ssl
         });
 
-        // Create database if it doesn't exist
-        await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
-        console.log(`✅ Database '${dbConfig.database}' created/verified`);
+        if (process.env.NODE_ENV !== 'production') {
+            await tempConnection.execute(`CREATE DATABASE IF NOT EXISTS \`${dbConfig.database}\``);
+            console.log(`✅ Database '${dbConfig.database}' created/verified`);
+        }
         await tempConnection.end();
 
         // Now connect to the specific database
@@ -206,7 +208,7 @@ async function initializeDatabase() {
             queueLimit: 0,
             acquireTimeout: 60000,
             timeout: 60000,
-            reconnect: true
+
         });
 
         // Test connection with retry logic
