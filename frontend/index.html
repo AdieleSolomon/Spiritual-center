@@ -16,6 +16,7 @@
             --dark: #4E342E; /* Very dark wooden brown */
             --text: #EFEBE9; /* Light text for better contrast */
             --text-light: #D7CCC8; /* Lighter text */
+            --header-h: 120px;
         }
 
         * {
@@ -27,10 +28,6 @@
         html {
             scroll-behavior: smooth;
             scroll-padding-top: 120px;
-        }
-
-        body {
-            padding-top: 120px;
         }
 
         body {
@@ -330,7 +327,7 @@
             text-align: center;
             position: relative;
             overflow: visible;
-            min-height: 100svh;
+            min-height: calc(100svh - var(--header-h));
         }
 
         .hero h1 {
@@ -1330,7 +1327,7 @@
         /* Mobile Styles */
         @media (max-width: 768px) {
             html { scroll-padding-top: 100px; }
-            body { padding-top: 100px; }
+            :root { --header-h: 100px; }
             h1 {
                 font-size: 2.2rem;
             }
@@ -1341,7 +1338,7 @@
 
             .hero {
                 padding: 130px 12px 70px;
-                min-height: 100svh;
+                min-height: calc(100svh - var(--header-h));
                 background-position: center;
             }
 
@@ -1391,7 +1388,7 @@
 
         @media (max-width: 480px) {
             html { scroll-padding-top: 90px; }
-            body { padding-top: 90px; }
+            :root { --header-h: 90px; }
             h1 {
                 font-size: 1.8rem;
             }
@@ -1402,7 +1399,7 @@
 
             .hero {
                 padding: 110px 12px 55px;
-                min-height: 100svh;
+                min-height: calc(100svh - var(--header-h));
                 background-position: center;
             }
 
