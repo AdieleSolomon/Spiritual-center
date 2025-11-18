@@ -125,9 +125,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
-// FIXED: Enhanced Railway MySQL configuration
+// FIXED: Enhanced Railway MySQL configuration - ALIGNED WITH YOUR .ENV
 const getDbConfig = () => {
-    // Priority 1: Use MYSQL_URL from Railway (most reliable)
+    // Priority 1: Use MYSQL_URL from Railway (if available)
     if (process.env.MYSQL_URL) {
         console.log('🔧 Using MYSQL_URL for database connection');
         return {
@@ -136,15 +136,15 @@ const getDbConfig = () => {
         };
     }
     
-    // Priority 2: Use individual Railway environment variables
-    if (process.env.MYSQLHOST) {
-        console.log('🔧 Using Railway MySQL individual variables');
+    // Priority 2: Use individual Railway environment variables FROM YOUR .ENV
+    if (process.env.MYSQLHOST && process.env.MYSQLUSER && process.env.MYSQLPASSWORD) {
+        console.log('🔧 Using Railway MySQL individual variables from .env');
         return {
-            host: process.env.MYSQLHOST,
-            user: process.env.MYSQLUSER,
-            password: process.env.MYSQLPASSWORD,
-            database: process.env.MYSQLDATABASE,
-            port: parseInt(process.env.MYSQLPORT) || 3306,
+            host: process.env.MYSQLHOST, // mysql.railway.internal
+            user: process.env.MYSQLUSER, // root
+            password: process.env.MYSQLPASSWORD, // ShwaedPFnJeSXSqlkGKxFrIwAHtETXBl
+            database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway', // railway
+            port: parseInt(process.env.MYSQLPORT) || 3306, // 3306
             ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
             connectTimeout: 60000,
             acquireTimeout: 60000,
@@ -164,24 +164,31 @@ const getDbConfig = () => {
 };
 
 const dbConfig = getDbConfig();
+
+// FIXED: Better environment variable logging
 console.log('🔧 Database Configuration:', {
     environment: process.env.NODE_ENV || 'development',
     platform: 'Render + Railway MySQL',
-    usingMysqlUrl: !!process.env.MYSQL_URL,
-    hasMysqlHost: !!process.env.MYSQLHOST
+    host: dbConfig.host || 'From MYSQL_URL',
+    database: dbConfig.database || 'From MYSQL_URL',
+    port: dbConfig.port || 'From MYSQL_URL'
 });
 
-// Debug environment variables (safely)
+// FIXED: Debug environment variables (aligned with your actual .env)
 console.log('🔍 Environment Variables Check:', {
+    NODE_ENV: process.env.NODE_ENV || 'Not set',
     MYSQLHOST: process.env.MYSQLHOST ? 'Set' : 'Not set',
     MYSQLUSER: process.env.MYSQLUSER ? 'Set' : 'Not set', 
+    MYSQLPASSWORD: process.env.MYSQLPASSWORD ? 'Set' : 'Not set',
     MYSQLDATABASE: process.env.MYSQLDATABASE ? 'Set' : 'Not set',
+    MYSQL_DATABASE: process.env.MYSQL_DATABASE ? 'Set' : 'Not set',
     MYSQLPORT: process.env.MYSQLPORT ? 'Set' : 'Not set',
     MYSQL_URL: process.env.MYSQL_URL ? 'Set' : 'Not set',
-    RAILWAY_STATIC_URL: process.env.RAILWAY_STATIC_URL ? 'Set' : 'Not set'
+    JWT_SECRET: process.env.JWT_SECRET ? 'Set' : 'Not set',
+    RENDER: process.env.RENDER ? 'Set' : 'Not set'
 });
 
-// FIXED: Test MySQL connection with better error handling and Railway support
+// FIXED: Test MySQL connection with better error handling
 async function testMySQLConnection() {
     try {
         console.log('🔄 Testing MySQL connection...');
@@ -195,10 +202,16 @@ async function testMySQLConnection() {
         } else {
             // Use individual config
             console.log('🔧 Using individual database config');
+            console.log('🔧 Connection details:', {
+                host: dbConfig.host,
+                user: dbConfig.user,
+                database: dbConfig.database,
+                port: dbConfig.port
+            });
             connection = await createConnection(dbConfig);
         }
         
-        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time, DATABASE() as db_name');
+        const [rows] = await connection.execute('SELECT 1 as test_value, NOW() as current_time, DATABASE() as db_name, USER() as current_user');
         console.log('✅ MySQL test query successful:', rows);
         
         await connection.end();
@@ -208,7 +221,10 @@ async function testMySQLConnection() {
         console.error('🔍 Connection details:', {
             host: dbConfig.host || 'From MYSQL_URL',
             database: dbConfig.database || 'From MYSQL_URL',
-            hasPassword: !!(dbConfig.password || (process.env.MYSQL_URL && process.env.MYSQL_URL.includes(':')))
+            port: dbConfig.port || 'From MYSQL_URL',
+            errorCode: err.code,
+            errno: err.errno,
+            sqlState: err.sqlState
         });
         return false;
     }
@@ -225,10 +241,11 @@ async function initializeDatabase() {
         const connectionTest = await testMySQLConnection();
         if (!connectionTest) {
             console.log('❌ Initial MySQL connection test failed');
-            console.log('💡 Please check:');
-            console.log('   1. Railway MySQL service is running');
-            console.log('   2. MYSQL_URL environment variable is set in Render');
-            console.log('   3. Database credentials are correct');
+            console.log('💡 Troubleshooting tips:');
+            console.log('   1. Check if Railway MySQL service is running');
+            console.log('   2. Verify MYSQLHOST, MYSQLUSER, MYSQLPASSWORD in Render environment variables');
+            console.log('   3. Ensure MySQL credentials are correct');
+            console.log('   4. Check if MySQL port 3306 is accessible');
             throw new Error('MySQL connection failed');
         }
         
@@ -262,8 +279,9 @@ async function initializeDatabase() {
             try {
                 const testConn = await pool.getConnection();
                 console.log('✅ Database connection pool successful');
-                const [result] = await testConn.execute('SELECT DATABASE() as db_name, NOW() as server_time');
+                const [result] = await testConn.execute('SELECT DATABASE() as db_name, NOW() as server_time, USER() as user');
                 console.log('📊 Connected to database:', result[0].db_name);
+                console.log('👤 Connected as user:', result[0].user);
                 testConn.release();
                 break;
             } catch (error) {
@@ -284,6 +302,7 @@ async function initializeDatabase() {
     } catch (error) {
         console.error('❌ Database initialization error:', error.message);
         console.log('💡 The server will start in limited mode (database operations will fail)');
+        console.log('💡 Please check your Railway MySQL connection in Render environment variables');
         return false;
     }
 }
@@ -413,7 +432,8 @@ app.get('/debug', (req, res) => {
         environment: process.env.NODE_ENV,
         mysqlHost: process.env.MYSQLHOST,
         mysqlUser: process.env.MYSQLUSER,
-        mysqlDatabase: process.env.MYSQLDATABASE,
+        mysqlDatabase: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE,
+        mysqlPort: process.env.MYSQLPORT,
         mysqlUrl: process.env.MYSQL_URL ? 'Set (hidden)' : 'Not set',
         platform: isRender ? 'Render' : 'Local',
         timestamp: new Date().toISOString(),
@@ -447,7 +467,9 @@ app.get('/api/test-mysql', async (req, res) => {
             code: 'MYSQL_CONNECTION_ERROR',
             details: {
                 usingMysqlUrl: !!dbConfig.connectionString,
-                hasMysqlHost: !!process.env.MYSQLHOST
+                hasMysqlHost: !!process.env.MYSQLHOST,
+                errorCode: error.code,
+                errno: error.errno
             }
         });
     }
@@ -521,6 +543,7 @@ app.post('/api/login', async (req, res) => {
             return res.status(401).json({ error: 'Invalid email or password' });
         }
         
+        // FIXED: Use JWT_SECRET from your .env
         const token = sign(
             { 
                 id: user.id, 
@@ -838,6 +861,7 @@ async function startServer() {
     console.log('🏗️  Platform:', isRender ? 'Render' : 'Local');
     console.log('🔧 Port:', PORT);
     console.log('🗄️ Database Config:', dbConfig.connectionString ? 'Using MYSQL_URL' : 'Using individual config');
+    console.log('🔑 JWT Secret:', process.env.JWT_SECRET ? 'Set' : 'Not set');
     
     // Initialize database (but don't block server startup)
     initializeDatabase().then(success => {
