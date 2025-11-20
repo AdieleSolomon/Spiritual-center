@@ -125,16 +125,15 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use('/uploads', express.static(uploadsDir));
 
-// FIXED: UPDATED Railway MySQL configuration - USING PUBLIC NETWORKING FROM YOUR SCREENSHOT
+// FIXED: CORRECT Public Networking configuration from your screenshot
 const getDbConfig = () => {
-    // Priority 1: Use Public Networking connection (from your Railway screenshot)
-    console.log('🔧 Using Public Networking for Railway MySQL');
+    console.log('🔧 Using Railway Public Networking configuration');
     return {
-        host: 'crossover.proxy.rfwy.net', // PUBLIC host from your screenshot
+        host: process.env.MYSQLHOST || 'localhost',
         user: process.env.MYSQLUSER || 'root',
-        password: process.env.MYSQLPASSWORD || 'ShwaedPFnJeSXSqlkGKxFrIwAHtETXBl',
+        password: process.env.MYSQLPASSWORD || '',
         database: process.env.MYSQLDATABASE || process.env.MYSQL_DATABASE || 'railway',
-        port: 22317, // PUBLIC port from your screenshot (not 3306)
+        port: process.env.MYSQLPORT ? parseInt(process.env.MYSQLPORT, 10) : 3306,
         ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
         connectTimeout: 60000,
         acquireTimeout: 60000,
@@ -168,7 +167,7 @@ console.log('🔍 Environment Variables Check:', {
     RENDER: process.env.RENDER ? 'Set' : 'Not set'
 });
 
-// FIXED: Test MySQL connection with PUBLIC networking
+// FIXED: Test MySQL connection with Public Networking
 async function testMySQLConnection() {
     try {
         console.log('🔄 Testing MySQL connection via Public Networking...');
@@ -199,8 +198,8 @@ async function testMySQLConnection() {
         
         console.log('💡 Troubleshooting tips:');
         console.log('   1. Check if Railway MySQL service is running');
-        console.log('   2. Verify the public hostname: crossover.proxy.rfwy.net');
-        console.log('   3. Verify the public port: 22317');
+        console.log('   2. Verify the public hostname:', dbConfig.host);
+        console.log('   3. Verify the public port:', dbConfig.port);
         console.log('   4. Check MySQL credentials in Railway variables');
         
         return false;
@@ -221,7 +220,7 @@ async function initializeDatabase() {
             throw new Error('MySQL connection failed');
         }
         
-        // Create connection pool with PUBLIC networking
+        // Create connection pool with Public Networking
         pool = createPool({
             ...dbConfig,
             waitForConnections: true,
@@ -508,7 +507,7 @@ app.post('/api/login', async (req, res) => {
                 email: user.email, 
                 role: user.role 
             },
-            process.env.JWT_SECRET || 'fallback-secret',
+            process.env.JWT_SECRET,
             { expiresIn: '24h' }
         );
         
@@ -588,7 +587,7 @@ app.post('/api/content', upload.single('file'), async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -649,7 +648,7 @@ app.get('/api/users', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -672,7 +671,7 @@ app.get('/api/prayer-requests', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -700,7 +699,7 @@ app.put('/api/users/:id/approve', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -726,7 +725,7 @@ app.put('/api/prayer-requests/:id/read', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -752,7 +751,7 @@ app.delete('/api/users/:id', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -775,7 +774,7 @@ app.delete('/api/prayer-requests/:id', async (req, res) => {
         }
         
         const token = authHeader.replace('Bearer ', '');
-        const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret');
+        const decoded = verify(token, process.env.JWT_SECRET);
         
         if (decoded.role !== 'admin') {
             return res.status(403).json({ error: 'Admin access required' });
@@ -817,9 +816,10 @@ async function startServer() {
     console.log('📊 Environment:', process.env.NODE_ENV || 'development');
     console.log('🏗️  Platform:', isRender ? 'Render' : 'Local');
     console.log('🔧 Port:', PORT);
-    console.log('🗄️ Database Config: Public Networking');
+    console.log('🗄️ Database Config: Railway Public Networking');
     console.log('🔑 JWT Secret:', process.env.JWT_SECRET ? 'Set' : 'Not set');
-    console.log('🌐 MySQL Host: crossover.proxy.rfwy.net:22317');
+    console.log('🌐 MySQL Host:', dbConfig.host);
+    console.log('🔌 MySQL Port:', dbConfig.port);
     
     // Initialize database (but don't block server startup)
     initializeDatabase().then(success => {
