@@ -40,6 +40,7 @@ const App = (() => {
     configuredApiBase ||
     (isLocalHost ? "http://localhost:5501/api" : `${window.location.origin}/api`);
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
+  const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
 
   const state = {
     token: localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
@@ -112,10 +113,9 @@ const App = (() => {
     requestRecoveryBtn: document.getElementById("requestRecoveryBtn"),
     recoverSubmitBtn: document.getElementById("recoverSubmitBtn"),
     authMessage: document.getElementById("authMessage"),
-    prayerForm: document.getElementById("prayerForm"),
-    prayerName: document.getElementById("prayerName"),
-    prayerRequest: document.getElementById("prayerRequest"),
-    prayerAnonymous: document.getElementById("prayerAnonymous"),
+    protectedSectionLinks: Array.from(
+      document.querySelectorAll("[data-protected-section]"),
+    ),
     contactForm: document.getElementById("contactForm"),
     contactName: document.getElementById("contactName"),
     contactEmail: document.getElementById("contactEmail"),
@@ -124,6 +124,37 @@ const App = (() => {
     googleMapEmbed: document.getElementById("googleMapEmbed"),
     googleDirectionsLink: document.getElementById("googleDirectionsLink"),
     year: document.getElementById("year"),
+    // Prayer Page
+    prayerPageForm: document.getElementById("prayerForm"),
+    prayerPageName: document.getElementById("prayerName"),
+    prayerPageEmail: document.getElementById("prayerEmail"),
+    prayerPageRequest: document.getElementById("prayerRequest"),
+    prayerPageAnonymous: document.getElementById("prayerAnonymous"),
+    prayerFormContainer: document.getElementById("prayer-form-container"),
+    prayerBookingForm: document.getElementById("prayerBookingForm"),
+    prayerBookingName: document.getElementById("prayerBookingName"),
+    prayerBookingEmail: document.getElementById("prayerBookingEmail"),
+    prayerBookingAvailability: document.getElementById("prayerBookingAvailability"),
+    prayerBookingFocus: document.getElementById("prayerBookingFocus"),
+    // Counseling Page
+    counselingPageForm: document.getElementById("counselingForm"),
+    counselingIntent: document.getElementById("counselingIntent"),
+    counselingType: document.getElementById("counselingType"),
+    counselingDescription: document.getElementById("counselingDescription"),
+    counselingAvailability: document.getElementById("counselingAvailability"),
+    counselingFormContainer: document.getElementById("counseling-form-container"),
+    // General
+    loginWall: document.getElementById("login-wall"),
+    loginBtn: document.getElementById("login-btn"),
+    formMessage: document.getElementById("form-message"),
+    // Daily Promise
+    dailyPromisePopup: document.getElementById("dailyPromisePopup"),
+    dailyPromiseTopic: document.getElementById("dailyPromiseTopic"),
+    dailyPromiseSnippet: document.getElementById("dailyPromiseSnippet"),
+    dailyPromiseLink: document.getElementById("dailyPromiseLink"),
+    dailyUpdatePromiseText: document.getElementById("dailyUpdatePromiseText"),
+    dailyUpdatePromiseAuthor: document.getElementById("dailyUpdatePromiseAuthor"),
+    dailyUpdatePromiseDate: document.getElementById("dailyUpdatePromiseDate"),
   };
 
   function init() {
@@ -135,12 +166,15 @@ const App = (() => {
     setupActiveNavTracking();
     setupRevealAnimations();
     setupModal();
-    setupSessionButtons();
-    setupPrayerForm();
+    setupProtectedSectionLinks();
+    handleAuthEntryIntent();
     setupContactForm();
     setupLoginForm();
     setupRegisterForm();
     setupRecoverForm();
+    setupPrayerPage();
+    setupCounselingPage();
+    setupDailyPromise();
 
     updateAuthUI();
     hydrateSession().finally(loadResources);
@@ -337,11 +371,11 @@ const App = (() => {
     const authText = {
       login: {
         title: "Member Sign-In",
-        subtitle: "Sign in to access synchronized ministry resources.",
+        subtitle: "Sign in to access prayer and counseling sections.",
       },
       register: {
         title: "Create Member Account",
-        subtitle: "Register with your details to access members-only resources.",
+        subtitle: "Create an account to access prayer and counseling sections.",
       },
       recover: {
         title: "Recover Password",
@@ -383,51 +417,57 @@ const App = (() => {
     });
   }
 
-  function setupSessionButtons() {
-    document.querySelectorAll(".session-btn").forEach((button) => {
-      button.addEventListener("click", () => {
-        const sessionType = button.dataset.session || "prayer";
-        const message =
-          sessionType === "counseling"
-            ? "Hello Pastor, I would like to book a counseling session."
-            : "Hello Pastor, I would like to book a prayer session.";
+  function setupProtectedSectionLinks() {
+    if (!ui.protectedSectionLinks.length) return;
 
-        openWhatsApp(
-          message,
-          sessionType === "counseling" ? "counseling_session" : "prayer_session",
-        );
+    ui.protectedSectionLinks.forEach((link) => {
+      link.addEventListener("click", async (event) => {
+        event.preventDefault();
+
+        if (state.token && !state.user) {
+          await hydrateSession();
+        }
+
+        if (state.token && state.user) {
+          window.location.href = link.href;
+          return;
+        }
+
+        const redirectTarget = link.getAttribute("href") || "prayer.html";
+        setPostAuthRedirect(redirectTarget);
+
+        if (ui.authModal?.openModal) {
+          ui.authModal.openModal("login");
+          setAuthMessage("Sign in to access this section.", false);
+          return;
+        }
+
+        redirectToAuthEntryPage(redirectTarget);
       });
     });
   }
 
-  function setupPrayerForm() {
-    if (!ui.prayerForm) return;
+  function handleAuthEntryIntent() {
+    if (!ui.authModal?.openModal) return;
 
-    ui.prayerForm.addEventListener("submit", (event) => {
-      event.preventDefault();
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get("openAuth");
+    const redirect = params.get("redirect");
 
-      const request = ui.prayerRequest?.value.trim();
-      if (!request) {
-        notify("Please enter your prayer request.", "error");
-        return;
-      }
+    if (redirect) {
+      setPostAuthRedirect(redirect);
+    }
 
-      const anonymous = ui.prayerAnonymous?.checked;
-      const name = anonymous
-        ? "Anonymous"
-        : ui.prayerName?.value.trim() || "Website Visitor";
+    if (mode) {
+      const allowedModes = new Set(["login", "register", "recover"]);
+      const resolvedMode = allowedModes.has(mode) ? mode : "login";
+      ui.authModal.openModal(resolvedMode);
+    }
 
-      const message = [
-        "Prayer Request:",
-        `Name: ${name}`,
-        `Request: ${request}`,
-      ].join("\n");
-
-      openWhatsApp(message, "prayer_form");
-
-      ui.prayerForm.reset();
-      notify("Prayer request prepared on WhatsApp.", "success");
-    });
+    if (mode || redirect) {
+      const cleanUrl = `${window.location.pathname}${window.location.hash || ""}`;
+      window.history.replaceState({}, "", cleanUrl);
+    }
   }
 
   function setupContactForm() {
@@ -503,8 +543,12 @@ const App = (() => {
         loadResources();
         trackEvent("login_success", { method: "email_password" });
 
-        setAuthMessage("Sign-in successful. Resource sync is now active.", false);
+        setAuthMessage("Sign-in successful.", false);
         notify("You are signed in successfully.", "success");
+
+        if (redirectAfterAuthIfNeeded()) {
+          return;
+        }
 
         setTimeout(() => {
           ui.authModal?.closeModal?.();
@@ -579,6 +623,10 @@ const App = (() => {
         notify("Registration successful. You are now signed in.", "success");
         setAuthMessage("Account created successfully.", false);
         trackEvent("register_success", { method: "email_password" });
+
+        if (redirectAfterAuthIfNeeded()) {
+          return;
+        }
 
         setTimeout(() => {
           ui.authModal?.closeModal?.();
@@ -695,6 +743,10 @@ const App = (() => {
         setAuthMessage("Password reset successful.", false);
         trackEvent("password_reset_success", { source: "self_service" });
 
+        if (redirectAfterAuthIfNeeded()) {
+          return;
+        }
+
         setTimeout(() => {
           ui.authModal?.closeModal?.();
           ui.recoverForm?.reset();
@@ -707,6 +759,239 @@ const App = (() => {
       } finally {
         setRecoverSubmitLoading(false);
       }
+    });
+  }
+
+  function setupPrayerPage() {
+    if (!ui.prayerPageForm) return;
+
+    wireSectionLoginButton("prayer.html");
+
+    const setAuthorizedView = () => {
+      if (ui.loginWall) ui.loginWall.style.display = "none";
+      if (ui.prayerFormContainer) ui.prayerFormContainer.style.display = "block";
+      prefillPrayerFormsFromUser();
+    };
+
+    const setBlockedView = () => {
+      if (ui.loginWall) ui.loginWall.style.display = "block";
+      if (ui.prayerFormContainer) ui.prayerFormContainer.style.display = "none";
+    };
+
+    const initPrayerAccess = async () => {
+      if (!state.token) {
+        setBlockedView();
+        return;
+      }
+
+      await hydrateSession();
+      if (state.user) {
+        setAuthorizedView();
+      } else {
+        setBlockedView();
+      }
+    };
+
+    initPrayerAccess();
+
+    ui.prayerPageForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const name = ui.prayerPageName?.value.trim();
+      const email = ui.prayerPageEmail?.value.trim();
+      const request = ui.prayerPageRequest?.value.trim();
+      const is_anonymous = ui.prayerPageAnonymous?.checked;
+
+      if (!request) {
+        notify("Please enter your prayer request.", "error");
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/prayer-requests`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify({ name, email, request, is_anonymous }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to submit prayer request.");
+        }
+
+        ui.prayerPageForm.reset();
+        prefillPrayerFormsFromUser();
+        notify("Prayer request submitted successfully.", "success");
+        setSectionMessage("Your prayer request has been sent.", "success");
+      } catch (error) {
+        notify(error.message || "An error occurred.", "error");
+        setSectionMessage(error.message || "An error occurred.", "error");
+      }
+    });
+
+    ui.prayerBookingForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const name = ui.prayerBookingName?.value.trim();
+      const email = ui.prayerBookingEmail?.value.trim();
+      const availability = ui.prayerBookingAvailability?.value.trim();
+      const focus = ui.prayerBookingFocus?.value.trim();
+
+      if (!availability || !focus) {
+        notify("Please complete booking availability and focus.", "error");
+        return;
+      }
+
+      const request = [
+        "Prayer Session Booking",
+        `Preferred availability: ${availability}`,
+        `Focus: ${focus}`,
+      ].join("\n");
+
+      try {
+        const response = await fetch(`${API_BASE}/prayer-requests`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify({
+            name,
+            email,
+            request,
+            is_anonymous: false,
+          }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to book prayer session.");
+        }
+
+        ui.prayerBookingForm.reset();
+        prefillPrayerFormsFromUser();
+        notify("Prayer session booking submitted successfully.", "success");
+        setSectionMessage("Your prayer session booking has been sent.", "success");
+      } catch (error) {
+        notify(error.message || "An error occurred.", "error");
+        setSectionMessage(error.message || "An error occurred.", "error");
+      }
+    });
+  }
+
+  function setupCounselingPage() {
+    if (!ui.counselingPageForm) return;
+
+    wireSectionLoginButton("counseling.html");
+
+    const setAuthorizedView = () => {
+      if (ui.loginWall) ui.loginWall.style.display = "none";
+      if (ui.counselingFormContainer) ui.counselingFormContainer.style.display = "block";
+    };
+
+    const setBlockedView = () => {
+      if (ui.loginWall) ui.loginWall.style.display = "block";
+      if (ui.counselingFormContainer) ui.counselingFormContainer.style.display = "none";
+    };
+
+    const initCounselingAccess = async () => {
+      if (!state.token) {
+        setBlockedView();
+        return;
+      }
+
+      await hydrateSession();
+      if (state.user) {
+        setAuthorizedView();
+      } else {
+        setBlockedView();
+      }
+    };
+
+    initCounselingAccess();
+
+    ui.counselingPageForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const intent = ui.counselingIntent?.value || "";
+      const counseling_type = ui.counselingType?.value;
+      const description = ui.counselingDescription?.value.trim();
+      const preferred_availability = ui.counselingAvailability?.value.trim();
+
+      if (!intent || !counseling_type || !description) {
+        notify("Please select request option, type, and description.", "error");
+        return;
+      }
+
+      const descriptionPrefix =
+        intent === "booking"
+          ? "[Counseling Session Booking]"
+          : "[Counseling Request]";
+      const descriptionPayload = `${descriptionPrefix}\n${description}`;
+
+      try {
+        const response = await fetch(`${API_BASE}/counseling-requests`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${state.token}`,
+          },
+          body: JSON.stringify({
+            counseling_type,
+            description: descriptionPayload,
+            preferred_availability,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to submit counseling request.");
+        }
+
+        ui.counselingPageForm.reset();
+        const successMessage =
+          intent === "booking"
+            ? "Counseling session booking submitted successfully."
+            : "Counseling request submitted successfully.";
+        notify(successMessage, "success");
+        setSectionMessage("Your submission has been sent.", "success");
+      } catch (error) {
+        notify(error.message || "An error occurred.", "error");
+        setSectionMessage(error.message || "An error occurred.", "error");
+      }
+    });
+  }
+
+  function prefillPrayerFormsFromUser() {
+    if (!state.user) return;
+    const username = state.user.username || "";
+    const email = state.user.email || "";
+
+    if (ui.prayerPageName) ui.prayerPageName.value = username;
+    if (ui.prayerPageEmail) ui.prayerPageEmail.value = email;
+    if (ui.prayerBookingName) ui.prayerBookingName.value = username;
+    if (ui.prayerBookingEmail) ui.prayerBookingEmail.value = email;
+  }
+
+  function setSectionMessage(text, tone = "success") {
+    if (!ui.formMessage) return;
+    ui.formMessage.textContent = text;
+    ui.formMessage.className = `auth-message ${tone}`;
+  }
+
+  function wireSectionLoginButton(targetPath) {
+    if (!ui.loginBtn) return;
+
+    ui.loginBtn.addEventListener("click", () => {
+      setPostAuthRedirect(targetPath);
+      if (ui.authModal?.openModal) {
+        ui.authModal.openModal("login");
+        return;
+      }
+      redirectToAuthEntryPage(targetPath);
     });
   }
 
@@ -813,6 +1098,56 @@ const App = (() => {
     }
   }
 
+  function normalizeInternalRedirect(rawTarget) {
+    if (!rawTarget) return "";
+
+    try {
+      const parsedUrl = new URL(rawTarget, window.location.origin);
+      if (parsedUrl.origin !== window.location.origin) return "";
+
+      const normalized = `${parsedUrl.pathname}${parsedUrl.search}${parsedUrl.hash}`;
+      if (!normalized) return "";
+      return normalized.startsWith("/") ? normalized.slice(1) : normalized;
+    } catch {
+      return "";
+    }
+  }
+
+  function setPostAuthRedirect(targetPath) {
+    const normalized = normalizeInternalRedirect(targetPath);
+    if (!normalized) return;
+    localStorage.setItem(POST_AUTH_REDIRECT_KEY, normalized);
+  }
+
+  function consumePostAuthRedirect() {
+    const savedTarget = localStorage.getItem(POST_AUTH_REDIRECT_KEY) || "";
+    localStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+    return normalizeInternalRedirect(savedTarget);
+  }
+
+  function redirectAfterAuthIfNeeded() {
+    const target = consumePostAuthRedirect();
+    if (!target) return false;
+    window.location.href = target;
+    return true;
+  }
+
+  function redirectToAuthEntryPage(targetPath = "") {
+    const redirectTarget = normalizeInternalRedirect(targetPath);
+    const entryPage = window.location.pathname
+      .toLowerCase()
+      .endsWith("index-youth.html")
+      ? "index-youth.html"
+      : "index.html";
+
+    const params = new URLSearchParams({ openAuth: "login" });
+    if (redirectTarget) {
+      params.set("redirect", redirectTarget);
+    }
+
+    window.location.href = `${entryPage}?${params.toString()}`;
+  }
+
   async function loadResources() {
     if (!ui.resourceGrid) return;
 
@@ -840,7 +1175,7 @@ const App = (() => {
 
       if (response.status === 401 || response.status === 403) {
         setResourceNotice(
-          "Sign in to synchronize uploaded materials. Showing curated resources for now.",
+          "Uploaded materials are temporarily unavailable. Showing curated resources for now.",
           "warning",
         );
         renderResources(fallbackResources, false);
@@ -870,11 +1205,12 @@ const App = (() => {
         category: item.category || "resource",
         type: item.type || "file",
         link: resolveFileUrl(item.file_url),
+        fileUrl: item.file_url || "",
       }));
 
       renderResources(normalized, true);
       setResourceNotice(
-        `Latest ministry materials (${materials.length} available).`,
+        `Latest ministry materials (${materials.length} available for all visitors).`,
         "success",
       );
     } catch (error) {
@@ -896,6 +1232,58 @@ const App = (() => {
     return `${BACKEND_ORIGIN}/${normalizedPath}`;
   }
 
+  function getMediaKind(resource) {
+    const typeToken = String(resource.type || "").toLowerCase();
+    const categoryToken = String(resource.category || "").toLowerCase();
+    const linkToken = String(resource.link || "").toLowerCase();
+
+    if (
+      typeToken.includes("video") ||
+      categoryToken.includes("video") ||
+      /\.(mp4|webm|ogg|mov|m4v|mkv)(\?|#|$)/i.test(linkToken)
+    ) {
+      return "video";
+    }
+
+    if (
+      typeToken.includes("audio") ||
+      typeToken.includes("music") ||
+      categoryToken.includes("audio") ||
+      categoryToken.includes("music") ||
+      /\.(mp3|wav|ogg|m4a|aac|flac)(\?|#|$)/i.test(linkToken)
+    ) {
+      return "audio";
+    }
+
+    return null;
+  }
+
+  function renderMediaPreview(mediaKind, safeSrc, safeTitle) {
+    if (!mediaKind || safeSrc === "#contact") {
+      return "";
+    }
+
+    if (mediaKind === "video") {
+      return `
+        <div class="resource-player-wrap">
+          <video class="resource-player resource-player-video" controls preload="metadata">
+            <source src="${safeSrc}" />
+            Your browser does not support video playback.
+          </video>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="resource-player-wrap">
+        <audio class="resource-player resource-player-audio" controls preload="metadata" title="${safeTitle}">
+          <source src="${safeSrc}" />
+          Your browser does not support audio playback.
+        </audio>
+      </div>
+    `;
+  }
+
   function renderResources(resources, fromApi) {
     if (!ui.resourceGrid) return;
 
@@ -906,9 +1294,12 @@ const App = (() => {
         const title = sanitize(item.title || "Resource");
         const description = sanitize(item.description || "");
         const href = sanitize(item.link || "#");
+        const mediaKind = getMediaKind(item);
+        const mediaPreview = renderMediaPreview(mediaKind, href, title);
 
         const isExternal = href.startsWith("http");
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : "";
+        const linkLabel = mediaKind ? "Open in New Tab" : fromApi ? "Open Material" : "Preview";
 
         return `
           <article class="resource-card" data-reveal>
@@ -918,8 +1309,9 @@ const App = (() => {
             </div>
             <h3>${title}</h3>
             <p>${description}</p>
+            ${mediaPreview}
             <a class="resource-link" href="${href}" data-resource-title="${title}" ${targetAttr}>
-              ${fromApi ? "Open Material" : "Preview"}
+              ${linkLabel}
               <i class="fa-solid fa-arrow-right"></i>
             </a>
           </article>
@@ -947,6 +1339,106 @@ const App = (() => {
     if (tone === "warning") ui.resourceNotice.classList.add("is-warning");
     if (tone === "error") ui.resourceNotice.classList.add("is-error");
     if (tone === "success") ui.resourceNotice.classList.add("is-success");
+  }
+
+  function setupDailyPromise() {
+    const hasPopup = Boolean(
+      ui.dailyPromisePopup &&
+        ui.dailyPromiseTopic &&
+        ui.dailyPromiseSnippet &&
+        ui.dailyPromiseLink,
+    );
+    const hasDailyUpdate = Boolean(ui.dailyUpdatePromiseText);
+
+    if (!hasPopup && !hasDailyUpdate) return;
+
+    ui.dailyPromiseLink?.addEventListener("click", () => {
+      if (ui.dailyPromisePopup) {
+        ui.dailyPromisePopup.hidden = true;
+      }
+      trackEvent("daily_promise_show_more_click", { source: "popup" });
+    });
+
+    fetch(`${API_BASE}/daily-promise/latest`)
+      .then(async (response) => {
+        const data = await response
+          .json()
+          .catch(() => ({ error: "Unexpected response format." }));
+        if (!response.ok || !data?.success || !data?.promise) {
+          throw new Error(data?.error || "No daily promise available.");
+        }
+        return data.promise;
+      })
+      .then((promise) => {
+        const promiseText = promise.promise_text || "No promise text.";
+        const promiseAuthor = promise.author || "Scripture";
+        const topicText = buildPromiseTopic(promiseText);
+        const snippetText = buildPromiseSnippet(promiseText);
+        const formattedDate = formatPromiseDate(
+          promise.created_at || promise.updated_at || new Date().toISOString(),
+        );
+
+        if (ui.dailyPromisePopup) {
+          ui.dailyPromisePopup.hidden = false;
+        }
+
+        if (ui.dailyPromiseTopic) {
+          ui.dailyPromiseTopic.textContent = topicText;
+        }
+        if (ui.dailyPromiseSnippet) {
+          ui.dailyPromiseSnippet.textContent = snippetText;
+        }
+
+        if (ui.dailyUpdatePromiseText) {
+          ui.dailyUpdatePromiseText.textContent = promiseText;
+        }
+        if (ui.dailyUpdatePromiseAuthor) {
+          ui.dailyUpdatePromiseAuthor.textContent = promiseAuthor;
+        }
+        if (ui.dailyUpdatePromiseDate) {
+          ui.dailyUpdatePromiseDate.textContent = `Posted on ${formattedDate}`;
+        }
+      })
+      .catch(() => {
+        if (ui.dailyPromisePopup) {
+          ui.dailyPromisePopup.hidden = true;
+        }
+        if (ui.dailyUpdatePromiseText) {
+          ui.dailyUpdatePromiseText.textContent =
+            "No daily promise has been posted yet.";
+        }
+        if (ui.dailyUpdatePromiseAuthor) {
+          ui.dailyUpdatePromiseAuthor.textContent = "";
+        }
+        if (ui.dailyUpdatePromiseDate) {
+          ui.dailyUpdatePromiseDate.textContent = "";
+        }
+    });
+  }
+
+  function buildPromiseTopic(promiseText) {
+    const firstLine = String(promiseText)
+      .split("\n")
+      .map((line) => line.trim())
+      .find(Boolean);
+    if (!firstLine) return "Today's Promise from God";
+    return firstLine.length > 72 ? `${firstLine.slice(0, 69)}...` : firstLine;
+  }
+
+  function buildPromiseSnippet(promiseText) {
+    const compactText = String(promiseText).replace(/\s+/g, " ").trim();
+    if (compactText.length <= 110) return compactText;
+    return `${compactText.slice(0, 107)}...`;
+  }
+
+  function formatPromiseDate(rawDate) {
+    const date = new Date(rawDate);
+    if (Number.isNaN(date.getTime())) return "today";
+    return date.toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
   }
 
   function openWhatsApp(message, source = "direct") {

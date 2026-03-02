@@ -1550,6 +1550,14 @@
               <span class="nav-text">Settings</span>
             </a>
           </li>
+          <li>
+            <a href="#" class="nav-link" data-section="daily-promise">
+              <div class="nav-icon">
+                <i class="fas fa-bible"></i>
+              </div>
+              <span class="nav-text">Daily Promise</span>
+            </a>
+          </li>
         </ul>
 
         <div class="sidebar-footer">
@@ -2114,6 +2122,49 @@
             </button>
           </div>
         </section>
+
+        <!-- Daily Promise Section -->
+        <section id="daily-promise" class="content-section">
+          <h2 style="margin-bottom: 1.5rem; color: white">Daily Promise</h2>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Post a New Daily Promise</div>
+            </div>
+            <form id="dailyPromiseForm">
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="dailyPromiseText" class="form-label">Promise Text <span class="required">*</span></label>
+                <textarea id="dailyPromiseText" class="form-textarea" rows="4" placeholder="Enter the daily promise" required></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="dailyPromiseAuthor" class="form-label">Author (e.g., John 3:16)</label>
+                <input type="text" id="dailyPromiseAuthor" class="form-input" placeholder="Enter the author or source" />
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="dailyPromiseSubmitBtn">
+                  <i class="fas fa-paper-plane"></i> Post Promise
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="card" style="margin-top: 1rem">
+            <div
+              class="card-header"
+              style="display: flex; justify-content: space-between; align-items: center; gap: 1rem">
+              <div class="card-title">Current Published Promise</div>
+              <button type="button" class="btn btn-secondary" id="refreshDailyPromiseBtn">
+                <i class="fas fa-rotate-right"></i> Refresh
+              </button>
+            </div>
+            <div id="dailyPromisePreviewState" style="color: rgba(255,255,255,0.75)">
+              No promise loaded yet.
+            </div>
+            <div id="dailyPromisePreview" style="display: none">
+              <p id="dailyPromisePreviewText" style="margin-top: 0.75rem; color: white"></p>
+              <p id="dailyPromisePreviewAuthor" style="margin-top: 0.25rem; color: #94a3b8"></p>
+              <p id="dailyPromisePreviewDate" style="margin-top: 0.25rem; color: #94a3b8"></p>
+            </div>
+          </div>
+        </section>
       </main>
     </div>
 
@@ -2306,6 +2357,22 @@
         if (notificationBtn) {
           notificationBtn.addEventListener("click", showNotificationsModal);
         }
+
+        // Daily Promise form
+        const dailyPromiseForm = document.getElementById("dailyPromiseForm");
+        if (dailyPromiseForm) {
+          dailyPromiseForm.addEventListener("submit", handleDailyPromiseSubmit);
+        }
+
+        const refreshDailyPromiseBtn = document.getElementById(
+          "refreshDailyPromiseBtn",
+        );
+        if (refreshDailyPromiseBtn) {
+          refreshDailyPromiseBtn.addEventListener(
+            "click",
+            loadLatestDailyPromisePreview,
+          );
+        }
       }
 
       // Debounce function for search
@@ -2381,6 +2448,9 @@
             case "settings":
               await loadSettings();
               break;
+            case "daily-promise":
+              await loadLatestDailyPromisePreview();
+              break;
           }
 
           currentSection = sectionId;
@@ -2396,6 +2466,7 @@
           analytics: "Analytics",
           users: "User Management",
           settings: "Settings",
+          "daily-promise": "Daily Promise",
         };
 
         if (currentPage) {
@@ -3228,6 +3299,105 @@
         } catch (error) {
           console.error("Error saving settings:", error);
           showMessage("Failed to save settings: " + error.message, "error");
+        }
+      }
+
+      // Handle Daily Promise submission
+      async function handleDailyPromiseSubmit(e) {
+        e.preventDefault();
+        const promiseText = document.getElementById("dailyPromiseText").value;
+        const promiseAuthor = document.getElementById("dailyPromiseAuthor").value;
+        const submitBtn = document.getElementById("dailyPromiseSubmitBtn");
+
+        if (!promiseText) {
+          showMessage("Promise text is required", "error");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+
+        try {
+          const response = await fetch(`${API_BASE}/admin/daily-promise`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${getAuthToken()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              promise_text: promiseText,
+              author: promiseAuthor,
+            }),
+          });
+
+          if (!response.ok) throw new Error("Failed to post daily promise");
+
+          const data = await response.json();
+          if (data.success) {
+            showMessage("Daily promise posted successfully", "success");
+            document.getElementById("dailyPromiseForm").reset();
+            await loadLatestDailyPromisePreview();
+          } else {
+            throw new Error(data.error || "Post failed");
+          }
+        } catch (error) {
+          console.error("Error posting daily promise:", error);
+          showMessage("Failed to post daily promise: " + error.message, "error");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Promise';
+        }
+      }
+
+      async function loadLatestDailyPromisePreview() {
+        const stateElement = document.getElementById("dailyPromisePreviewState");
+        const previewElement = document.getElementById("dailyPromisePreview");
+        const textElement = document.getElementById("dailyPromisePreviewText");
+        const authorElement = document.getElementById("dailyPromisePreviewAuthor");
+        const dateElement = document.getElementById("dailyPromisePreviewDate");
+
+        if (!stateElement || !previewElement || !textElement || !authorElement || !dateElement) {
+          return;
+        }
+
+        stateElement.style.display = "block";
+        stateElement.textContent = "Loading latest promise...";
+        previewElement.style.display = "none";
+
+        try {
+          const response = await fetch(`${API_BASE}/daily-promise/latest`, getFetchOptions());
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Unexpected response format" }));
+
+          if (response.status === 404) {
+            stateElement.textContent = "No daily promise has been published yet.";
+            return;
+          }
+
+          if (!response.ok || !data.success || !data.promise) {
+            throw new Error(data.error || "Failed to load latest promise");
+          }
+
+          const promise = data.promise;
+          const createdDate = new Date(promise.created_at);
+          const formattedDate = Number.isNaN(createdDate.getTime())
+            ? "Unknown date"
+            : createdDate.toLocaleString();
+
+          textElement.textContent = promise.promise_text || "";
+          authorElement.textContent = promise.author
+            ? `Author: ${promise.author}`
+            : "Author: Scripture";
+          dateElement.textContent = `Published: ${formattedDate}`;
+
+          stateElement.style.display = "none";
+          previewElement.style.display = "block";
+        } catch (error) {
+          console.error("Error loading latest daily promise:", error);
+          stateElement.style.display = "block";
+          stateElement.textContent = `Failed to load promise: ${error.message}`;
+          previewElement.style.display = "none";
         }
       }
 

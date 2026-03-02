@@ -493,6 +493,29 @@ const postgresSchemaStatements = [
   "CREATE INDEX IF NOT EXISTS idx_prayer_status ON prayer_requests (status)",
   "CREATE INDEX IF NOT EXISTS idx_prayer_created ON prayer_requests (created_at)",
   `
+    CREATE TABLE IF NOT EXISTS counseling_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      counseling_type VARCHAR(100) NOT NULL,
+      description TEXT NOT NULL,
+      preferred_availability VARCHAR(255),
+      status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'completed', 'cancelled')),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS idx_counseling_status ON counseling_requests (status)",
+  "CREATE INDEX IF NOT EXISTS idx_counseling_user_id ON counseling_requests (user_id)",
+  `
+    CREATE TABLE IF NOT EXISTS daily_promises (
+      id SERIAL PRIMARY KEY,
+      promise_text TEXT NOT NULL,
+      author VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS idx_daily_promises_created ON daily_promises (created_at)",
+  `
     CREATE TABLE IF NOT EXISTS donations (
       id SERIAL PRIMARY KEY,
       amount DECIMAL(10,2) NOT NULL,
@@ -754,6 +777,34 @@ const initializeDatabase = async () => {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
         INDEX idx_status (status),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Counseling requests table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS counseling_requests (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        counseling_type VARCHAR(100) NOT NULL,
+        description TEXT NOT NULL,
+        preferred_availability VARCHAR(255),
+        status ENUM('pending', 'scheduled', 'completed', 'cancelled') DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_status (status),
+        INDEX idx_user_id (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Daily promises table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS daily_promises (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        promise_text TEXT NOT NULL,
+        author VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_created (created_at)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
@@ -1055,7 +1106,7 @@ app.post(
   },
 );
 
-// Get materials (public for visitors, full access for admin)
+// Get materials (all materials are visible to visitors and admins)
 app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
   try {
     const {
@@ -1072,9 +1123,6 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
 
     const whereParts = [];
     const filterParams = [];
-    if (!isAdminRequest) {
-      whereParts.push("m.is_public = TRUE");
-    }
     if (search) {
       whereParts.push("(m.title LIKE ? OR m.description LIKE ?)");
       filterParams.push(`%${search}%`, `%${search}%`);
@@ -1205,7 +1253,6 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
   try {
     const materialId = req.params.id;
     const isAdminRequest = req.user?.role === "admin";
-    const visibilityClause = isAdminRequest ? "" : " AND m.is_public = TRUE";
     const selectQuery = isAdminRequest
       ? `
       SELECT
@@ -1227,7 +1274,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         u.email as uploader_email
       FROM materials m
       LEFT JOIN users u ON m.uploader_id = u.id
-      WHERE m.id = ?${visibilityClause}
+      WHERE m.id = ?
     `
       : `
       SELECT
@@ -1248,7 +1295,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         u.username as uploader_name
       FROM materials m
       LEFT JOIN users u ON m.uploader_id = u.id
-      WHERE m.id = ?${visibilityClause}
+      WHERE m.id = ?
     `;
 
     const [materials] = await pool.execute(selectQuery, [materialId]);
@@ -2273,6 +2320,41 @@ app.get("/api/users", authenticateToken, async (req, res) => {
 
 // ==================== PRAYER REQUESTS ENDPOINTS ====================
 
+app.post("/api/prayer-requests", authenticateToken, async (req, res) => {
+  try {
+    const { name, email, request, is_anonymous } = req.body;
+    const userId = req.user.userId;
+
+    if (!request) {
+      return res.status(400).json({
+        success: false,
+        error: "Prayer request text is required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO prayer_requests (name, email, request, is_anonymous, user_id)
+      VALUES (?, ?, ?, ?, ?)
+    `,
+      [name, email, request, is_anonymous === "true", userId],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Prayer request submitted successfully",
+      prayer_request_id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Submit prayer request error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to submit prayer request",
+      details: error.message,
+    });
+  }
+});
+
 app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
   try {
     if (req.user.role !== "admin") {
@@ -2338,6 +2420,110 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch prayer requests",
+      details: error.message,
+    });
+  }
+});
+
+// ==================== COUNSELING REQUESTS ENDPOINTS ====================
+
+app.post("/api/counseling-requests", authenticateToken, async (req, res) => {
+  try {
+    const { counseling_type, description, preferred_availability } = req.body;
+    const userId = req.user.userId;
+
+    if (!counseling_type || !description) {
+      return res.status(400).json({
+        success: false,
+        error: "Counseling type and description are required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO counseling_requests (user_id, counseling_type, description, preferred_availability)
+      VALUES (?, ?, ?, ?)
+    `,
+      [userId, counseling_type, description, preferred_availability],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Counseling request submitted successfully",
+      counseling_request_id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Submit counseling request error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to submit counseling request",
+      details: error.message,
+    });
+  }
+});
+
+// ==================== DAILY PROMISE ENDPOINTS ====================
+
+app.post("/api/admin/daily-promise", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const { promise_text, author } = req.body;
+
+    if (!promise_text) {
+      return res.status(400).json({
+        success: false,
+        error: "Promise text is required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO daily_promises (promise_text, author)
+      VALUES (?, ?)
+    `,
+      [promise_text, author],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Daily promise added successfully",
+      promise_id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Add daily promise error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add daily promise",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/daily-promise/latest", async (req, res) => {
+  try {
+    const [rows] = await pool.execute(
+      "SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT 1",
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "No daily promise found",
+      });
+    }
+
+    res.json({
+      success: true,
+      promise: rows[0],
+    });
+  } catch (error) {
+    console.error("Get latest daily promise error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get latest daily promise",
       details: error.message,
     });
   }

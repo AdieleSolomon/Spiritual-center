@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Counseling Request - Center of Knowledge</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./app-config.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="siteHeader">
+      <div class="container header-inner">
+        <a href="index.html" class="brand">
+          <span class="brand-mark"><i class="fa-solid fa-cross"></i></span>
+          <span class="brand-text">
+            <strong>Center of Knowledge</strong>
+            <em>And Spiritual Enrichment</em>
+          </span>
+        </a>
+        <nav class="main-nav" id="mainNav">
+          <a href="index.html">Home</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section-space">
+        <div class="container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Members Area</p>
+            <h2>Counseling Section</h2>
+            <p>
+              Signed-in members can submit a counseling request or book a
+              counseling session below.
+            </p>
+          </div>
+
+          <div id="login-wall" class="login-wall">
+            <p>Please log in to access this section.</p>
+            <button class="btn btn-solid" id="login-btn">Login to Continue</button>
+          </div>
+
+          <div id="counseling-form-container" style="display: none;">
+            <article class="panel">
+              <h3>Request Counseling or Book a Session</h3>
+              <form id="counselingForm" class="stack-form">
+                <select id="counselingIntent" required>
+                  <option value="">-- Select Option --</option>
+                  <option value="request">Submit Counseling Request</option>
+                  <option value="booking">Book Counseling Session</option>
+                </select>
+                <select id="counselingType" required>
+                  <option value="">-- Select Counseling Type --</option>
+                  <option value="individual">Individual</option>
+                  <option value="couple">Couple</option>
+                  <option value="family">Family</option>
+                </select>
+                <textarea id="counselingDescription" rows="5" placeholder="Briefly describe your counseling need" required></textarea>
+                <input type="text" id="counselingAvailability" placeholder="Your preferred availability (e.g., weekday evenings)" />
+                <button type="submit" class="btn btn-solid">Submit</button>
+              </form>
+            </article>
+            <p id="form-message" class="auth-message"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-bottom">
+            <small>&copy; <span id="year"></span> Center of Knowledge and Spiritual Enrichment. All rights reserved.</small>
+        </div>
+    </footer>
+    <script src="./script.js"></script>
+  </body>
+</html>

@@ -60,6 +60,7 @@
           <a href="#home" class="active">Home</a>
           <a href="#about">About</a>
           <a href="#services">What We Do</a>
+          <a href="#daily-update">Daily Update</a>
           <a href="#content">Resources</a>
           <a href="#contact">Contact</a>
           <div class="mobile-nav-actions">
@@ -98,6 +99,17 @@
               A Jesus-centered space where young hearts grow strong in truth,
               prayer, and purpose.
             </h1>
+          </div>
+
+          <article class="hero-profile" data-reveal>
+            <img src="./1U4A1819.JPG" alt="Pastor Wisdom C. Adiele" />
+            <div class="profile-meta">
+              <h2>Pst. Wisdom C. Adiele</h2>
+              <p>Pastor, Mentor, and Guide in Christ</p>
+            </div>
+          </article>
+
+          <div class="hero-support" data-reveal>
             <p>
               Learn the Word deeply, pray boldly, and build a life that reflects
               Christ at home, in school, at work, and in your generation.
@@ -114,14 +126,6 @@
               </a>
             </div>
           </div>
-
-          <article class="hero-profile" data-reveal>
-            <img src="./1U4A1819.JPG" alt="Pastor Wisdom C. Adiele" />
-            <div class="profile-meta">
-              <h2>Pst. Wisdom C. Adiele</h2>
-              <p>Pastor, Mentor, and Guide in Christ</p>
-            </div>
-          </article>
         </div>
 
         <div class="container stat-grid" data-reveal>
@@ -248,24 +252,38 @@
       <section class="cta-band section-space">
         <div class="container cta-grid" data-reveal>
           <article>
-            <h3>Need Focused Prayer?</h3>
+            <h3>Prayer Section</h3>
             <p>
-              Reach out directly on WhatsApp and let us stand with you in
-              faith.
+              Submit your prayer request or book a prayer session after sign in.
             </p>
-            <button class="btn btn-solid session-btn" data-session="prayer">
-              <i class="fa-brands fa-whatsapp"></i> Book Prayer Time
-            </button>
+            <a href="prayer.html" class="btn btn-solid" data-protected-section>
+              <i class="fa-solid fa-hands-praying"></i> Go to Prayer Section
+            </a>
           </article>
           <article>
-            <h3>Need Counsel and Direction?</h3>
+            <h3>Counseling Section</h3>
             <p>
-              Speak with a pastor for biblical insight, emotional support, and
-              clear next steps.
+              Submit a counseling request or book a counseling session after sign in.
             </p>
-            <button class="btn btn-outline session-btn" data-session="counseling">
-              <i class="fa-brands fa-whatsapp"></i> Book Counseling
-            </button>
+            <a href="counseling.html" class="btn btn-outline" data-protected-section>
+              <i class="fa-solid fa-user-doctor"></i> Go to Counseling Section
+            </a>
+          </article>
+        </div>
+      </section>
+
+      <section id="daily-update" class="daily-update section-space">
+        <div class="container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Daily Update</p>
+            <h2>Daily Promise from God</h2>
+          </div>
+          <article class="daily-update-card" data-reveal>
+            <p id="dailyUpdatePromiseText" class="daily-update-text">
+              Loading today's promise...
+            </p>
+            <p id="dailyUpdatePromiseAuthor" class="daily-update-author"></p>
+            <p id="dailyUpdatePromiseDate" class="daily-update-date"></p>
           </article>
         </div>
       </section>
@@ -281,23 +299,6 @@
             </p>
           </div>
 
-          <div class="resource-toolbar" data-reveal>
-            <div id="userBadge" class="user-badge" hidden>
-              <span class="avatar" id="userAvatar">U</span>
-              <span>
-                <strong id="userName">Member</strong>
-                <small id="userRole">Signed in</small>
-              </span>
-            </div>
-
-            <div class="toolbar-actions">
-              <button id="resourceLoginBtn" class="btn btn-outline">
-                Sign In for Full Access
-              </button>
-              <button id="logoutBtn" class="btn btn-outline" hidden>Logout</button>
-            </div>
-          </div>
-
           <p id="resourceNotice" class="resource-notice" aria-live="polite"></p>
 
           <div id="resourceGrid" class="resource-grid"></div>
@@ -307,29 +308,22 @@
       <section class="engage section-space">
         <div class="container engage-grid">
           <article class="panel" data-reveal>
-            <h3>Drop Your Prayer Request</h3>
+            <h3>Prayer and Counseling Access</h3>
             <p>
-              Share what you are facing. We will pray with you and for you in
-              faith.
+              Prayer and counseling sections are available to signed-in members.
+              Open a section below to submit a prayer request or book a session.
             </p>
-            <form id="prayerForm" class="stack-form">
-              <input
-                type="text"
-                id="prayerName"
-                placeholder="Your name"
-                required />
-              <textarea
-                id="prayerRequest"
-                rows="5"
-                placeholder="What should we pray about?"
-                required></textarea>
-              <label class="checkline">
-                <input type="checkbox" id="prayerAnonymous" /> Keep me anonymous
-              </label>
-              <button type="submit" class="btn btn-solid">
-                <i class="fa-brands fa-whatsapp"></i> Send Prayer Request
-              </button>
-            </form>
+            <div class="stack-form">
+              <a href="prayer.html" class="btn btn-solid" data-protected-section>
+                <i class="fa-solid fa-hands-praying"></i> Prayer Section
+              </a>
+              <a href="counseling.html" class="btn btn-outline" data-protected-section>
+                <i class="fa-solid fa-user-doctor"></i> Counseling Section
+              </a>
+            </div>
+            <p class="resource-notice is-warning">
+              Sign in is required before opening these sections.
+            </p>
           </article>
 
           <article class="panel quick-links" data-reveal>
@@ -493,7 +487,7 @@
           <i class="fa-solid fa-xmark"></i>
         </button>
         <h3 id="authModalTitle">Member Access</h3>
-        <p id="authModalSubtitle">Sign in to access your synchronized ministry resources.</p>
+        <p id="authModalSubtitle">Sign in to access prayer and counseling sections.</p>
 
         <div class="auth-tabs" role="tablist" aria-label="Authentication options">
           <button
@@ -631,6 +625,17 @@
         </form>
         <p id="authMessage" class="auth-message" aria-live="polite"></p>
       </div>
+    </div>
+
+    <div class="daily-promise-popup" id="dailyPromisePopup" hidden>
+      <p class="daily-promise-label">Daily Promise Announcement</p>
+      <h4 id="dailyPromiseTopic" class="daily-promise-topic">Today's Promise from God</h4>
+      <p id="dailyPromiseSnippet" class="daily-promise-snippet">
+        Click show more to read today's promise update.
+      </p>
+      <a href="#daily-update" id="dailyPromiseLink" class="btn btn-outline daily-promise-more">
+        Show More
+      </a>
     </div>
 
     <script src="./script.js"></script>

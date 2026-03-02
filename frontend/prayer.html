@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Prayer Request - Center of Knowledge</title>
+    <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <link rel="stylesheet" href="./style.css" />
+    <script src="./app-config.js"></script>
+  </head>
+  <body>
+    <header class="site-header" id="siteHeader">
+      <div class="container header-inner">
+        <a href="index.html" class="brand">
+          <span class="brand-mark"><i class="fa-solid fa-cross"></i></span>
+          <span class="brand-text">
+            <strong>Center of Knowledge</strong>
+            <em>And Spiritual Enrichment</em>
+          </span>
+        </a>
+        <nav class="main-nav" id="mainNav">
+          <a href="index.html">Home</a>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <section class="section-space">
+        <div class="container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Members Area</p>
+            <h2>Prayer Section</h2>
+            <p>
+              Signed-in members can submit a prayer request or book a prayer
+              session below.
+            </p>
+          </div>
+
+          <div id="login-wall" class="login-wall">
+            <p>Please log in to access this section.</p>
+            <button class="btn btn-solid" id="login-btn">Login to Continue</button>
+          </div>
+
+          <div id="prayer-form-container" style="display: none;">
+            <div class="engage-grid section-forms-grid">
+              <article class="panel">
+                <h3>Submit Prayer Request</h3>
+                <form id="prayerForm" class="stack-form">
+                  <input type="text" id="prayerName" placeholder="Your full name" required />
+                  <input type="email" id="prayerEmail" placeholder="Your email" required />
+                  <textarea id="prayerRequest" rows="5" placeholder="Write your prayer request in detail" required></textarea>
+                  <label class="checkline">
+                    <input type="checkbox" id="prayerAnonymous" /> Keep my name private
+                  </label>
+                  <button type="submit" class="btn btn-solid">Submit Prayer Request</button>
+                </form>
+              </article>
+
+              <article class="panel">
+                <h3>Book a Prayer Session</h3>
+                <form id="prayerBookingForm" class="stack-form">
+                  <input type="text" id="prayerBookingName" placeholder="Your full name" required />
+                  <input type="email" id="prayerBookingEmail" placeholder="Your email" required />
+                  <input
+                    type="text"
+                    id="prayerBookingAvailability"
+                    placeholder="Preferred availability (for example: weekday evenings)"
+                    required />
+                  <textarea
+                    id="prayerBookingFocus"
+                    rows="4"
+                    placeholder="What should we focus on during the prayer session?"
+                    required></textarea>
+                  <button type="submit" class="btn btn-outline">
+                    Book Prayer Session
+                  </button>
+                </form>
+              </article>
+            </div>
+            <p id="form-message" class="auth-message"></p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+        <div class="container footer-bottom">
+            <small>&copy; <span id="year"></span> Center of Knowledge and Spiritual Enrichment. All rights reserved.</small>
+        </div>
+    </footer>
+    <script src="./script.js"></script>
+  </body>
+</html>
