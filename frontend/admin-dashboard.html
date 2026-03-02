@@ -68,6 +68,7 @@
       .sidebar {
         width: var(--sidebar-width);
         background: rgba(15, 23, 42, 0.8);
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-right: 1px solid rgba(255, 255, 255, 0.05);
         padding: 0;
@@ -277,6 +278,7 @@
       /* Top Bar */
       .top-bar {
         background: rgba(15, 23, 42, 0.7);
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         padding: 1rem 1.5rem;
@@ -379,6 +381,7 @@
           rgba(30, 41, 59, 0.7) 0%,
           rgba(15, 23, 42, 0.7) 100%
         );
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         padding: 1.5rem;
@@ -540,6 +543,7 @@
           rgba(30, 41, 59, 0.7) 0%,
           rgba(15, 23, 42, 0.7) 100%
         );
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         padding: 1.5rem;
@@ -668,6 +672,7 @@
           rgba(30, 41, 59, 0.7) 0%,
           rgba(15, 23, 42, 0.7) 100%
         );
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         padding: 2rem;
@@ -796,6 +801,7 @@
         background: rgba(15, 23, 42, 0.8);
         z-index: 1000;
         border-radius: var(--border-radius);
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
       }
 
@@ -840,6 +846,7 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
         display: flex;
         align-items: center;
@@ -1134,6 +1141,7 @@
           rgba(30, 41, 59, 0.7) 0%,
           rgba(15, 23, 42, 0.7) 100%
         );
+        -webkit-backdrop-filter: blur(10px);
         backdrop-filter: blur(10px);
         border-radius: var(--border-radius);
         overflow: hidden;
@@ -1454,6 +1462,7 @@
         right: 0;
         bottom: 0;
         background: rgba(0, 0, 0, 0.5);
+        -webkit-backdrop-filter: blur(4px);
         backdrop-filter: blur(4px);
         z-index: 999;
         display: none;
@@ -1507,6 +1516,14 @@
                 <i class="fas fa-chart-line"></i>
               </div>
               <span class="nav-text">Dashboard</span>
+            </a>
+          </li>
+          <li>
+            <a href="index.html" class="nav-link">
+              <div class="nav-icon">
+                <i class="fas fa-house"></i>
+              </div>
+              <span class="nav-text">Main Page</span>
             </a>
           </li>
           <li>
@@ -1731,7 +1748,7 @@
                     <i class="fas fa-file-pdf"></i>
                   </div>
                   <div class="upload-info">
-                    <div class="upload-name">Sunday Sermon Notes</div>
+                    <div class="upload-name">Saturday Sermon Notes</div>
                     <div class="upload-meta">Uploaded 2 days ago</div>
                   </div>
                 </div>
@@ -2132,15 +2149,31 @@
             </div>
             <form id="dailyPromiseForm">
               <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseText" class="form-label">Promise Text <span class="required">*</span></label>
-                <textarea id="dailyPromiseText" class="form-textarea" rows="4" placeholder="Enter the daily promise" required></textarea>
+                <label for="dailyPromiseText" class="form-label"
+                  >Promise Text <span class="required">*</span></label
+                >
+                <textarea
+                  id="dailyPromiseText"
+                  class="form-textarea"
+                  rows="4"
+                  placeholder="Enter the daily promise"
+                  required></textarea>
               </div>
               <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseAuthor" class="form-label">Author (e.g., John 3:16)</label>
-                <input type="text" id="dailyPromiseAuthor" class="form-input" placeholder="Enter the author or source" />
+                <label for="dailyPromiseAuthor" class="form-label"
+                  >Author (e.g., John 3:16)</label
+                >
+                <input
+                  type="text"
+                  id="dailyPromiseAuthor"
+                  class="form-input"
+                  placeholder="Enter the author or source" />
               </div>
               <div class="form-actions">
-                <button type="submit" class="btn btn-primary" id="dailyPromiseSubmitBtn">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  id="dailyPromiseSubmitBtn">
                   <i class="fas fa-paper-plane"></i> Post Promise
                 </button>
               </div>
@@ -2149,19 +2182,35 @@
           <div class="card" style="margin-top: 1rem">
             <div
               class="card-header"
-              style="display: flex; justify-content: space-between; align-items: center; gap: 1rem">
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+              ">
               <div class="card-title">Current Published Promise</div>
-              <button type="button" class="btn btn-secondary" id="refreshDailyPromiseBtn">
+              <button
+                type="button"
+                class="btn btn-secondary"
+                id="refreshDailyPromiseBtn">
                 <i class="fas fa-rotate-right"></i> Refresh
               </button>
             </div>
-            <div id="dailyPromisePreviewState" style="color: rgba(255,255,255,0.75)">
+            <div
+              id="dailyPromisePreviewState"
+              style="color: rgba(255, 255, 255, 0.75)">
               No promise loaded yet.
             </div>
             <div id="dailyPromisePreview" style="display: none">
-              <p id="dailyPromisePreviewText" style="margin-top: 0.75rem; color: white"></p>
-              <p id="dailyPromisePreviewAuthor" style="margin-top: 0.25rem; color: #94a3b8"></p>
-              <p id="dailyPromisePreviewDate" style="margin-top: 0.25rem; color: #94a3b8"></p>
+              <p
+                id="dailyPromisePreviewText"
+                style="margin-top: 0.75rem; color: white"></p>
+              <p
+                id="dailyPromisePreviewAuthor"
+                style="margin-top: 0.25rem; color: #94a3b8"></p>
+              <p
+                id="dailyPromisePreviewDate"
+                style="margin-top: 0.25rem; color: #94a3b8"></p>
             </div>
           </div>
         </section>
@@ -2181,7 +2230,9 @@
       const API_BASE =
         appConfigApiBase ||
         configuredApiBase ||
-        (isLocalHost ? "http://localhost:5501/api" : `${window.location.origin}/api`);
+        (isLocalHost
+          ? "http://localhost:5501/api"
+          : `${window.location.origin}/api`);
 
       // State management
       let currentSection = "dashboard";
@@ -2281,7 +2332,7 @@
       // Setup event listeners
       function setupEventListeners() {
         // Navigation links
-        document.querySelectorAll(".nav-link").forEach((link) => {
+        document.querySelectorAll(".nav-link[data-section]").forEach((link) => {
           link.addEventListener("click", (e) => {
             e.preventDefault();
             const section = link.dataset.section;
@@ -3222,6 +3273,123 @@
         renderAnalyticsCharts();
       }
 
+      // Render analytics overview without external chart libraries
+      function renderAnalyticsCharts() {
+        const contentContainer = document.getElementById("analyticsContent");
+        if (!contentContainer) return;
+
+        const topMaterials = Array.isArray(analyticsData.top_materials)
+          ? analyticsData.top_materials
+          : [];
+        const eventBreakdown = Array.isArray(analyticsData.event_breakdown)
+          ? analyticsData.event_breakdown
+          : [];
+        const activityByHour = Array.isArray(analyticsData.activity_by_hour)
+          ? analyticsData.activity_by_hour
+          : [];
+
+        if (
+          topMaterials.length === 0 &&
+          eventBreakdown.length === 0 &&
+          activityByHour.length === 0
+        ) {
+          contentContainer.innerHTML =
+            '<div style="padding: 0.5rem 0; color: var(--gray);">No analytics data available yet.</div>';
+          return;
+        }
+
+        const escapeHtml = (value) =>
+          String(value || "").replace(/[&<>"']/g, (char) => {
+            const entities = {
+              "&": "&amp;",
+              "<": "&lt;",
+              ">": "&gt;",
+              '"': "&quot;",
+              "'": "&#39;",
+            };
+            return entities[char] || char;
+          });
+
+        const topMaterialsList =
+          topMaterials.length > 0
+            ? topMaterials
+                .slice(0, 5)
+                .map(
+                  (material, index) => `
+                    <div style="display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid rgba(148, 163, 184, 0.15);">
+                      <div style="color: white; min-width: 0;">
+                        <div style="font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                          ${index + 1}. ${escapeHtml(material.title || "Untitled")}
+                        </div>
+                        <div style="font-size: 0.85rem; color: #94a3b8; text-transform: capitalize;">
+                          ${escapeHtml(material.type || "unknown")}
+                        </div>
+                      </div>
+                      <div style="text-align: right; color: #94a3b8; flex-shrink: 0;">
+                        <div>${Number(material.views || 0).toLocaleString()} views</div>
+                        <div>${Number(material.downloads || 0).toLocaleString()} downloads</div>
+                      </div>
+                    </div>
+                  `,
+                )
+                .join("")
+            : '<div style="color: #94a3b8;">No material performance data.</div>';
+
+        const eventBreakdownList =
+          eventBreakdown.length > 0
+            ? eventBreakdown
+                .slice(0, 6)
+                .map(
+                  (event) => `
+                    <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.35rem 0; border-bottom: 1px solid rgba(148, 163, 184, 0.15);">
+                      <span style="color: white; text-transform: capitalize;">
+                        ${escapeHtml(String(event.event_type || "").replace(/_/g, " "))}
+                      </span>
+                      <span style="color: #94a3b8; font-weight: 600;">
+                        ${Number(event.count || 0).toLocaleString()}
+                      </span>
+                    </div>
+                  `,
+                )
+                .join("")
+            : '<div style="color: #94a3b8;">No event breakdown data.</div>';
+
+        const totalHourlyActivity = activityByHour.reduce(
+          (sum, entry) => sum + Number(entry.activity_count || 0),
+          0,
+        );
+        const peakHourEntry =
+          activityByHour.length > 0
+            ? activityByHour.reduce((peak, current) =>
+                Number(current.activity_count || 0) >
+                Number(peak.activity_count || 0)
+                  ? current
+                  : peak,
+              )
+            : null;
+
+        contentContainer.innerHTML = `
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1rem;">
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 1rem;">
+              <h4 style="margin-bottom: 0.75rem; color: white;">Top Materials</h4>
+              ${topMaterialsList}
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 1rem;">
+              <h4 style="margin-bottom: 0.75rem; color: white;">Event Breakdown</h4>
+              ${eventBreakdownList}
+            </div>
+            <div style="background: rgba(15, 23, 42, 0.5); border: 1px solid rgba(148, 163, 184, 0.2); border-radius: 10px; padding: 1rem;">
+              <h4 style="margin-bottom: 0.75rem; color: white;">Activity Snapshot</h4>
+              <div style="color: #94a3b8; line-height: 1.7;">
+                <div>Total tracked events: <span style="color: white; font-weight: 600;">${Number(totalHourlyActivity).toLocaleString()}</span></div>
+                <div>Peak hour: <span style="color: white; font-weight: 600;">${peakHourEntry ? `${String(peakHourEntry.hour).padStart(2, "0")}:00` : "N/A"}</span></div>
+                <div>Peak activity count: <span style="color: white; font-weight: 600;">${peakHourEntry ? Number(peakHourEntry.activity_count || 0).toLocaleString() : "0"}</span></div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
       // Load settings
       async function loadSettings() {
         try {
@@ -3306,7 +3474,8 @@
       async function handleDailyPromiseSubmit(e) {
         e.preventDefault();
         const promiseText = document.getElementById("dailyPromiseText").value;
-        const promiseAuthor = document.getElementById("dailyPromiseAuthor").value;
+        const promiseAuthor =
+          document.getElementById("dailyPromiseAuthor").value;
         const submitBtn = document.getElementById("dailyPromiseSubmitBtn");
 
         if (!promiseText) {
@@ -3315,7 +3484,8 @@
         }
 
         submitBtn.disabled = true;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Posting...';
+        submitBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Posting...';
 
         try {
           const response = await fetch(`${API_BASE}/admin/daily-promise`, {
@@ -3342,21 +3512,35 @@
           }
         } catch (error) {
           console.error("Error posting daily promise:", error);
-          showMessage("Failed to post daily promise: " + error.message, "error");
+          showMessage(
+            "Failed to post daily promise: " + error.message,
+            "error",
+          );
         } finally {
           submitBtn.disabled = false;
-          submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Post Promise';
+          submitBtn.innerHTML =
+            '<i class="fas fa-paper-plane"></i> Post Promise';
         }
       }
 
       async function loadLatestDailyPromisePreview() {
-        const stateElement = document.getElementById("dailyPromisePreviewState");
+        const stateElement = document.getElementById(
+          "dailyPromisePreviewState",
+        );
         const previewElement = document.getElementById("dailyPromisePreview");
         const textElement = document.getElementById("dailyPromisePreviewText");
-        const authorElement = document.getElementById("dailyPromisePreviewAuthor");
+        const authorElement = document.getElementById(
+          "dailyPromisePreviewAuthor",
+        );
         const dateElement = document.getElementById("dailyPromisePreviewDate");
 
-        if (!stateElement || !previewElement || !textElement || !authorElement || !dateElement) {
+        if (
+          !stateElement ||
+          !previewElement ||
+          !textElement ||
+          !authorElement ||
+          !dateElement
+        ) {
           return;
         }
 
@@ -3365,13 +3549,17 @@
         previewElement.style.display = "none";
 
         try {
-          const response = await fetch(`${API_BASE}/daily-promise/latest`, getFetchOptions());
+          const response = await fetch(
+            `${API_BASE}/daily-promise/latest`,
+            getFetchOptions(),
+          );
           const data = await response
             .json()
             .catch(() => ({ error: "Unexpected response format" }));
 
           if (response.status === 404) {
-            stateElement.textContent = "No daily promise has been published yet.";
+            stateElement.textContent =
+              "No daily promise has been published yet.";
             return;
           }
 
@@ -3780,4 +3968,3 @@
     </script>
   </body>
 </html>
-

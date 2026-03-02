@@ -21,7 +21,11 @@ const { Pool: PostgresPool } = pg;
 
 const app = express();
 const PORT = process.env.PORT || 5501;
-const SUPABASE_PROVIDER_ALIASES = new Set(["postgres", "postgresql", "supabase"]);
+const SUPABASE_PROVIDER_ALIASES = new Set([
+  "postgres",
+  "postgresql",
+  "supabase",
+]);
 const MYSQL_PROVIDER_ALIASES = new Set(["mysql", "laragon"]);
 
 const resolveDbProvider = () => {
@@ -293,7 +297,9 @@ const executePostgresQuery = async (target, sql, params = []) => {
   const isInsert = /^\s*INSERT\s+INTO/i.test(sql);
   let transformedSql = normalizePostgresSql(sql);
   transformedSql = toPostgresPlaceholders(transformedSql);
-  transformedSql = isInsert ? appendReturningId(transformedSql) : transformedSql;
+  transformedSql = isInsert
+    ? appendReturningId(transformedSql)
+    : transformedSql;
 
   const result = await target.query(transformedSql, params);
 
@@ -314,11 +320,13 @@ const createDatabasePool = () => {
     const postgresPool = new PostgresPool(postgresConfig);
 
     return {
-      execute: (sql, params = []) => executePostgresQuery(postgresPool, sql, params),
+      execute: (sql, params = []) =>
+        executePostgresQuery(postgresPool, sql, params),
       getConnection: async () => {
         const client = await postgresPool.connect();
         return {
-          execute: (sql, params = []) => executePostgresQuery(client, sql, params),
+          execute: (sql, params = []) =>
+            executePostgresQuery(client, sql, params),
           release: () => client.release(),
         };
       },
@@ -1135,7 +1143,9 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
       whereParts.push("m.type = ?");
       filterParams.push(type);
     }
-    const whereClause = whereParts.length ? `WHERE ${whereParts.join(" AND ")}` : "";
+    const whereClause = whereParts.length
+      ? `WHERE ${whereParts.join(" AND ")}`
+      : "";
 
     const countQuery = `
       SELECT COUNT(*) as total
@@ -1221,7 +1231,9 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
         is_public: isPublicValue,
         uploader_id: material.uploader_id || null,
         uploader_name: material.uploader_name || "System",
-        uploader_email: isAdminRequest ? material.uploader_email || null : undefined,
+        uploader_email: isAdminRequest
+          ? material.uploader_email || null
+          : undefined,
         created_at: material.created_at,
         updated_at: material.updated_at,
       };
@@ -1335,7 +1347,9 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         is_public: isPublicValue,
         uploader_id: material.uploader_id || null,
         uploader_name: material.uploader_name || "System",
-        uploader_email: isAdminRequest ? material.uploader_email || null : undefined,
+        uploader_email: isAdminRequest
+          ? material.uploader_email || null
+          : undefined,
         created_at: material.created_at,
         updated_at: material.updated_at,
       },
@@ -1672,10 +1686,7 @@ app.put("/api/settings", authenticateToken, async (req, res) => {
       }
 
       updates.push(
-        pool.execute(
-          UPSERT_SETTING_SQL,
-          [key, settingValue, settingType],
-        ),
+        pool.execute(UPSERT_SETTING_SQL, [key, settingValue, settingType]),
       );
     }
 
@@ -2690,4 +2701,3 @@ process.on("unhandledRejection", (reason, promise) => {
     process.exit(1);
   }
 })();
-
