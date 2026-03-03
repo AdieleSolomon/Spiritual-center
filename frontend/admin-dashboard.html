@@ -2976,13 +2976,28 @@
         renderMaterials();
       }
 
+      function resolveMaterialFileUrl(filePath) {
+        if (!filePath) return "";
+        if (/^https?:\/\//i.test(filePath)) return filePath;
+
+        const normalizedPath = String(filePath)
+          .replace(/\\/g, "/")
+          .replace(/^\.?\/*/, "");
+        if (!normalizedPath) return "";
+
+        const backendOrigin = API_BASE.replace(/\/api\/?$/, "");
+        return `${backendOrigin}/${normalizedPath}`;
+      }
+
       // Download material
       function downloadMaterial(filePath) {
-        if (!filePath) {
+        const resolvedUrl = resolveMaterialFileUrl(filePath);
+        if (!resolvedUrl) {
           showMessage("No file available for download", "error");
           return;
         }
-        window.open(`${API_BASE.replace("/api", "")}${filePath}`, "_blank");
+
+        window.open(resolvedUrl, "_blank", "noopener,noreferrer");
       }
 
       // Edit material

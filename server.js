@@ -7,7 +7,7 @@ import crypto from "crypto";
 import multer from "multer";
 import { join, extname } from "path";
 import cors from "cors";
-import { existsSync, mkdirSync, unlinkSync, createReadStream } from "fs";
+import { existsSync, mkdirSync, unlinkSync, readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname } from "path";
 import dotenv from "dotenv";
@@ -259,6 +259,82 @@ const postgresConfig = supabaseConnectionString
       ssl: postgresSslEnabled ? { rejectUnauthorized: false } : false,
     };
 
+const resolveSupabaseUrl = () => {
+  const explicitUrl = String(
+    process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "",
+  )
+    .trim()
+    .replace(/\/+$/, "");
+
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  const candidateConnectionString =
+    supabaseConnectionString || process.env.SUPABASE_DATABASE_URL || "";
+  if (!candidateConnectionString) {
+    return "";
+  }
+
+  try {
+    const parsedUrl = new URL(candidateConnectionString);
+    const decodedUsername = decodeURIComponent(parsedUrl.username || "");
+    const usernameMatch = decodedUsername.match(/^[^.]+\.([a-z0-9]{6,})$/i);
+    if (usernameMatch?.[1]) {
+      return `https://${usernameMatch[1].toLowerCase()}.supabase.co`;
+    }
+
+    const hostMatch = parsedUrl.hostname.match(
+      /^db\.([a-z0-9]{6,})\.supabase\.co$/i,
+    );
+    if (hostMatch?.[1]) {
+      return `https://${hostMatch[1].toLowerCase()}.supabase.co`;
+    }
+  } catch (error) {
+    console.warn(
+      "Failed to derive SUPABASE_URL from connection string:",
+      error.message,
+    );
+  }
+
+  return "";
+};
+
+const SUPABASE_URL = resolveSupabaseUrl();
+const SUPABASE_STORAGE_ENABLED = parseBoolean(
+  process.env.SUPABASE_STORAGE_ENABLED,
+  true,
+);
+const SUPABASE_SERVICE_ROLE_KEY = String(
+  process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+).trim();
+const SUPABASE_ANON_KEY = String(process.env.SUPABASE_ANON_KEY || "").trim();
+const SUPABASE_STORAGE_BUCKET = String(
+  process.env.SUPABASE_STORAGE_BUCKET || "materials",
+).trim();
+const SUPABASE_STORAGE_FOLDER = String(
+  process.env.SUPABASE_STORAGE_FOLDER || "materials",
+).trim();
+const REQUIRE_PERSISTENT_STORAGE = parseBoolean(
+  process.env.REQUIRE_PERSISTENT_STORAGE,
+  IS_POSTGRES,
+);
+const SUPABASE_STORAGE_API_KEY =
+  SUPABASE_SERVICE_ROLE_KEY ||
+  (!REQUIRE_PERSISTENT_STORAGE ? SUPABASE_ANON_KEY : "");
+
+if (SUPABASE_STORAGE_ENABLED && (!SUPABASE_URL || !SUPABASE_STORAGE_API_KEY)) {
+  if (REQUIRE_PERSISTENT_STORAGE) {
+    console.warn(
+      "Supabase Storage is not fully configured. Uploads will be blocked until storage credentials are set.",
+    );
+  } else {
+    console.warn(
+      "Supabase Storage is not fully configured. Uploads will fall back to local /uploads storage.",
+    );
+  }
+}
+
 const toPostgresPlaceholders = (sql) => {
   let paramIndex = 0;
   return sql.replace(/\?/g, () => `$${++paramIndex}`);
@@ -338,6 +414,195 @@ const createDatabasePool = () => {
 };
 
 const pool = createDatabasePool();
+
+const normalizePathSlashes = (value = "") => String(value).replace(/\\/g, "/");
+
+const trimEdgeSlashes = (value = "") =>
+  String(value).replace(/^\/+|\/+$/g, "");
+
+const sanitizePathSegment = (value = "", fallback = "file") => {
+  const normalized = String(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+
+  return normalized || fallback;
+};
+
+const encodeStoragePath = (storagePath = "") =>
+  normalizePathSlashes(storagePath)
+    .split("/")
+    .filter(Boolean)
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+
+const decodeStoragePath = (storagePath = "") => {
+  try {
+    return decodeURIComponent(storagePath);
+  } catch (error) {
+    return storagePath;
+  }
+};
+
+const isSupabaseStorageConfigured = () =>
+  SUPABASE_STORAGE_ENABLED &&
+  Boolean(SUPABASE_URL) &&
+  Boolean(SUPABASE_STORAGE_BUCKET) &&
+  Boolean(SUPABASE_STORAGE_API_KEY);
+
+const buildSupabaseObjectPath = (file, materialType = "file") => {
+  const fileExtension =
+    extname(file?.originalname || file?.filename || "").toLowerCase() || "";
+  const objectName = `${Date.now()}-${crypto.randomBytes(6).toString("hex")}${fileExtension}`;
+  const folderParts = [
+    trimEdgeSlashes(SUPABASE_STORAGE_FOLDER || "materials"),
+    sanitizePathSegment(materialType, "file"),
+  ].filter(Boolean);
+
+  return `${folderParts.join("/")}/${objectName}`;
+};
+
+const buildSupabasePublicUrl = (objectPath = "") =>
+  `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_STORAGE_BUCKET)}/${encodeStoragePath(objectPath)}`;
+
+const safeUnlink = (filePath) => {
+  if (!filePath || !existsSync(filePath)) {
+    return;
+  }
+
+  try {
+    unlinkSync(filePath);
+  } catch (error) {
+    console.warn(`Failed to remove file "${filePath}":`, error.message);
+  }
+};
+
+const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
+  if (!isSupabaseStorageConfigured() || !file?.path) {
+    return null;
+  }
+
+  const objectPath = buildSupabaseObjectPath(file, materialType);
+  const encodedPath = encodeStoragePath(objectPath);
+  const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
+  const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketSegment}/${encodedPath}`;
+
+  const response = await fetch(uploadUrl, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_STORAGE_API_KEY}`,
+      apikey: SUPABASE_STORAGE_API_KEY,
+      "Content-Type": file.mimetype || "application/octet-stream",
+      "x-upsert": "false",
+    },
+    body: readFileSync(file.path),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
+    );
+  }
+
+  return {
+    objectPath,
+    publicUrl: buildSupabasePublicUrl(objectPath),
+  };
+};
+
+const deleteSupabaseObjectByPath = async (objectPath = "") => {
+  if (!isSupabaseStorageConfigured() || !objectPath) {
+    return false;
+  }
+
+  const encodedPath = encodeStoragePath(objectPath);
+  const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
+  const deleteUrl = `${SUPABASE_URL}/storage/v1/object/${bucketSegment}/${encodedPath}`;
+
+  const response = await fetch(deleteUrl, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${SUPABASE_STORAGE_API_KEY}`,
+      apikey: SUPABASE_STORAGE_API_KEY,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    const details = await response.text().catch(() => "");
+    throw new Error(
+      `Supabase storage delete failed (${response.status}): ${details || response.statusText}`,
+    );
+  }
+
+  return true;
+};
+
+const extractSupabaseObjectPath = (fileUrl = "") => {
+  if (!SUPABASE_URL || !SUPABASE_STORAGE_BUCKET || !fileUrl) {
+    return null;
+  }
+
+  if (!/^https?:\/\//i.test(String(fileUrl).trim())) {
+    return null;
+  }
+
+  try {
+    const url = new URL(String(fileUrl).trim());
+    const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
+    const publicPrefix = `/storage/v1/object/public/${bucketSegment}/`;
+    const objectPrefix = `/storage/v1/object/${bucketSegment}/`;
+
+    if (url.pathname.startsWith(publicPrefix)) {
+      return decodeStoragePath(url.pathname.slice(publicPrefix.length));
+    }
+
+    if (url.pathname.startsWith(objectPrefix)) {
+      return decodeStoragePath(url.pathname.slice(objectPrefix.length));
+    }
+  } catch (error) {
+    return null;
+  }
+
+  return null;
+};
+
+const resolveLocalUploadFilePath = (fileUrl = "") => {
+  const normalized = normalizePathSlashes(String(fileUrl || "").trim());
+  if (!normalized || /^https?:\/\//i.test(normalized)) {
+    return null;
+  }
+
+  const relativePath = normalized.replace(/^\.?\/*/, "");
+  if (!relativePath.startsWith("uploads/")) {
+    return null;
+  }
+
+  return join(__dirname, relativePath);
+};
+
+const removeStoredMaterialFile = async (fileUrl = "") => {
+  if (!fileUrl) {
+    return;
+  }
+
+  const supabaseObjectPath = extractSupabaseObjectPath(fileUrl);
+  if (supabaseObjectPath) {
+    try {
+      await deleteSupabaseObjectByPath(supabaseObjectPath);
+      return;
+    } catch (error) {
+      console.warn(
+        `Failed to delete Supabase object for "${fileUrl}":`,
+        error.message,
+      );
+    }
+  }
+
+  const localFilePath = resolveLocalUploadFilePath(fileUrl);
+  safeUnlink(localFilePath);
+};
 
 // Auth middleware
 const authenticateToken = (req, res, next) => {
@@ -1016,6 +1281,8 @@ app.post(
   authenticateToken,
   upload.single("file"),
   async (req, res) => {
+    let uploadedSupabaseObjectPath = null;
+
     try {
       if (req.user.role !== "admin") {
         return res.status(403).json({ error: "Admin access required" });
@@ -1033,7 +1300,7 @@ app.post(
       // Validation
       if (!title || !description || !category || !type) {
         if (req.file) {
-          unlinkSync(req.file.path);
+          safeUnlink(req.file.path);
         }
         return res.status(400).json({
           success: false,
@@ -1048,14 +1315,32 @@ app.post(
         });
       }
 
+      if (req.file && REQUIRE_PERSISTENT_STORAGE && !isSupabaseStorageConfigured()) {
+        safeUnlink(req.file.path);
+        return res.status(500).json({
+          success: false,
+          error:
+            "Persistent storage is not configured. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET.",
+        });
+      }
+
       let fileUrl = null;
       let fileName = null;
       let fileSize = null;
 
       if (req.file) {
-        fileUrl = `/uploads/${req.file.filename}`;
         fileName = req.file.originalname;
         fileSize = req.file.size;
+
+        const uploadedToSupabase = await uploadFileToSupabaseStorage(req.file, type);
+
+        if (uploadedToSupabase) {
+          uploadedSupabaseObjectPath = uploadedToSupabase.objectPath;
+          fileUrl = uploadedToSupabase.publicUrl;
+          safeUnlink(req.file.path);
+        } else {
+          fileUrl = `/uploads/${req.file.filename}`;
+        }
       }
 
       // Insert material
@@ -1102,8 +1387,18 @@ app.post(
       });
     } catch (error) {
       console.error("Material upload error:", error);
-      if (req.file && req.file.path) {
-        unlinkSync(req.file.path);
+      if (uploadedSupabaseObjectPath) {
+        try {
+          await deleteSupabaseObjectByPath(uploadedSupabaseObjectPath);
+        } catch (rollbackError) {
+          console.error(
+            "Failed to rollback Supabase storage object:",
+            rollbackError,
+          );
+        }
+      }
+      if (req.file?.path) {
+        safeUnlink(req.file.path);
       }
       res.status(500).json({
         success: false,
@@ -1445,10 +1740,7 @@ app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
 
     // Delete file if exists
     if (materials[0].file_url) {
-      const filePath = join(__dirname, materials[0].file_url);
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
-      }
+      await removeStoredMaterialFile(materials[0].file_url);
     }
 
     // Delete from database
@@ -2563,6 +2855,11 @@ app.get("/api/health", async (req, res) => {
       memory_usage: process.memoryUsage(),
       uptime: process.uptime(),
       database: `connected (${DB_PROVIDER})`,
+      storage_backend: isSupabaseStorageConfigured()
+        ? `supabase:${SUPABASE_STORAGE_BUCKET}`
+        : "local_uploads",
+      storage_configured: isSupabaseStorageConfigured(),
+      require_persistent_storage: REQUIRE_PERSISTENT_STORAGE,
       uploads_directory: uploadsExists ? "exists" : "created",
     };
 
@@ -2588,6 +2885,11 @@ app.get("/api/connection-test", (req, res) => {
     backend: "Spiritual Center API",
     version: "2.0.0",
     database_provider: DB_PROVIDER,
+    storage_backend: isSupabaseStorageConfigured()
+      ? `supabase:${SUPABASE_STORAGE_BUCKET}`
+      : "local_uploads",
+    storage_configured: isSupabaseStorageConfigured(),
+    require_persistent_storage: REQUIRE_PERSISTENT_STORAGE,
     timestamp: new Date().toISOString(),
     endpoints: {
       admin: "/api/admin/stats",
@@ -2683,6 +2985,13 @@ process.on("unhandledRejection", (reason, promise) => {
       console.log(`📊 API Base URL: http://localhost:${PORT}/api`);
       console.log(`📁 Uploads: http://localhost:${PORT}/uploads`);
       console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+      console.log(
+        `Storage backend: ${
+          isSupabaseStorageConfigured()
+            ? `supabase (${SUPABASE_STORAGE_BUCKET})`
+            : "local /uploads"
+        }`,
+      );
       console.log(`DB provider: ${DB_PROVIDER}`);
       console.log("✨ Server is ready!");
     });
