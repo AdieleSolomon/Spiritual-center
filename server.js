@@ -315,6 +315,10 @@ const SUPABASE_STORAGE_BUCKET = String(
 const SUPABASE_STORAGE_FOLDER = String(
   process.env.SUPABASE_STORAGE_FOLDER || "materials",
 ).trim();
+const SUPABASE_STORAGE_BUCKET_PUBLIC = parseBoolean(
+  process.env.SUPABASE_STORAGE_BUCKET_PUBLIC,
+  true,
+);
 const REQUIRE_PERSISTENT_STORAGE = parseBoolean(
   process.env.REQUIRE_PERSISTENT_STORAGE,
   IS_POSTGRES,
@@ -323,6 +327,7 @@ const SUPABASE_STORAGE_API_KEY =
   SUPABASE_SERVICE_ROLE_KEY ||
   (!REQUIRE_PERSISTENT_STORAGE ? SUPABASE_ANON_KEY : "");
 const SUPABASE_REQUEST_API_KEY = SUPABASE_ANON_KEY || SUPABASE_STORAGE_API_KEY;
+let supabaseBucketVerified = false;
 
 if (SUPABASE_STORAGE_ENABLED && (!SUPABASE_URL || !SUPABASE_STORAGE_API_KEY)) {
   if (REQUIRE_PERSISTENT_STORAGE) {
@@ -480,6 +485,98 @@ const buildSupabaseAuthHeaders = (extraHeaders = {}) => {
   return headers;
 };
 
+const isSupabaseBucketMissingError = (statusCode, details = "") => {
+  if (statusCode === 404) {
+    return true;
+  }
+
+  const detailsText = String(details || "");
+  if (/bucket not found/i.test(detailsText)) {
+    return true;
+  }
+
+  try {
+    const parsed = JSON.parse(detailsText);
+    const parsedStatus = Number(parsed?.statusCode || 0);
+    const combinedMessage = `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
+    if (parsedStatus === 404 && /bucket/i.test(combinedMessage)) {
+      return true;
+    }
+  } catch (error) {
+    return false;
+  }
+
+  return false;
+};
+
+const isSupabaseBucketAlreadyExistsError = (details = "") => {
+  const detailsText = String(details || "");
+  if (/already exists|duplicate/i.test(detailsText)) {
+    return true;
+  }
+
+  try {
+    const parsed = JSON.parse(detailsText);
+    const combinedMessage = `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
+    return /already exists|duplicate/i.test(combinedMessage);
+  } catch (error) {
+    return false;
+  }
+};
+
+const ensureSupabaseStorageBucket = async () => {
+  if (!isSupabaseStorageConfigured() || supabaseBucketVerified) {
+    return;
+  }
+
+  const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
+  const inspectUrl = `${SUPABASE_URL}/storage/v1/bucket/${bucketSegment}`;
+
+  const inspectResponse = await fetch(inspectUrl, {
+    method: "GET",
+    headers: buildSupabaseAuthHeaders(),
+  });
+
+  if (inspectResponse.ok) {
+    supabaseBucketVerified = true;
+    return;
+  }
+
+  const inspectDetails = await inspectResponse.text().catch(() => "");
+  if (!isSupabaseBucketMissingError(inspectResponse.status, inspectDetails)) {
+    throw new Error(
+      `Unable to verify storage bucket "${SUPABASE_STORAGE_BUCKET}" (${inspectResponse.status}): ${
+        inspectDetails || inspectResponse.statusText
+      }`,
+    );
+  }
+
+  const createResponse = await fetch(`${SUPABASE_URL}/storage/v1/bucket`, {
+    method: "POST",
+    headers: buildSupabaseAuthHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify({
+      id: SUPABASE_STORAGE_BUCKET,
+      name: SUPABASE_STORAGE_BUCKET,
+      public: SUPABASE_STORAGE_BUCKET_PUBLIC,
+    }),
+  });
+
+  if (!createResponse.ok) {
+    const createDetails = await createResponse.text().catch(() => "");
+    if (!isSupabaseBucketAlreadyExistsError(createDetails)) {
+      throw new Error(
+        `Failed to create storage bucket "${SUPABASE_STORAGE_BUCKET}" (${createResponse.status}): ${
+          createDetails || createResponse.statusText
+        }`,
+      );
+    }
+  }
+
+  supabaseBucketVerified = true;
+};
+
 const safeUnlink = (filePath) => {
   if (!filePath || !existsSync(filePath)) {
     return;
@@ -501,22 +598,39 @@ const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
   const encodedPath = encodeStoragePath(objectPath);
   const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
   const uploadUrl = `${SUPABASE_URL}/storage/v1/object/${bucketSegment}/${encodedPath}`;
+  const fileBuffer = readFileSync(file.path);
+  const performUpload = () =>
+    fetch(uploadUrl, {
+      method: "POST",
+      headers: buildSupabaseAuthHeaders({
+        "Content-Type": file.mimetype || "application/octet-stream",
+        "x-upsert": "false",
+      }),
+      body: fileBuffer,
+    });
 
-  const response = await fetch(uploadUrl, {
-    method: "POST",
-    headers: buildSupabaseAuthHeaders({
-      "Content-Type": file.mimetype || "application/octet-stream",
-      "x-upsert": "false",
-    }),
-    body: readFileSync(file.path),
-  });
+  let response = await performUpload();
 
   if (!response.ok) {
-    const details = await response.text().catch(() => "");
-    throw new Error(
-      `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
-    );
+    let details = await response.text().catch(() => "");
+
+    if (isSupabaseBucketMissingError(response.status, details)) {
+      await ensureSupabaseStorageBucket();
+      response = await performUpload();
+      if (!response.ok) {
+        details = await response.text().catch(() => "");
+        throw new Error(
+          `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
+        );
+      }
+    } else {
+      throw new Error(
+        `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
+      );
+    }
   }
+
+  supabaseBucketVerified = true;
 
   return {
     objectPath,
