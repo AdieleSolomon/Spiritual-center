@@ -322,6 +322,7 @@ const REQUIRE_PERSISTENT_STORAGE = parseBoolean(
 const SUPABASE_STORAGE_API_KEY =
   SUPABASE_SERVICE_ROLE_KEY ||
   (!REQUIRE_PERSISTENT_STORAGE ? SUPABASE_ANON_KEY : "");
+const SUPABASE_REQUEST_API_KEY = SUPABASE_ANON_KEY || SUPABASE_STORAGE_API_KEY;
 
 if (SUPABASE_STORAGE_ENABLED && (!SUPABASE_URL || !SUPABASE_STORAGE_API_KEY)) {
   if (REQUIRE_PERSISTENT_STORAGE) {
@@ -466,6 +467,19 @@ const buildSupabaseObjectPath = (file, materialType = "file") => {
 const buildSupabasePublicUrl = (objectPath = "") =>
   `${SUPABASE_URL}/storage/v1/object/public/${encodeURIComponent(SUPABASE_STORAGE_BUCKET)}/${encodeStoragePath(objectPath)}`;
 
+const buildSupabaseAuthHeaders = (extraHeaders = {}) => {
+  const headers = {
+    Authorization: `Bearer ${SUPABASE_STORAGE_API_KEY}`,
+    ...extraHeaders,
+  };
+
+  if (SUPABASE_REQUEST_API_KEY) {
+    headers.apikey = SUPABASE_REQUEST_API_KEY;
+  }
+
+  return headers;
+};
+
 const safeUnlink = (filePath) => {
   if (!filePath || !existsSync(filePath)) {
     return;
@@ -490,12 +504,10 @@ const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
 
   const response = await fetch(uploadUrl, {
     method: "POST",
-    headers: {
-      Authorization: `Bearer ${SUPABASE_STORAGE_API_KEY}`,
-      apikey: SUPABASE_STORAGE_API_KEY,
+    headers: buildSupabaseAuthHeaders({
       "Content-Type": file.mimetype || "application/octet-stream",
       "x-upsert": "false",
-    },
+    }),
     body: readFileSync(file.path),
   });
 
@@ -523,10 +535,7 @@ const deleteSupabaseObjectByPath = async (objectPath = "") => {
 
   const response = await fetch(deleteUrl, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${SUPABASE_STORAGE_API_KEY}`,
-      apikey: SUPABASE_STORAGE_API_KEY,
-    },
+    headers: buildSupabaseAuthHeaders(),
   });
 
   if (!response.ok && response.status !== 404) {
@@ -667,6 +676,9 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       "video/mp4",
+      "video/quicktime",
+      "video/x-msvideo",
+      "video/x-matroska",
       "video/mkv",
       "video/avi",
       "video/mov",

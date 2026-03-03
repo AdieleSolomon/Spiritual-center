@@ -2794,8 +2794,11 @@
             } else {
               try {
                 const response = JSON.parse(xhr.responseText);
+                const detailedError = [response.error, response.details]
+                  .filter(Boolean)
+                  .join(": ");
                 showMessage(
-                  response.error || `Upload failed: ${xhr.status}`,
+                  detailedError || `Upload failed: ${xhr.status}`,
                   "error",
                 );
               } catch {
