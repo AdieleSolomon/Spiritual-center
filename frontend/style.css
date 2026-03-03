@@ -196,12 +196,20 @@ h3 {
   width: 46px;
   height: 46px;
   border-radius: 14px;
-  background: linear-gradient(145deg, var(--brand), var(--brand-strong));
-  color: #fff;
+  background: #ffffff;
+  border: 1px solid var(--line);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 8px 20px rgba(31, 95, 85, 0.22);
+  box-shadow: 0 8px 20px rgba(10, 27, 43, 0.22);
+  overflow: hidden;
+}
+
+.brand-logo {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
 }
 
 .brand-text {
@@ -758,15 +766,48 @@ h3 {
   display: block;
 }
 
+.resource-player-image,
 .resource-player-video {
-  min-height: 180px;
+  min-height: 190px;
   max-height: 220px;
-  object-fit: contain;
   background: #000;
+}
+
+.resource-player-image {
+  object-fit: cover;
+}
+
+.resource-player-video {
+  object-fit: contain;
 }
 
 .resource-player-audio {
   height: 48px;
+}
+
+.resource-preview-placeholder {
+  min-height: 190px;
+  max-height: 220px;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-align: center;
+  color: var(--ink-soft);
+  background: linear-gradient(180deg, rgba(8, 22, 35, 0.85), rgba(10, 28, 44, 0.92));
+}
+
+.resource-preview-icon {
+  font-size: 2rem;
+  color: var(--brand);
+}
+
+.resource-preview-label {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
 }
 
 .resource-link {

@@ -3,7 +3,7 @@ document.documentElement.classList.add("js");
 const App = (() => {
   const WHATSAPP_PHONE = "2349072560420";
   const CONTACT_EMAIL = "Wisdomadiele57@gmail.com";
-  const DEFAULT_MAP_QUERY = "Center of Knowledge and Spiritual Enrichment";
+  const DEFAULT_MAP_QUERY = "Seventh-day Adventist church near me";
 
   const getConfigString = (key) => {
     const value = window.APP_CONFIG?.[key] ?? window.__APP_CONFIG__?.[key];
@@ -1241,6 +1241,16 @@ const App = (() => {
     const linkToken = String(resource.link || "").toLowerCase();
 
     if (
+      typeToken.includes("image") ||
+      typeToken.includes("photo") ||
+      categoryToken.includes("image") ||
+      categoryToken.includes("photo") ||
+      /\.(jpg|jpeg|png|gif|webp|avif|svg)(\?|#|$)/i.test(linkToken)
+    ) {
+      return "image";
+    }
+
+    if (
       typeToken.includes("video") ||
       categoryToken.includes("video") ||
       /\.(mp4|webm|ogg|mov|m4v|mkv)(\?|#|$)/i.test(linkToken)
@@ -1258,15 +1268,54 @@ const App = (() => {
       return "audio";
     }
 
-    return null;
+    if (
+      typeToken.includes("document") ||
+      typeToken.includes("writeup") ||
+      categoryToken.includes("document") ||
+      /\.(pdf|doc|docx|ppt|pptx|xls|xlsx|txt|zip|rar)(\?|#|$)/i.test(linkToken)
+    ) {
+      return "document";
+    }
+
+    return "file";
+  }
+
+  function renderPreviewPlaceholder(iconClass, label) {
+    return `
+      <div class="resource-player-wrap">
+        <div class="resource-preview-placeholder" aria-hidden="true">
+          <i class="${iconClass} resource-preview-icon"></i>
+          <span class="resource-preview-label">${label}</span>
+        </div>
+      </div>
+    `;
   }
 
   function renderMediaPreview(mediaKind, safeSrc, safeTitle) {
-    if (!mediaKind || safeSrc === "#contact") {
-      return "";
+    const hasMediaSource = safeSrc && safeSrc !== "#contact";
+
+    if (mediaKind === "image") {
+      if (!hasMediaSource) {
+        return renderPreviewPlaceholder("fa-regular fa-image", "Image Preview");
+      }
+
+      return `
+        <div class="resource-player-wrap">
+          <img
+            class="resource-player resource-player-image"
+            src="${safeSrc}"
+            alt="${safeTitle}"
+            loading="lazy"
+            decoding="async" />
+        </div>
+      `;
     }
 
     if (mediaKind === "video") {
+      if (!hasMediaSource) {
+        return renderPreviewPlaceholder("fa-solid fa-video", "Video Preview");
+      }
+
       return `
         <div class="resource-player-wrap">
           <video class="resource-player resource-player-video" controls preload="metadata">
@@ -1277,14 +1326,36 @@ const App = (() => {
       `;
     }
 
-    return `
-      <div class="resource-player-wrap">
-        <audio class="resource-player resource-player-audio" controls preload="metadata" title="${safeTitle}">
-          <source src="${safeSrc}" />
-          Your browser does not support audio playback.
-        </audio>
-      </div>
-    `;
+    if (mediaKind === "audio") {
+      if (!hasMediaSource) {
+        return renderPreviewPlaceholder("fa-solid fa-headphones", "Audio Preview");
+      }
+
+      return `
+        <div class="resource-player-wrap">
+          <audio class="resource-player resource-player-audio" controls preload="metadata" title="${safeTitle}">
+            <source src="${safeSrc}" />
+            Your browser does not support audio playback.
+          </audio>
+        </div>
+      `;
+    }
+
+    if (mediaKind === "document") {
+      return renderPreviewPlaceholder("fa-regular fa-file-lines", "Document Preview");
+    }
+
+    return renderPreviewPlaceholder("fa-regular fa-file", "Material Preview");
+  }
+
+  function resolveResourceLinkLabel(mediaKind, hasMediaSource, fromApi) {
+    if (mediaKind === "image" && hasMediaSource) return "View Image";
+    if (mediaKind === "video" && hasMediaSource) return "Watch Video";
+    if (mediaKind === "audio" && hasMediaSource) return "Play Audio";
+    if (mediaKind === "document" && hasMediaSource) return "Open Document";
+    if (mediaKind === "file" && hasMediaSource) return "Open File";
+    if (hasMediaSource) return "Open Material";
+    return fromApi ? "Open Material" : "Preview";
   }
 
   function renderResources(resources, fromApi) {
@@ -1298,11 +1369,12 @@ const App = (() => {
         const description = sanitize(item.description || "");
         const href = sanitize(item.link || "#");
         const mediaKind = getMediaKind(item);
+        const hasMediaSource = href !== "#contact";
         const mediaPreview = renderMediaPreview(mediaKind, href, title);
 
         const isExternal = href.startsWith("http");
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : "";
-        const linkLabel = mediaKind ? "Open in New Tab" : fromApi ? "Open Material" : "Preview";
+        const linkLabel = resolveResourceLinkLabel(mediaKind, hasMediaSource, fromApi);
 
         return `
           <article class="resource-card" data-reveal>
@@ -1496,24 +1568,65 @@ const App = (() => {
   function setupGoogleMap() {
     if (!ui.googleMapEmbed && !ui.googleDirectionsLink) return;
 
-    const query = encodeURIComponent(DEFAULT_MAP_QUERY);
-    const embedUrl =
-      GOOGLE_MAPS_EMBED_URL ||
-      `https://www.google.com/maps?q=${query}&output=embed`;
-    const directionsUrl =
-      GOOGLE_MAPS_DIRECTIONS_URL ||
-      `https://www.google.com/maps/search/?api=1&query=${query}`;
+    const buildMapUrls = (query) => {
+      const encodedQuery = encodeURIComponent(String(query || DEFAULT_MAP_QUERY));
+      return {
+        embedUrl: `https://www.google.com/maps?q=${encodedQuery}&output=embed`,
+        directionsUrl: `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`,
+      };
+    };
 
-    if (ui.googleMapEmbed) {
-      ui.googleMapEmbed.src = embedUrl;
-    }
+    const setMapTargets = (embedUrl, directionsUrl) => {
+      if (ui.googleMapEmbed) {
+        ui.googleMapEmbed.src = embedUrl;
+      }
+
+      if (ui.googleDirectionsLink) {
+        ui.googleDirectionsLink.href = directionsUrl;
+      }
+    };
+
+    const configuredEmbedUrl = GOOGLE_MAPS_EMBED_URL || "";
+    const configuredDirectionsUrl = GOOGLE_MAPS_DIRECTIONS_URL || "";
+    const fallbackUrls = buildMapUrls(DEFAULT_MAP_QUERY);
+
+    setMapTargets(
+      configuredEmbedUrl || fallbackUrls.embedUrl,
+      configuredDirectionsUrl || fallbackUrls.directionsUrl,
+    );
 
     if (ui.googleDirectionsLink) {
-      ui.googleDirectionsLink.href = directionsUrl;
       ui.googleDirectionsLink.addEventListener("click", () => {
         trackEvent("google_maps_open", { source: "contact_section" });
       });
     }
+
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const latitude = Number(position?.coords?.latitude);
+        const longitude = Number(position?.coords?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          return;
+        }
+
+        const locationQuery = `Seventh-day Adventist church near ${latitude.toFixed(5)},${longitude.toFixed(5)}`;
+        const localizedUrls = buildMapUrls(locationQuery);
+        setMapTargets(localizedUrls.embedUrl, localizedUrls.directionsUrl);
+        trackEvent("google_maps_localized", { source: "geolocation" });
+      },
+      () => {
+        trackEvent("google_maps_localized", { source: "fallback" });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 9000,
+        maximumAge: 30 * 60 * 1000,
+      },
+    );
   }
 
   function setupGoogleAnalytics() {

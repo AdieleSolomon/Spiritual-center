@@ -56,6 +56,39 @@ const parseBoolean = (value, defaultValue = false) => {
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
 };
 
+const DEFAULT_MAX_UPLOAD_SIZE_BYTES = 100 * 1024 * 1024;
+
+const parseByteSize = (
+  value,
+  fallbackValue = DEFAULT_MAX_UPLOAD_SIZE_BYTES,
+) => {
+  if (value === undefined || value === null || value === "") {
+    return fallbackValue;
+  }
+
+  const normalized = String(value).trim().toLowerCase();
+  const directNumber = Number(normalized);
+  if (Number.isFinite(directNumber) && directNumber > 0) {
+    return Math.floor(directNumber);
+  }
+
+  const unitMatch = normalized.match(/^(\d+(?:\.\d+)?)\s*(b|kb|mb|gb)$/i);
+  if (!unitMatch) {
+    return fallbackValue;
+  }
+
+  const numericPart = Number(unitMatch[1]);
+  const unit = unitMatch[2].toLowerCase();
+  const multipliers = {
+    b: 1,
+    kb: 1024,
+    mb: 1024 * 1024,
+    gb: 1024 * 1024 * 1024,
+  };
+
+  return Math.floor(numericPart * (multipliers[unit] || 1));
+};
+
 const JWT_SECRET = process.env.JWT_SECRET || "spiritual-center-secret-key-2024";
 const PASSWORD_RESET_TOKEN_TTL_MINUTES = Number(
   process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30,
@@ -315,6 +348,14 @@ const SUPABASE_STORAGE_BUCKET = String(
 const SUPABASE_STORAGE_FOLDER = String(
   process.env.SUPABASE_STORAGE_FOLDER || "materials",
 ).trim();
+const MAX_UPLOAD_SIZE_BYTES = parseByteSize(
+  process.env.MAX_UPLOAD_SIZE_BYTES,
+  DEFAULT_MAX_UPLOAD_SIZE_BYTES,
+);
+const SUPABASE_STORAGE_FILE_SIZE_LIMIT = parseByteSize(
+  process.env.SUPABASE_STORAGE_FILE_SIZE_LIMIT,
+  MAX_UPLOAD_SIZE_BYTES,
+);
 const SUPABASE_STORAGE_BUCKET_PUBLIC = parseBoolean(
   process.env.SUPABASE_STORAGE_BUCKET_PUBLIC,
   true,
@@ -423,8 +464,7 @@ const pool = createDatabasePool();
 
 const normalizePathSlashes = (value = "") => String(value).replace(/\\/g, "/");
 
-const trimEdgeSlashes = (value = "") =>
-  String(value).replace(/^\/+|\/+$/g, "");
+const trimEdgeSlashes = (value = "") => String(value).replace(/^\/+|\/+$/g, "");
 
 const sanitizePathSegment = (value = "", fallback = "file") => {
   const normalized = String(value)
@@ -485,6 +525,21 @@ const buildSupabaseAuthHeaders = (extraHeaders = {}) => {
   return headers;
 };
 
+const buildSupabaseBucketConfigPayload = () => {
+  const payload = {
+    public: SUPABASE_STORAGE_BUCKET_PUBLIC,
+  };
+
+  if (
+    Number.isFinite(SUPABASE_STORAGE_FILE_SIZE_LIMIT) &&
+    SUPABASE_STORAGE_FILE_SIZE_LIMIT > 0
+  ) {
+    payload.file_size_limit = SUPABASE_STORAGE_FILE_SIZE_LIMIT;
+  }
+
+  return payload;
+};
+
 const isSupabaseBucketMissingError = (statusCode, details = "") => {
   if (statusCode === 404) {
     return true;
@@ -498,7 +553,8 @@ const isSupabaseBucketMissingError = (statusCode, details = "") => {
   try {
     const parsed = JSON.parse(detailsText);
     const parsedStatus = Number(parsed?.statusCode || 0);
-    const combinedMessage = `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
+    const combinedMessage =
+      `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
     if (parsedStatus === 404 && /bucket/i.test(combinedMessage)) {
       return true;
     }
@@ -517,10 +573,64 @@ const isSupabaseBucketAlreadyExistsError = (details = "") => {
 
   try {
     const parsed = JSON.parse(detailsText);
-    const combinedMessage = `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
+    const combinedMessage =
+      `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
     return /already exists|duplicate/i.test(combinedMessage);
   } catch (error) {
     return false;
+  }
+};
+
+const isSupabasePayloadTooLargeError = (statusCode, details = "") => {
+  if (statusCode === 413) {
+    return true;
+  }
+
+  const detailsText = String(details || "");
+  if (
+    /payload too large|exceeded the maximum allowed size/i.test(detailsText)
+  ) {
+    return true;
+  }
+
+  try {
+    const parsed = JSON.parse(detailsText);
+    const parsedStatus = Number(parsed?.statusCode || 0);
+    const combinedMessage =
+      `${parsed?.error || ""} ${parsed?.message || ""}`.trim();
+    return (
+      parsedStatus === 413 &&
+      /payload too large|exceeded the maximum allowed size/i.test(
+        combinedMessage,
+      )
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+const updateSupabaseStorageBucket = async () => {
+  if (!isSupabaseStorageConfigured()) {
+    return;
+  }
+
+  const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
+  const updateUrl = `${SUPABASE_URL}/storage/v1/bucket/${bucketSegment}`;
+  const response = await fetch(updateUrl, {
+    method: "PUT",
+    headers: buildSupabaseAuthHeaders({
+      "Content-Type": "application/json",
+    }),
+    body: JSON.stringify(buildSupabaseBucketConfigPayload()),
+  });
+
+  if (!response.ok) {
+    const details = await response.text().catch(() => "");
+    throw new Error(
+      `Failed to update storage bucket "${SUPABASE_STORAGE_BUCKET}" (${response.status}): ${
+        details || response.statusText
+      }`,
+    );
   }
 };
 
@@ -559,7 +669,7 @@ const ensureSupabaseStorageBucket = async () => {
     body: JSON.stringify({
       id: SUPABASE_STORAGE_BUCKET,
       name: SUPABASE_STORAGE_BUCKET,
-      public: SUPABASE_STORAGE_BUCKET_PUBLIC,
+      ...buildSupabaseBucketConfigPayload(),
     }),
   });
 
@@ -619,6 +729,20 @@ const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
       response = await performUpload();
       if (!response.ok) {
         details = await response.text().catch(() => "");
+        throw new Error(
+          `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
+        );
+      }
+    } else if (isSupabasePayloadTooLargeError(response.status, details)) {
+      await updateSupabaseStorageBucket();
+      response = await performUpload();
+      if (!response.ok) {
+        details = await response.text().catch(() => "");
+        if (isSupabasePayloadTooLargeError(response.status, details)) {
+          throw new Error(
+            `Supabase storage bucket "${SUPABASE_STORAGE_BUCKET}" rejected this file size. Increase bucket file size limit to at least ${MAX_UPLOAD_SIZE_BYTES} bytes, or upload a smaller file.`,
+          );
+        }
         throw new Error(
           `Supabase storage upload failed (${response.status}): ${details || response.statusText}`,
         );
@@ -786,7 +910,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage: storage,
-  limits: { fileSize: 100 * 1024 * 1024 },
+  limits: { fileSize: MAX_UPLOAD_SIZE_BYTES },
   fileFilter: (req, file, cb) => {
     const allowedTypes = [
       "video/mp4",
@@ -1304,6 +1428,7 @@ app.get("/api/admin/stats", authenticateToken, async (req, res) => {
       [{ total_materials } = { total_materials: 0 }],
       [{ total_prayers } = { total_prayers: 0 }],
       [{ pending_prayers } = { pending_prayers: 0 }],
+      [{ pending_counseling } = { pending_counseling: 0 }],
       [
         { total_donations, total_amount } = {
           total_donations: 0,
@@ -1325,6 +1450,11 @@ app.get("/api/admin/stats", authenticateToken, async (req, res) => {
       pool
         .execute(
           "SELECT COUNT(*) as pending_prayers FROM prayer_requests WHERE status = 'pending'",
+        )
+        .then((r) => r[0]),
+      pool
+        .execute(
+          "SELECT COUNT(*) as pending_counseling FROM counseling_requests WHERE status = 'pending'",
         )
         .then((r) => r[0]),
       pool
@@ -1377,6 +1507,9 @@ app.get("/api/admin/stats", authenticateToken, async (req, res) => {
         total_materials,
         total_prayers,
         pending_prayers,
+        pending_counseling,
+        pending_requests:
+          Number(pending_prayers || 0) + Number(pending_counseling || 0),
         total_donations,
         total_amount: parseFloat(total_amount),
         recent_uploads,
@@ -1441,7 +1574,11 @@ app.post(
         });
       }
 
-      if (req.file && REQUIRE_PERSISTENT_STORAGE && !isSupabaseStorageConfigured()) {
+      if (
+        req.file &&
+        REQUIRE_PERSISTENT_STORAGE &&
+        !isSupabaseStorageConfigured()
+      ) {
         safeUnlink(req.file.path);
         return res.status(500).json({
           success: false,
@@ -1458,7 +1595,10 @@ app.post(
         fileName = req.file.originalname;
         fileSize = req.file.size;
 
-        const uploadedToSupabase = await uploadFileToSupabaseStorage(req.file, type);
+        const uploadedToSupabase = await uploadFileToSupabaseStorage(
+          req.file,
+          type,
+        );
 
         if (uploadedToSupabase) {
           uploadedSupabaseObjectPath = uploadedToSupabase.objectPath;
@@ -2747,6 +2887,260 @@ app.get("/api/users", authenticateToken, async (req, res) => {
   }
 });
 
+app.post("/api/users", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const normalizedUsername = normalizeUsername(req.body?.username);
+    const normalizedEmail = normalizeEmail(req.body?.email);
+    const password = String(req.body?.password || "");
+    const role = String(req.body?.role || "user")
+      .trim()
+      .toLowerCase();
+    const isApproved = parseBoolean(
+      req.body?.is_approved ?? req.body?.isApproved,
+      true,
+    );
+
+    if (!normalizedUsername || !normalizedEmail || !password) {
+      return res.status(400).json({
+        success: false,
+        error: "Username, email, and password are required",
+      });
+    }
+
+    if (normalizedUsername.length < 3 || normalizedUsername.length > 100) {
+      return res.status(400).json({
+        success: false,
+        error: "Username must be between 3 and 100 characters",
+      });
+    }
+
+    if (!isValidEmail(normalizedEmail)) {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide a valid email address",
+      });
+    }
+
+    if (!isStrongPassword(password)) {
+      return res.status(400).json({
+        success: false,
+        error: "Password must be at least 8 characters long",
+      });
+    }
+
+    if (!["user", "admin"].includes(role)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Role must be either "user" or "admin"',
+      });
+    }
+
+    const [existingUsers] = await pool.execute(
+      "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
+      [normalizedEmail, normalizedUsername],
+    );
+
+    if (existingUsers.length > 0) {
+      return res.status(409).json({
+        success: false,
+        error: "A user already exists with that email or username",
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 12);
+    const [insertResult] = await pool.execute(
+      "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
+      [normalizedUsername, normalizedEmail, passwordHash, role, isApproved],
+    );
+
+    let createdUserId = insertResult?.insertId || null;
+    if (!createdUserId) {
+      const [createdRows] = await pool.execute(
+        "SELECT id FROM users WHERE email = ? LIMIT 1",
+        [normalizedEmail],
+      );
+      createdUserId = createdRows[0]?.id || null;
+    }
+
+    await pool.execute(
+      "INSERT INTO analytics (event_type, event_data, user_id) VALUES (?, ?, ?)",
+      [
+        "user_create",
+        JSON.stringify({
+          created_user_id: createdUserId,
+          role,
+          is_approved: isApproved,
+        }),
+        req.user.userId,
+      ],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "User created successfully",
+      user: {
+        id: createdUserId,
+        username: normalizedUsername,
+        email: normalizedEmail,
+        role,
+        is_approved: isApproved,
+      },
+    });
+  } catch (error) {
+    if (error?.code === "ER_DUP_ENTRY" || error?.code === "23505") {
+      return res.status(409).json({
+        success: false,
+        error: "A user already exists with that email or username",
+      });
+    }
+
+    console.error("Create user error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to create user",
+      details: error.message,
+    });
+  }
+});
+
+app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const targetUserId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid user id",
+      });
+    }
+
+    const [users] = await pool.execute(
+      "SELECT id, is_approved FROM users WHERE id = ? LIMIT 1",
+      [targetUserId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    if (users[0].is_approved) {
+      return res.json({
+        success: true,
+        message: "User is already approved",
+      });
+    }
+
+    await pool.execute(
+      "UPDATE users SET is_approved = TRUE, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+      [targetUserId],
+    );
+
+    await pool.execute(
+      "INSERT INTO analytics (event_type, event_data, user_id) VALUES (?, ?, ?)",
+      [
+        "user_approve",
+        JSON.stringify({ approved_user_id: targetUserId }),
+        req.user.userId,
+      ],
+    );
+
+    res.json({
+      success: true,
+      message: "User approved successfully",
+    });
+  } catch (error) {
+    console.error("Approve user error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to approve user",
+      details: error.message,
+    });
+  }
+});
+
+app.delete("/api/users/:id", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const targetUserId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(targetUserId) || targetUserId <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid user id",
+      });
+    }
+
+    const requesterUserId = Number.parseInt(req.user.userId, 10);
+    if (targetUserId === requesterUserId) {
+      return res.status(400).json({
+        success: false,
+        error: "You cannot delete your own account",
+      });
+    }
+
+    const [users] = await pool.execute(
+      "SELECT id, role FROM users WHERE id = ? LIMIT 1",
+      [targetUserId],
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "User not found",
+      });
+    }
+
+    if (users[0].role === "admin") {
+      const [adminCounts] = await pool.execute(
+        "SELECT COUNT(*) as total_admins FROM users WHERE role = 'admin'",
+      );
+      const totalAdmins = Number(adminCounts[0]?.total_admins || 0);
+
+      if (totalAdmins <= 1) {
+        return res.status(400).json({
+          success: false,
+          error: "Cannot delete the last admin user",
+        });
+      }
+    }
+
+    await pool.execute("DELETE FROM users WHERE id = ?", [targetUserId]);
+
+    await pool.execute(
+      "INSERT INTO analytics (event_type, event_data, user_id) VALUES (?, ?, ?)",
+      [
+        "user_delete",
+        JSON.stringify({ deleted_user_id: targetUserId }),
+        requesterUserId || req.user.userId,
+      ],
+    );
+
+    res.json({
+      success: true,
+      message: "User deleted successfully",
+    });
+  } catch (error) {
+    console.error("Delete user error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to delete user",
+      details: error.message,
+    });
+  }
+});
+
 // ==================== PRAYER REQUESTS ENDPOINTS ====================
 
 app.post("/api/prayer-requests", authenticateToken, async (req, res) => {
@@ -2886,6 +3280,87 @@ app.post("/api/counseling-requests", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to submit counseling request",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    const { status = "", search = "", page = 1, limit = 20 } = req.query;
+    const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+    const parsedLimit = Math.min(
+      Math.max(Number.parseInt(limit, 10) || 20, 1),
+      200,
+    );
+    const offset = (parsedPage - 1) * parsedLimit;
+
+    let query = `
+      SELECT
+        cr.*,
+        u.username as user_name,
+        u.email as user_email,
+        DATE_FORMAT(cr.created_at, '%Y-%m-%d %H:%i:%s') as created_at
+      FROM counseling_requests cr
+      LEFT JOIN users u ON cr.user_id = u.id
+      WHERE 1=1
+    `;
+    const params = [];
+
+    if (status) {
+      query += ` AND cr.status = ?`;
+      params.push(status);
+    }
+
+    if (search) {
+      query += `
+        AND (
+          cr.description LIKE ?
+          OR cr.counseling_type LIKE ?
+          OR COALESCE(u.username, '') LIKE ?
+          OR COALESCE(u.email, '') LIKE ?
+        )
+      `;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+    }
+
+    query += ` ORDER BY cr.created_at DESC LIMIT ? OFFSET ?`;
+    params.push(parsedLimit, offset);
+
+    const [requests] = await pool.execute(query, params);
+
+    const [counts] = await pool.execute(`
+      SELECT
+        status,
+        COUNT(*) as count
+      FROM counseling_requests
+      GROUP BY status
+    `);
+
+    const statusCounts = {};
+    counts.forEach((item) => {
+      statusCounts[item.status] = item.count;
+    });
+
+    res.json({
+      success: true,
+      counseling_requests: requests,
+      counts: statusCounts,
+      pagination: {
+        page: parsedPage,
+        limit: parsedLimit,
+        total: requests.length,
+      },
+    });
+  } catch (error) {
+    console.error("Get counseling requests error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch counseling requests",
       details: error.message,
     });
   }
@@ -3050,9 +3525,11 @@ app.use((error, req, res, next) => {
   console.error("Global error:", error);
 
   if (error.code === "LIMIT_FILE_SIZE") {
+    const maxUploadMb =
+      Math.round((MAX_UPLOAD_SIZE_BYTES / (1024 * 1024)) * 10) / 10;
     return res.status(400).json({
       success: false,
-      error: "File too large. Maximum size is 100MB",
+      error: `File too large. Maximum size is ${maxUploadMb}MB`,
     });
   }
 
