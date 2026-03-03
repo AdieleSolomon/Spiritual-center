@@ -41,6 +41,7 @@ const App = (() => {
     (isLocalHost ? "http://localhost:5501/api" : `${window.location.origin}/api`);
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
   const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
+  const DAILY_PROMISE_COLLAPSE_MIN_CHARS = 260;
 
   const state = {
     token: localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
@@ -152,7 +153,9 @@ const App = (() => {
     dailyPromiseTopic: document.getElementById("dailyPromiseTopic"),
     dailyPromiseSnippet: document.getElementById("dailyPromiseSnippet"),
     dailyPromiseLink: document.getElementById("dailyPromiseLink"),
+    dailyPromiseCloseBtn: document.getElementById("dailyPromiseCloseBtn"),
     dailyUpdatePromiseText: document.getElementById("dailyUpdatePromiseText"),
+    dailyUpdateToggleBtn: document.getElementById("dailyUpdateToggleBtn"),
     dailyUpdatePromiseAuthor: document.getElementById("dailyUpdatePromiseAuthor"),
     dailyUpdatePromiseDate: document.getElementById("dailyUpdatePromiseDate"),
   };
@@ -1359,6 +1362,17 @@ const App = (() => {
       trackEvent("daily_promise_show_more_click", { source: "popup" });
     });
 
+    ui.dailyPromiseCloseBtn?.addEventListener("click", () => {
+      if (ui.dailyPromisePopup) {
+        ui.dailyPromisePopup.hidden = true;
+      }
+      trackEvent("daily_promise_close_click", { source: "popup" });
+    });
+
+    ui.dailyUpdateToggleBtn?.addEventListener("click", () => {
+      toggleDailyPromiseTextExpanded();
+    });
+
     fetch(`${API_BASE}/daily-promise/latest`)
       .then(async (response) => {
         const data = await response
@@ -1390,7 +1404,7 @@ const App = (() => {
         }
 
         if (ui.dailyUpdatePromiseText) {
-          ui.dailyUpdatePromiseText.textContent = promiseText;
+          setDailyPromiseText(promiseText);
         }
         if (ui.dailyUpdatePromiseAuthor) {
           ui.dailyUpdatePromiseAuthor.textContent = promiseAuthor;
@@ -1404,8 +1418,7 @@ const App = (() => {
           ui.dailyPromisePopup.hidden = true;
         }
         if (ui.dailyUpdatePromiseText) {
-          ui.dailyUpdatePromiseText.textContent =
-            "No daily promise has been posted yet.";
+          setDailyPromiseText("No daily promise has been posted yet.");
         }
         if (ui.dailyUpdatePromiseAuthor) {
           ui.dailyUpdatePromiseAuthor.textContent = "";
@@ -1413,6 +1426,39 @@ const App = (() => {
         if (ui.dailyUpdatePromiseDate) {
           ui.dailyUpdatePromiseDate.textContent = "";
         }
+    });
+  }
+
+  function setDailyPromiseText(rawText = "") {
+    if (!ui.dailyUpdatePromiseText) return;
+
+    const normalizedText = String(rawText).trim() || "No daily promise has been posted yet.";
+    const shouldCollapse = normalizedText.length > DAILY_PROMISE_COLLAPSE_MIN_CHARS;
+
+    ui.dailyUpdatePromiseText.textContent = normalizedText;
+    ui.dailyUpdatePromiseText.classList.toggle("is-collapsed", shouldCollapse);
+
+    if (ui.dailyUpdateToggleBtn) {
+      ui.dailyUpdateToggleBtn.hidden = !shouldCollapse;
+      ui.dailyUpdateToggleBtn.textContent = "View More";
+      ui.dailyUpdateToggleBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function toggleDailyPromiseTextExpanded() {
+    if (!ui.dailyUpdatePromiseText || !ui.dailyUpdateToggleBtn) return;
+    if (ui.dailyUpdateToggleBtn.hidden) return;
+
+    const isExpanded = ui.dailyUpdateToggleBtn.getAttribute("aria-expanded") === "true";
+    const nextExpanded = !isExpanded;
+
+    ui.dailyUpdatePromiseText.classList.toggle("is-collapsed", !nextExpanded);
+    ui.dailyUpdateToggleBtn.textContent = nextExpanded ? "View Less" : "View More";
+    ui.dailyUpdateToggleBtn.setAttribute("aria-expanded", String(nextExpanded));
+
+    trackEvent("daily_promise_expand_toggle", {
+      source: "daily_update",
+      state: nextExpanded ? "expanded" : "collapsed",
     });
   }
 

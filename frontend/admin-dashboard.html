@@ -3,6 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="api-base-url" content="" />
     <title>Admin Dashboard - Spiritual Center</title>
     <link rel="icon" type="image/svg+xml" href="./favicon.svg" />
@@ -138,6 +139,7 @@
         background: rgba(255, 255, 255, 0.2);
       }
 
+      .nav-link,
       .nav-item {
         display: flex;
         align-items: center;
@@ -152,12 +154,14 @@
         overflow: hidden;
       }
 
+      .nav-link:hover,
       .nav-item:hover {
         background: rgba(99, 102, 241, 0.1);
         color: white;
         transform: translateX(4px);
       }
 
+      .nav-link.active,
       .nav-item.active {
         background: linear-gradient(
           90deg,
@@ -168,6 +172,7 @@
         border-left: 3px solid var(--primary);
       }
 
+      .nav-link.active::before,
       .nav-item.active::before {
         content: "";
         position: absolute;
@@ -177,6 +182,12 @@
         width: 2px;
         background: var(--primary);
         border-radius: 0 2px 2px 0;
+      }
+
+      .nav-link:focus-visible,
+      .nav-item:focus-visible {
+        outline: 2px solid rgba(99, 102, 241, 0.7);
+        outline-offset: 2px;
       }
 
       .nav-icon {
@@ -1511,19 +1522,19 @@
 
         <ul class="sidebar-nav">
           <li>
-            <a href="#" class="nav-link active" data-section="dashboard">
-              <div class="nav-icon">
-                <i class="fas fa-chart-line"></i>
-              </div>
-              <span class="nav-text">Dashboard</span>
-            </a>
-          </li>
-          <li>
             <a href="index.html" class="nav-link">
               <div class="nav-icon">
                 <i class="fas fa-house"></i>
               </div>
               <span class="nav-text">Main Page</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link active" data-section="dashboard">
+              <div class="nav-icon">
+                <i class="fas fa-chart-line"></i>
+              </div>
+              <span class="nav-text">Dashboard</span>
             </a>
           </li>
           <li>

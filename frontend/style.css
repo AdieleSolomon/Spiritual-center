@@ -603,6 +603,33 @@ h3 {
 .daily-update-text {
   font-size: 1.08rem;
   color: var(--ink);
+  white-space: pre-line;
+  line-height: 1.66;
+}
+
+.daily-update-text.is-collapsed {
+  display: -webkit-box;
+  -webkit-line-clamp: 5;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.daily-update-toggle {
+  margin-top: 10px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--accent);
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+}
+
+.daily-update-toggle:hover {
+  color: #f2c77e;
+  border-color: rgba(231, 176, 79, 0.5);
 }
 
 .daily-update-author {
@@ -965,6 +992,24 @@ h3 {
   color: #b7c5d8;
 }
 
+.footer-bottom small {
+  display: block;
+}
+
+.footer-bottom small + small {
+  margin-top: 6px;
+}
+
+.footer-bottom a {
+  color: #d6e7fb;
+  text-decoration: none;
+}
+
+.footer-bottom a:hover {
+  color: #fff;
+  text-decoration: underline;
+}
+
 .daily-promise-popup {
   position: fixed;
   right: 16px;
@@ -981,6 +1026,29 @@ h3 {
   );
   box-shadow: var(--shadow);
   animation: promisePulse 2.6s ease-in-out infinite;
+}
+
+.daily-promise-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--ink-soft);
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.daily-promise-close:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.16);
 }
 
 .daily-promise-popup[hidden] {

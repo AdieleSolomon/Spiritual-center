@@ -8,6 +8,34 @@
     <meta
       name="description"
       content="A youth-friendly ministry experience for bold faith, practical bible teaching, prayer support, and real-life spiritual guidance." />
+    <meta name="robots" content="index, follow, max-image-preview:large" />
+    <link
+      rel="canonical"
+      href="https://spiritualcenter.vercel.app/index-youth.html" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Center of Knowledge and Spiritual Enrichment" />
+    <meta
+      property="og:title"
+      content="Center of Knowledge and Spiritual Enrichment | Youth Voice Edition" />
+    <meta
+      property="og:description"
+      content="A youth-friendly ministry experience for bold faith, practical bible teaching, prayer support, and real-life spiritual guidance." />
+    <meta
+      property="og:url"
+      content="https://spiritualcenter.vercel.app/index-youth.html" />
+    <meta
+      property="og:image"
+      content="https://spiritualcenter.vercel.app/1U4A1819.JPG" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta
+      name="twitter:title"
+      content="Center of Knowledge and Spiritual Enrichment | Youth Voice Edition" />
+    <meta
+      name="twitter:description"
+      content="A youth-friendly ministry experience for bold faith, practical bible teaching, prayer support, and real-life spiritual guidance." />
+    <meta
+      name="twitter:image"
+      content="https://spiritualcenter.vercel.app/1U4A1819.JPG" />
     <meta name="api-base-url" content="" />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -282,6 +310,14 @@
             <p id="dailyUpdatePromiseText" class="daily-update-text">
               Loading today's promise...
             </p>
+            <button
+              type="button"
+              id="dailyUpdateToggleBtn"
+              class="daily-update-toggle"
+              aria-expanded="false"
+              hidden>
+              View More
+            </button>
             <p id="dailyUpdatePromiseAuthor" class="daily-update-author"></p>
             <p id="dailyUpdatePromiseDate" class="daily-update-date"></p>
           </article>
@@ -478,6 +514,12 @@
       </div>
       <div class="container footer-bottom">
         <small>&copy; <span id="year"></span> Center of Knowledge and Spiritual Enrichment. All rights reserved.</small>
+        <small>
+          Developer:
+          <a href="https://adiele-solomon-github-io.vercel.app/" target="_blank" rel="noopener noreferrer">
+            Solomon Adiele
+          </a>
+        </small>
       </div>
     </footer>
 
@@ -628,6 +670,13 @@
     </div>
 
     <div class="daily-promise-popup" id="dailyPromisePopup" hidden>
+      <button
+        type="button"
+        id="dailyPromiseCloseBtn"
+        class="daily-promise-close"
+        aria-label="Close daily promise popup">
+        &times;
+      </button>
       <p class="daily-promise-label">Daily Promise Announcement</p>
       <h4 id="dailyPromiseTopic" class="daily-promise-topic">Today's Promise from God</h4>
       <p id="dailyPromiseSnippet" class="daily-promise-snippet">
