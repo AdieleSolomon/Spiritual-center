@@ -168,6 +168,7 @@ const App = (() => {
     setupMobileNav();
     setupActiveNavTracking();
     setupRevealAnimations();
+    setupHeroVideoLoading();
     setupModal();
     setupProtectedSectionLinks();
     handleAuthEntryIntent();
@@ -305,6 +306,29 @@ const App = (() => {
     targets.forEach((item, index) => {
       item.style.transitionDelay = `${Math.min(index * 50, 320)}ms`;
       observer.observe(item);
+    });
+  }
+
+  function setupHeroVideoLoading() {
+    const wraps = Array.from(document.querySelectorAll(".hero-video-wrap"));
+    if (!wraps.length) return;
+
+    wraps.forEach((wrap) => {
+      const iframe = wrap.querySelector(".hero-video-embed");
+      const markLoaded = () => wrap.classList.add("is-loaded");
+
+      if (!iframe) {
+        markLoaded();
+        return;
+      }
+
+      iframe.addEventListener("load", markLoaded, { once: true });
+
+      if (document.readyState === "complete") {
+        markLoaded();
+      } else {
+        window.addEventListener("load", markLoaded, { once: true });
+      }
     });
   }
 
@@ -1154,6 +1178,7 @@ const App = (() => {
   async function loadResources() {
     if (!ui.resourceGrid) return;
 
+    setResourceNotice("Loading teachings...");
     ui.resourceGrid.innerHTML = "";
 
     try {

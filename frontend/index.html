@@ -148,6 +148,10 @@
     <main>
       <section id="home" class="hero">
         <div class="hero-video-wrap" aria-hidden="true">
+          <div class="hero-video-loading">
+            <span class="hero-video-spinner" aria-hidden="true"></span>
+            <span class="hero-video-text">Loading video...</span>
+          </div>
           <iframe
             class="hero-video-embed"
             src="https://www.youtube.com/embed/9Cc_s9DUC7U?autoplay=1&mute=1&loop=1&playlist=9Cc_s9DUC7U&controls=0&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&disablekb=1"
@@ -215,6 +219,26 @@
             <strong>Community and Intercession</strong>
             <span>Consistent prayer covering and accountability</span>
           </div>
+        </div>
+      </section>
+
+      <section id="content" class="resources section-space">
+        <div class="container">
+          <div class="section-head" data-reveal>
+            <p class="eyebrow">Resources</p>
+            <h2>Teachings and Materials</h2>
+            <p>
+              Access ministry teachings and study materials designed to deepen
+              doctrine, strengthen prayer life, and shape daily Christian
+              practice.
+            </p>
+          </div>
+
+          <p id="resourceNotice" class="resource-notice" aria-live="polite">
+            Loading teachings...
+          </p>
+
+          <div id="resourceGrid" class="resource-grid"></div>
         </div>
       </section>
 
@@ -368,24 +392,6 @@
             <p id="dailyUpdatePromiseAuthor" class="daily-update-author"></p>
             <p id="dailyUpdatePromiseDate" class="daily-update-date"></p>
           </article>
-        </div>
-      </section>
-
-      <section id="content" class="resources section-space">
-        <div class="container">
-          <div class="section-head" data-reveal>
-            <p class="eyebrow">Resources</p>
-            <h2>Teachings and Materials</h2>
-            <p>
-              Access ministry teachings and study materials designed to deepen
-              doctrine, strengthen prayer life, and shape daily Christian
-              practice.
-            </p>
-          </div>
-
-          <p id="resourceNotice" class="resource-notice" aria-live="polite"></p>
-
-          <div id="resourceGrid" class="resource-grid"></div>
         </div>
       </section>
 
