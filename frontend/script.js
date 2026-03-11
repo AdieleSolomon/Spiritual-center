@@ -42,11 +42,32 @@ const App = (() => {
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
   const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
   const DAILY_PROMISE_COLLAPSE_MIN_CHARS = 260;
+  const RESOURCE_PAGE_SIZE = 6;
+  const RESOURCE_MAX_LIMIT = 100;
+  const ALL_MATERIALS_PAGE_SIZE = 24;
 
   const state = {
     token: localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
     user: null,
     authMode: "login",
+  };
+
+  const resourceState = {
+    items: [],
+    fromApi: false,
+    displayed: 0,
+    total: 0,
+  };
+
+  const allMaterialsState = {
+    page: 1,
+    limit: ALL_MATERIALS_PAGE_SIZE,
+    total: 0,
+    pages: 1,
+    search: "",
+    category: "",
+    type: "",
+    loading: false,
   };
 
   const fallbackResources = [
@@ -89,6 +110,19 @@ const App = (() => {
     userAvatar: document.getElementById("userAvatar"),
     resourceGrid: document.getElementById("resourceGrid"),
     resourceNotice: document.getElementById("resourceNotice"),
+    resourceLoadMore: document.getElementById("resourceLoadMore"),
+    resourceViewAll: document.getElementById("resourceViewAll"),
+    resourceCount: document.getElementById("resourceCount"),
+    allMaterialsGrid: document.getElementById("allMaterialsGrid"),
+    allMaterialsNotice: document.getElementById("allMaterialsNotice"),
+    allMaterialsForm: document.getElementById("allMaterialsFilters"),
+    allMaterialsSearch: document.getElementById("allMaterialsSearch"),
+    allMaterialsCategory: document.getElementById("allMaterialsCategory"),
+    allMaterialsType: document.getElementById("allMaterialsType"),
+    allMaterialsClear: document.getElementById("allMaterialsClear"),
+    allMaterialsPrev: document.getElementById("allMaterialsPrev"),
+    allMaterialsNext: document.getElementById("allMaterialsNext"),
+    allMaterialsPage: document.getElementById("allMaterialsPage"),
     authModal: document.getElementById("authModal"),
     authModalTitle: document.getElementById("authModalTitle"),
     authModalSubtitle: document.getElementById("authModalSubtitle"),
@@ -171,6 +205,8 @@ const App = (() => {
     setupActiveNavTracking();
     setupRevealAnimations();
     setupModal();
+    setupResourceControls();
+    setupAllMaterialsPage();
     setupProtectedSectionLinks();
     handleAuthEntryIntent();
     setupContactForm();
@@ -182,7 +218,10 @@ const App = (() => {
     setupDailyPromise();
 
     updateAuthUI();
-    hydrateSession().finally(loadResources);
+    hydrateSession().finally(() => {
+      loadResources();
+      loadAllMaterials();
+    });
   }
 
   function setYear() {
@@ -1153,6 +1192,45 @@ const App = (() => {
     window.location.href = `${entryPage}?${params.toString()}`;
   }
 
+  function buildMaterialsQuery(params = {}) {
+    const searchParams = new URLSearchParams();
+    const page = Number(params.page || 1);
+    const limit = Number(params.limit || 20);
+    const search = String(params.search || "").trim();
+    const category = String(params.category || "").trim();
+    const type = String(params.type || "").trim();
+
+    searchParams.set("page", String(page));
+    searchParams.set("limit", String(limit));
+
+    if (search) searchParams.set("search", search);
+    if (category) searchParams.set("category", category);
+    if (type) searchParams.set("type", type);
+
+    return searchParams.toString();
+  }
+
+  async function fetchMaterialsPage(params = {}, token = null) {
+    const headers = token ? { Authorization: `Bearer ${token}` } : {};
+    const query = buildMaterialsQuery(params);
+    const response = await fetch(`${API_BASE}/materials?${query}`, { headers });
+    const data = await response
+      .json()
+      .catch(() => ({ error: "Unexpected server response format." }));
+    return { response, data };
+  }
+
+  function normalizeMaterials(materials = []) {
+    return materials.map((item) => ({
+      title: item.title || "Untitled Material",
+      description: item.description || "No description available.",
+      category: item.category || "resource",
+      type: item.type || "file",
+      link: resolveFileUrl(item.file_url),
+      fileUrl: item.file_url || "",
+    }));
+  }
+
   async function loadResources() {
     if (!ui.resourceGrid) return;
 
@@ -1160,23 +1238,18 @@ const App = (() => {
     ui.resourceGrid.innerHTML = "";
 
     try {
-      const fetchMaterials = async (token = null) => {
-        const headers = token ? { Authorization: `Bearer ${token}` } : {};
-        const response = await fetch(`${API_BASE}/materials?limit=6&page=1`, {
-          headers,
-        });
-        const data = await response
-          .json()
-          .catch(() => ({ error: "Unexpected server response format." }));
-        return { response, data };
-      };
-
-      let { response, data } = await fetchMaterials(state.token || null);
+      let { response, data } = await fetchMaterialsPage(
+        { limit: RESOURCE_MAX_LIMIT, page: 1 },
+        state.token || null,
+      );
 
       if ((response.status === 401 || response.status === 403) && state.token) {
         clearSession();
         updateAuthUI();
-        ({ response, data } = await fetchMaterials(null));
+        ({ response, data } = await fetchMaterialsPage(
+          { limit: RESOURCE_MAX_LIMIT, page: 1 },
+          null,
+        ));
       }
 
       if (response.status === 401 || response.status === 403) {
@@ -1184,7 +1257,12 @@ const App = (() => {
           "Uploaded materials are temporarily unavailable. Showing curated resources for now.",
           "warning",
         );
-        renderResources(fallbackResources, false);
+        resourceState.items = [...fallbackResources];
+        resourceState.fromApi = false;
+        resourceState.displayed = resourceState.items.length;
+        resourceState.total = resourceState.items.length;
+        if (ui.resourceViewAll) ui.resourceViewAll.hidden = true;
+        renderResourceBatch();
         return;
       }
 
@@ -1196,27 +1274,35 @@ const App = (() => {
       }
 
       const materials = Array.isArray(data.materials) ? data.materials : [];
+      const total = Number(data?.pagination?.total || materials.length);
       if (!materials.length) {
         setResourceNotice(
           "No uploaded materials are available yet. Showing curated resources.",
           "warning",
         );
-        renderResources(fallbackResources, false);
+        resourceState.items = [...fallbackResources];
+        resourceState.fromApi = false;
+        resourceState.displayed = resourceState.items.length;
+        resourceState.total = resourceState.items.length;
+        if (ui.resourceViewAll) ui.resourceViewAll.hidden = true;
+        renderResourceBatch();
         return;
       }
 
-      const normalized = materials.slice(0, 6).map((item) => ({
-        title: item.title || "Untitled Material",
-        description: item.description || "No description available.",
-        category: item.category || "resource",
-        type: item.type || "file",
-        link: resolveFileUrl(item.file_url),
-        fileUrl: item.file_url || "",
-      }));
+      const normalized = normalizeMaterials(materials);
 
-      renderResources(normalized, true);
+      resourceState.items = normalized;
+      resourceState.fromApi = true;
+      resourceState.displayed = Math.min(RESOURCE_PAGE_SIZE, normalized.length);
+      resourceState.total = total;
+      renderResourceBatch();
+      const showingCount = Math.min(total, normalized.length);
+      const hasMoreThanLimit = total > normalized.length;
+      if (ui.resourceViewAll) ui.resourceViewAll.hidden = !hasMoreThanLimit;
       setResourceNotice(
-        `Latest ministry materials (${materials.length} available for all visitors).`,
+        hasMoreThanLimit
+          ? `Latest ministry materials (${total} available). Showing the newest ${showingCount}. Visit All Materials to browse the full library.`
+          : `Latest ministry materials (${total} available for all visitors).`,
         "success",
       );
     } catch (error) {
@@ -1224,7 +1310,236 @@ const App = (() => {
         "Unable to load uploaded materials at the moment. Showing curated resources.",
         "error",
       );
-      renderResources(fallbackResources, false);
+      resourceState.items = [...fallbackResources];
+      resourceState.fromApi = false;
+      resourceState.displayed = resourceState.items.length;
+      resourceState.total = resourceState.items.length;
+      if (ui.resourceViewAll) ui.resourceViewAll.hidden = true;
+      renderResourceBatch();
+    }
+  }
+
+  function renderResourceBatch() {
+    const displayed = Math.min(resourceState.displayed, resourceState.items.length);
+    renderResources(resourceState.items.slice(0, displayed), resourceState.fromApi);
+
+    if (ui.resourceCount) {
+      if (resourceState.fromApi && resourceState.items.length) {
+        const total = Number(resourceState.total || resourceState.items.length);
+        const baseText = `Showing ${displayed} of ${resourceState.items.length} materials`;
+        ui.resourceCount.textContent =
+          total > resourceState.items.length
+            ? `${baseText} (total ${total})`
+            : baseText;
+      } else {
+        ui.resourceCount.textContent = "";
+      }
+    }
+
+    if (ui.resourceLoadMore) {
+      ui.resourceLoadMore.hidden =
+        !resourceState.fromApi || displayed >= resourceState.items.length;
+    }
+  }
+
+  function setupResourceControls() {
+    if (!ui.resourceLoadMore) return;
+    ui.resourceLoadMore.addEventListener("click", () => {
+      loadMoreResources();
+    });
+  }
+
+  function loadMoreResources() {
+    if (!resourceState.items.length) return;
+    resourceState.displayed = Math.min(
+      resourceState.displayed + RESOURCE_PAGE_SIZE,
+      resourceState.items.length,
+    );
+    renderResourceBatch();
+  }
+
+  function setupAllMaterialsPage() {
+    if (!ui.allMaterialsGrid) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const initialSearch = String(params.get("search") || "").trim();
+    const initialCategory = String(params.get("category") || "").trim();
+    const initialType = String(params.get("type") || "").trim();
+    const initialPage = Number.parseInt(params.get("page") || "1", 10);
+
+    if (initialSearch && ui.allMaterialsSearch) {
+      ui.allMaterialsSearch.value = initialSearch;
+      allMaterialsState.search = initialSearch;
+    }
+    if (initialCategory && ui.allMaterialsCategory) {
+      ui.allMaterialsCategory.value = initialCategory;
+      allMaterialsState.category = initialCategory;
+    }
+    if (initialType && ui.allMaterialsType) {
+      ui.allMaterialsType.value = initialType;
+      allMaterialsState.type = initialType;
+    }
+    if (Number.isFinite(initialPage) && initialPage > 0) {
+      allMaterialsState.page = initialPage;
+    }
+
+    ui.allMaterialsForm?.addEventListener("submit", (event) => {
+      event.preventDefault();
+      applyAllMaterialsFilters();
+    });
+
+    ui.allMaterialsClear?.addEventListener("click", () => {
+      clearAllMaterialsFilters();
+    });
+
+    ui.allMaterialsPrev?.addEventListener("click", () => {
+      if (allMaterialsState.page <= 1) return;
+      allMaterialsState.page -= 1;
+      loadAllMaterials();
+    });
+
+    ui.allMaterialsNext?.addEventListener("click", () => {
+      if (allMaterialsState.page >= allMaterialsState.pages) return;
+      allMaterialsState.page += 1;
+      loadAllMaterials();
+    });
+  }
+
+  function applyAllMaterialsFilters() {
+    allMaterialsState.search = ui.allMaterialsSearch?.value.trim() || "";
+    allMaterialsState.category = ui.allMaterialsCategory?.value.trim() || "";
+    allMaterialsState.type = ui.allMaterialsType?.value.trim() || "";
+    allMaterialsState.page = 1;
+    loadAllMaterials();
+  }
+
+  function clearAllMaterialsFilters() {
+    if (ui.allMaterialsSearch) ui.allMaterialsSearch.value = "";
+    if (ui.allMaterialsCategory) ui.allMaterialsCategory.value = "";
+    if (ui.allMaterialsType) ui.allMaterialsType.value = "";
+    allMaterialsState.search = "";
+    allMaterialsState.category = "";
+    allMaterialsState.type = "";
+    allMaterialsState.page = 1;
+    loadAllMaterials();
+  }
+
+  function setAllMaterialsNotice(text, tone = "") {
+    if (!ui.allMaterialsNotice) return;
+
+    ui.allMaterialsNotice.textContent = text;
+    ui.allMaterialsNotice.className = "resource-notice";
+
+    if (tone === "warning") ui.allMaterialsNotice.classList.add("is-warning");
+    if (tone === "error") ui.allMaterialsNotice.classList.add("is-error");
+    if (tone === "success") ui.allMaterialsNotice.classList.add("is-success");
+  }
+
+  function updateAllMaterialsPagination(displayedCount) {
+    const total = Number(allMaterialsState.total || 0);
+    const pages = Number(allMaterialsState.pages || 1);
+    const page = Number(allMaterialsState.page || 1);
+
+    if (ui.allMaterialsPage) {
+      if (!displayedCount) {
+        ui.allMaterialsPage.textContent = total
+          ? `Page ${page} of ${pages} - No materials to display`
+          : "No materials found";
+      } else {
+        const start = (page - 1) * allMaterialsState.limit + 1;
+        const end = Math.min(start + displayedCount - 1, total || start);
+        ui.allMaterialsPage.textContent = total
+          ? `Page ${page} of ${pages} - Showing ${start} to ${end} of ${total} materials`
+          : `Showing ${displayedCount} materials`;
+      }
+    }
+
+    if (ui.allMaterialsPrev) {
+      ui.allMaterialsPrev.disabled = page <= 1;
+    }
+    if (ui.allMaterialsNext) {
+      ui.allMaterialsNext.disabled = page >= pages;
+    }
+  }
+
+  async function loadAllMaterials() {
+    if (!ui.allMaterialsGrid || allMaterialsState.loading) return;
+
+    allMaterialsState.loading = true;
+    setAllMaterialsNotice("Loading materials...");
+    ui.allMaterialsGrid.innerHTML = "";
+    allMaterialsState.total = 0;
+    allMaterialsState.pages = 1;
+
+    const requestParams = {
+      page: allMaterialsState.page,
+      limit: allMaterialsState.limit,
+      search: allMaterialsState.search,
+      category: allMaterialsState.category,
+      type: allMaterialsState.type,
+    };
+
+    try {
+      let { response, data } = await fetchMaterialsPage(
+        requestParams,
+        state.token || null,
+      );
+
+      if ((response.status === 401 || response.status === 403) && state.token) {
+        clearSession();
+        updateAuthUI();
+        ({ response, data } = await fetchMaterialsPage(requestParams, null));
+      }
+
+      if (response.status === 401 || response.status === 403) {
+        setAllMaterialsNotice(
+          "Materials are temporarily unavailable. Please try again soon.",
+          "warning",
+        );
+        updateAllMaterialsPagination(0);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load materials.");
+      }
+      if (!data || data.success !== true) {
+        throw new Error("Invalid response from materials endpoint.");
+      }
+
+      const materials = Array.isArray(data.materials) ? data.materials : [];
+      const total = Number(data?.pagination?.total || 0);
+      const pages = Number(data?.pagination?.pages || 1);
+      const normalized = normalizeMaterials(materials);
+
+      allMaterialsState.total = total;
+      allMaterialsState.pages = pages || 1;
+
+      if (!normalized.length) {
+        setAllMaterialsNotice(
+          "No materials matched your filters. Try a different search.",
+          "warning",
+        );
+        updateAllMaterialsPagination(0);
+        return;
+      }
+
+      renderResources(normalized, true, ui.allMaterialsGrid);
+      setAllMaterialsNotice(
+        allMaterialsState.search || allMaterialsState.category || allMaterialsState.type
+          ? "Showing results based on your filters."
+          : "Browse the complete ministry library below.",
+        "success",
+      );
+      updateAllMaterialsPagination(normalized.length);
+    } catch (error) {
+      setAllMaterialsNotice(
+        "Unable to load materials at the moment. Please try again soon.",
+        "error",
+      );
+      updateAllMaterialsPagination(0);
+    } finally {
+      allMaterialsState.loading = false;
     }
   }
 
@@ -1361,10 +1676,10 @@ const App = (() => {
     return fromApi ? "Open Material" : "Preview";
   }
 
-  function renderResources(resources, fromApi) {
-    if (!ui.resourceGrid) return;
+  function renderResources(resources, fromApi, gridElement = ui.resourceGrid) {
+    if (!gridElement) return;
 
-    ui.resourceGrid.innerHTML = resources
+    gridElement.innerHTML = resources
       .map((item) => {
         const category = sanitize(item.category || "resource");
         const type = sanitize(item.type || "file");
@@ -1398,7 +1713,7 @@ const App = (() => {
       .join("");
 
     setupRevealAnimations();
-    ui.resourceGrid.querySelectorAll(".resource-link").forEach((link) => {
+    gridElement.querySelectorAll(".resource-link").forEach((link) => {
       link.addEventListener("click", () => {
         trackEvent("resource_open", {
           title: link.dataset.resourceTitle || "resource",
