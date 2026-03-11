@@ -2730,7 +2730,9 @@
         // Notification button
         const notificationBtn = document.getElementById("notificationBtn");
         if (notificationBtn) {
-          notificationBtn.addEventListener("click", showNotificationsModal);
+          notificationBtn.addEventListener("click", () => {
+            handleNotifications(true);
+          });
         }
 
         // Daily Promise form
@@ -4346,7 +4348,7 @@
       }
 
       // Handle notifications
-      async function handleNotifications() {
+      async function handleNotifications(showModal = false) {
         try {
           const response = await fetch(`${API_BASE}/notifications`, {
             headers: {
@@ -4360,9 +4362,15 @@
           if (data.success) {
             notifications = data.notifications || [];
             updateNotificationsBadge(data.unread_count || 0);
+            if (showModal) {
+              showNotificationsModal();
+            }
           }
         } catch (error) {
           console.error("Error loading notifications:", error);
+          if (showModal) {
+            showNotificationsModal();
+          }
         }
       }
 
