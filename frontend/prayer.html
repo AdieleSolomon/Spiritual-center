@@ -61,52 +61,118 @@
     </header>
 
     <main>
-      <section class="section-space">
-        <div class="container">
-          <div class="section-head" data-reveal>
+      <section class="prayer-hero">
+        <div class="container prayer-hero-grid">
+          <div class="prayer-hero-copy" data-reveal>
             <p class="eyebrow">Members Area</p>
-            <h2>Prayer Section</h2>
-            <p>
-              Signed-in members can submit a prayer request or book a prayer
-              session below.
+            <h1>Prayer Requests and Pastoral Care</h1>
+            <p class="prayer-hero-lead">
+              Share what is on your heart and our ministry team will stand with you in prayer.
+              Each request is handled with discretion and care.
             </p>
+            <div class="prayer-hero-pills">
+              <span class="prayer-pill"><i class="fa-solid fa-shield-heart"></i> Confidential Care</span>
+              <span class="prayer-pill"><i class="fa-solid fa-book-bible"></i> Scripture Guided</span>
+              <span class="prayer-pill"><i class="fa-solid fa-hands-praying"></i> Faithful Support</span>
+            </div>
           </div>
+          <aside class="prayer-hero-card" data-reveal>
+            <p class="prayer-hero-card-label">How it works</p>
+            <div class="prayer-steps">
+              <div class="prayer-step">
+                <span class="prayer-step-number">01</span>
+                <div>
+                  <strong>Share your request</strong>
+                  <p>Describe what you want us to pray about in as much detail as you wish.</p>
+                </div>
+              </div>
+              <div class="prayer-step">
+                <span class="prayer-step-number">02</span>
+                <div>
+                  <strong>Choose privacy</strong>
+                  <p>Select the privacy option if you would like your name kept private.</p>
+                </div>
+              </div>
+              <div class="prayer-step">
+                <span class="prayer-step-number">03</span>
+                <div>
+                  <strong>Book a session</strong>
+                  <p>Schedule a focused prayer session with a minister if you need deeper support.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
 
-          <div id="login-wall" class="login-wall">
-            <p>Please log in to access this section.</p>
+      <section class="prayer-section section-space">
+        <div class="container">
+          <div id="login-wall" class="login-wall prayer-login">
+            <div>
+              <h3>Sign in required</h3>
+              <p>Please log in to access prayer requests and booking forms.</p>
+            </div>
             <button class="btn btn-solid" id="login-btn">Login to Continue</button>
           </div>
 
           <div id="prayer-form-container" style="display: none;">
-            <div class="engage-grid section-forms-grid">
-              <article class="panel">
-                <h3>Submit Prayer Request</h3>
-                <form id="prayerForm" class="stack-form">
-                  <input type="text" id="prayerName" placeholder="Your full name" required />
-                  <input type="email" id="prayerEmail" placeholder="Your email" required />
-                  <textarea id="prayerRequest" rows="5" placeholder="Write your prayer request in detail" required></textarea>
+            <div class="prayer-forms-grid">
+              <article class="panel prayer-card" data-reveal>
+                <div class="prayer-card-header">
+                  <h3>Submit Prayer Request</h3>
+                  <p>Let us know how we can pray for you today.</p>
+                </div>
+                <form id="prayerForm" class="stack-form prayer-form">
+                  <div class="field">
+                    <label for="prayerName">Full Name</label>
+                    <input type="text" id="prayerName" placeholder="e.g. Grace Okoro" required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerEmail">Email Address</label>
+                    <input type="email" id="prayerEmail" placeholder="you@example.com" required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerRequest">Prayer Request</label>
+                    <textarea id="prayerRequest" rows="6" placeholder="Share the details you want us to pray about" required></textarea>
+                  </div>
                   <label class="checkline">
                     <input type="checkbox" id="prayerAnonymous" /> Keep my name private
                   </label>
+                  <p class="field-hint">Your request will never be published publicly.</p>
                   <button type="submit" class="btn btn-solid">Submit Prayer Request</button>
                 </form>
               </article>
 
-              <article class="panel">
-                <h3>Book a Prayer Session</h3>
-                <form id="prayerBookingForm" class="stack-form">
-                  <input type="text" id="prayerBookingName" placeholder="Your full name" required />
-                  <input type="email" id="prayerBookingEmail" placeholder="Your email" required />
-                  <input
-                    type="text"
-                    id="prayerBookingAvailability"
-                    placeholder="Preferred availability (for example: weekday evenings)"
-                    required />
-                  <textarea
-                    id="prayerBookingFocus"
-                    rows="4"
-                    placeholder="What should we focus on during the prayer session?"
-                    required></textarea>
+              <article class="panel prayer-card" data-reveal>
+                <div class="prayer-card-header">
+                  <h3>Book a Prayer Session</h3>
+                  <p>Schedule a focused prayer call with a ministry team member.</p>
+                </div>
+                <form id="prayerBookingForm" class="stack-form prayer-form">
+                  <div class="field">
+                    <label for="prayerBookingName">Full Name</label>
+                    <input type="text" id="prayerBookingName" placeholder="e.g. Emmanuel Ade" required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerBookingEmail">Email Address</label>
+                    <input type="email" id="prayerBookingEmail" placeholder="you@example.com" required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerBookingAvailability">Preferred Availability</label>
+                    <input
+                      type="text"
+                      id="prayerBookingAvailability"
+                      placeholder="Weekday evenings, Saturday mornings, etc."
+                      required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerBookingFocus">Prayer Focus</label>
+                    <textarea
+                      id="prayerBookingFocus"
+                      rows="5"
+                      placeholder="What should we focus on during the prayer session?"
+                      required></textarea>
+                  </div>
                   <button type="submit" class="btn btn-outline">
                     Book Prayer Session
                   </button>

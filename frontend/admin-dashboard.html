@@ -15,7 +15,7 @@
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap"
       rel="stylesheet" />
     <style>
       :root {
@@ -51,9 +51,7 @@
 
       body {
         font-family:
-          "Inter",
-          -apple-system,
-          BlinkMacSystemFont,
+          "Poppins",
           "Segoe UI",
           sans-serif;
         background-color: #0f172a;
@@ -508,6 +506,102 @@
 
       .stat-card:nth-child(5) .stat-icon {
         background: linear-gradient(135deg, #0ea5e9, #06b6d4);
+      }
+
+      /* Requests Section */
+      .request-intro-card {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1.5rem;
+        padding: 1.5rem;
+        border-radius: var(--border-radius);
+        background: linear-gradient(
+          135deg,
+          rgba(30, 41, 59, 0.8) 0%,
+          rgba(15, 23, 42, 0.8) 100%
+        );
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        box-shadow: var(--shadow);
+        margin-bottom: 1.5rem;
+      }
+
+      .request-intro-card h3 {
+        color: white;
+        font-size: 1.25rem;
+        margin-bottom: 0.4rem;
+      }
+
+      .request-intro-card p {
+        color: var(--light-gray);
+        max-width: 60ch;
+      }
+
+      .request-intro-label {
+        text-transform: uppercase;
+        font-size: 0.7rem;
+        letter-spacing: 0.18em;
+        color: var(--gray);
+        margin-bottom: 0.35rem;
+        font-weight: 600;
+      }
+
+      .request-intro-actions {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        padding: 0.65rem 1rem;
+        border-radius: 999px;
+        background: rgba(16, 185, 129, 0.12);
+        color: #bff3df;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+        white-space: nowrap;
+      }
+
+      .request-intro-actions i {
+        color: var(--accent);
+        font-size: 1rem;
+      }
+
+      .requests-stats {
+        margin-bottom: 1.5rem;
+      }
+
+      .request-panel {
+        margin-bottom: 1.8rem;
+      }
+
+      .request-panel-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1.5rem;
+        padding: 1rem 1.5rem;
+        border-radius: var(--border-radius);
+        background: rgba(15, 23, 42, 0.7);
+        border: 1px solid rgba(255, 255, 255, 0.06);
+        margin-bottom: 0.85rem;
+      }
+
+      .request-panel-header h3 {
+        color: white;
+        font-size: 1.1rem;
+        margin-bottom: 0.3rem;
+      }
+
+      .request-panel-header p {
+        color: var(--gray);
+        font-size: 0.85rem;
+      }
+
+      .request-panel .table-search input {
+        width: 240px;
+      }
+
+      .request-table .materials-table th {
+        background: rgba(255, 255, 255, 0.03);
       }
 
       /* Content Sections */
@@ -1453,6 +1547,29 @@
           width: 100%;
         }
 
+        .request-intro-card {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .request-intro-actions {
+          width: 100%;
+          justify-content: center;
+        }
+
+        .request-panel-header {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .request-panel .table-search {
+          width: 100%;
+        }
+
+        .request-panel .table-search input {
+          width: 100%;
+        }
+
         .mobile-menu-btn {
           display: block;
           position: fixed;
@@ -1590,19 +1707,19 @@
             </a>
           </li>
           <li>
-            <a href="#" class="nav-link" data-section="settings">
-              <div class="nav-icon">
-                <i class="fas fa-cog"></i>
-              </div>
-              <span class="nav-text">Settings</span>
-            </a>
-          </li>
-          <li>
             <a href="#" class="nav-link" data-section="daily-promise">
               <div class="nav-icon">
                 <i class="fas fa-bible"></i>
               </div>
               <span class="nav-text">Daily Promise</span>
+            </a>
+          </li>
+          <li>
+            <a href="#" class="nav-link" data-section="settings">
+              <div class="nav-icon">
+                <i class="fas fa-cog"></i>
+              </div>
+              <span class="nav-text">Settings</span>
             </a>
           </li>
         </ul>
@@ -2102,7 +2219,22 @@
             </button>
           </div>
 
-          <div class="dashboard-stats" style="margin-bottom: 1.5rem">
+          <div class="request-intro-card">
+            <div>
+              <p class="request-intro-label">Care Desk</p>
+              <h3>Prayer and Counseling Queue</h3>
+              <p>
+                Monitor incoming requests, search quickly, and keep member care
+                organized in one place.
+              </p>
+            </div>
+            <div class="request-intro-actions">
+              <i class="fas fa-heart-pulse"></i>
+              <span>Serving with compassion</span>
+            </div>
+          </div>
+
+          <div class="dashboard-stats requests-stats">
             <div class="stat-card">
               <div class="stat-content">
                 <div class="stat-info">
@@ -2143,72 +2275,157 @@
             </div>
           </div>
 
-          <div class="table-actions" style="margin-bottom: 1rem">
-            <h3 style="color: white">Prayer Requests</h3>
-            <div class="table-search">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                id="searchPrayerRequests"
-                placeholder="Search prayer requests..."
-                class="form-control" />
+          <div class="request-panel">
+            <div class="request-panel-header">
+              <div>
+                <h3>Prayer Requests</h3>
+                <p>Confidential member submissions awaiting review.</p>
+              </div>
+              <div class="table-search">
+                <i class="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  id="searchPrayerRequests"
+                  placeholder="Search prayer requests..."
+                  class="form-control" />
+              </div>
             </div>
-          </div>
-          <div class="materials-table-container" style="margin-bottom: 1.5rem">
-            <div class="table-responsive">
-              <table class="materials-table">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Request</th>
-                    <th>Status</th>
-                    <th>Submitted</th>
-                  </tr>
-                </thead>
-                <tbody id="prayerRequestsBody">
-                  <tr>
-                    <td colspan="5" style="text-align: center; padding: 2rem">
-                      Loading prayer requests...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+            <div class="materials-table-container request-table">
+              <div class="table-responsive">
+                <table class="materials-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>Request</th>
+                      <th>Status</th>
+                      <th>Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody id="prayerRequestsBody">
+                    <tr>
+                      <td colspan="5" style="text-align: center; padding: 2rem">
+                        Loading prayer requests...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
 
-          <div class="table-actions" style="margin-bottom: 1rem">
-            <h3 style="color: white">Counseling Requests</h3>
-            <div class="table-search">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                id="searchCounselingRequests"
-                placeholder="Search counseling requests..."
-                class="form-control" />
+          <div class="request-panel">
+            <div class="request-panel-header">
+              <div>
+                <h3>Counseling Requests</h3>
+                <p>Appointments and follow-ups that need scheduling.</p>
+              </div>
+              <div class="table-search">
+                <i class="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  id="searchCounselingRequests"
+                  placeholder="Search counseling requests..."
+                  class="form-control" />
+              </div>
+            </div>
+            <div class="materials-table-container request-table">
+              <div class="table-responsive">
+                <table class="materials-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Description</th>
+                      <th>Availability</th>
+                      <th>Status</th>
+                      <th>Submitted By</th>
+                      <th>Submitted</th>
+                    </tr>
+                  </thead>
+                  <tbody id="counselingRequestsBody">
+                    <tr>
+                      <td colspan="6" style="text-align: center; padding: 2rem">
+                        Loading counseling requests...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-          <div class="materials-table-container">
-            <div class="table-responsive">
-              <table class="materials-table">
-                <thead>
-                  <tr>
-                    <th>Type</th>
-                    <th>Description</th>
-                    <th>Availability</th>
-                    <th>Status</th>
-                    <th>Submitted By</th>
-                    <th>Submitted</th>
-                  </tr>
-                </thead>
-                <tbody id="counselingRequestsBody">
-                  <tr>
-                    <td colspan="6" style="text-align: center; padding: 2rem">
-                      Loading counseling requests...
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        </section>
+
+        <!-- Daily Promise Section -->
+        <section id="daily-promise" class="content-section">
+          <h2 style="margin-bottom: 1.5rem; color: white">Daily Promise</h2>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Post a New Daily Promise</div>
+            </div>
+            <form id="dailyPromiseForm">
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="dailyPromiseText" class="form-label"
+                  >Promise Text <span class="required">*</span></label
+                >
+                <textarea
+                  id="dailyPromiseText"
+                  class="form-textarea"
+                  rows="4"
+                  placeholder="Enter the daily promise"
+                  required></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="dailyPromiseAuthor" class="form-label"
+                  >Author (e.g., John 3:16)</label
+                >
+                <input
+                  type="text"
+                  id="dailyPromiseAuthor"
+                  class="form-input"
+                  placeholder="Enter the author or source" />
+              </div>
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  id="dailyPromiseSubmitBtn">
+                  <i class="fas fa-paper-plane"></i> Post Promise
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="card" style="margin-top: 1rem">
+            <div
+              class="card-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+              ">
+              <div class="card-title">Current Published Promise</div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                id="refreshDailyPromiseBtn">
+                <i class="fas fa-rotate-right"></i> Refresh
+              </button>
+            </div>
+            <div
+              id="dailyPromisePreviewState"
+              style="color: rgba(255, 255, 255, 0.75)">
+              No promise loaded yet.
+            </div>
+            <div id="dailyPromisePreview" style="display: none">
+              <p
+                id="dailyPromisePreviewText"
+                style="margin-top: 0.75rem; color: white"></p>
+              <p
+                id="dailyPromisePreviewAuthor"
+                style="margin-top: 0.25rem; color: #94a3b8"></p>
+              <p
+                id="dailyPromisePreviewDate"
+                style="margin-top: 0.25rem; color: #94a3b8"></p>
             </div>
           </div>
         </section>
@@ -2295,81 +2512,6 @@
               ">
               Save Settings
             </button>
-          </div>
-        </section>
-
-        <!-- Daily Promise Section -->
-        <section id="daily-promise" class="content-section">
-          <h2 style="margin-bottom: 1.5rem; color: white">Daily Promise</h2>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Post a New Daily Promise</div>
-            </div>
-            <form id="dailyPromiseForm">
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseText" class="form-label"
-                  >Promise Text <span class="required">*</span></label
-                >
-                <textarea
-                  id="dailyPromiseText"
-                  class="form-textarea"
-                  rows="4"
-                  placeholder="Enter the daily promise"
-                  required></textarea>
-              </div>
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseAuthor" class="form-label"
-                  >Author (e.g., John 3:16)</label
-                >
-                <input
-                  type="text"
-                  id="dailyPromiseAuthor"
-                  class="form-input"
-                  placeholder="Enter the author or source" />
-              </div>
-              <div class="form-actions">
-                <button
-                  type="submit"
-                  class="btn btn-primary"
-                  id="dailyPromiseSubmitBtn">
-                  <i class="fas fa-paper-plane"></i> Post Promise
-                </button>
-              </div>
-            </form>
-          </div>
-          <div class="card" style="margin-top: 1rem">
-            <div
-              class="card-header"
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 1rem;
-              ">
-              <div class="card-title">Current Published Promise</div>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                id="refreshDailyPromiseBtn">
-                <i class="fas fa-rotate-right"></i> Refresh
-              </button>
-            </div>
-            <div
-              id="dailyPromisePreviewState"
-              style="color: rgba(255, 255, 255, 0.75)">
-              No promise loaded yet.
-            </div>
-            <div id="dailyPromisePreview" style="display: none">
-              <p
-                id="dailyPromisePreviewText"
-                style="margin-top: 0.75rem; color: white"></p>
-              <p
-                id="dailyPromisePreviewAuthor"
-                style="margin-top: 0.25rem; color: #94a3b8"></p>
-              <p
-                id="dailyPromisePreviewDate"
-                style="margin-top: 0.25rem; color: #94a3b8"></p>
-            </div>
           </div>
         </section>
       </main>

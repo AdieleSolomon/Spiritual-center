@@ -158,6 +158,8 @@ const App = (() => {
     dailyUpdateToggleBtn: document.getElementById("dailyUpdateToggleBtn"),
     dailyUpdatePromiseAuthor: document.getElementById("dailyUpdatePromiseAuthor"),
     dailyUpdatePromiseDate: document.getElementById("dailyUpdatePromiseDate"),
+    dailyPromiseHistory: document.getElementById("dailyPromiseHistory"),
+    dailyPromiseHistoryList: document.getElementById("dailyPromiseHistoryList"),
   };
 
   function init() {
@@ -168,7 +170,6 @@ const App = (() => {
     setupMobileNav();
     setupActiveNavTracking();
     setupRevealAnimations();
-    setupHeroVideoLoading();
     setupModal();
     setupProtectedSectionLinks();
     handleAuthEntryIntent();
@@ -306,29 +307,6 @@ const App = (() => {
     targets.forEach((item, index) => {
       item.style.transitionDelay = `${Math.min(index * 50, 320)}ms`;
       observer.observe(item);
-    });
-  }
-
-  function setupHeroVideoLoading() {
-    const wraps = Array.from(document.querySelectorAll(".hero-video-wrap"));
-    if (!wraps.length) return;
-
-    wraps.forEach((wrap) => {
-      const iframe = wrap.querySelector(".hero-video-embed");
-      const markLoaded = () => wrap.classList.add("is-loaded");
-
-      if (!iframe) {
-        markLoaded();
-        return;
-      }
-
-      iframe.addEventListener("load", markLoaded, { once: true });
-
-      if (document.readyState === "complete") {
-        markLoaded();
-      } else {
-        window.addEventListener("load", markLoaded, { once: true });
-      }
     });
   }
 
@@ -1470,60 +1448,129 @@ const App = (() => {
       toggleDailyPromiseTextExpanded();
     });
 
-    fetch(`${API_BASE}/daily-promise/latest`)
-      .then(async (response) => {
-        const data = await response
-          .json()
-          .catch(() => ({ error: "Unexpected response format." }));
-        if (!response.ok || !data?.success || !data?.promise) {
-          throw new Error(data?.error || "No daily promise available.");
-        }
-        return data.promise;
-      })
-      .then((promise) => {
-        const promiseText = promise.promise_text || "No promise text.";
-        const promiseAuthor = promise.author || "Scripture";
-        const topicText = buildPromiseTopic(promiseText);
-        const snippetText = buildPromiseSnippet(promiseText);
-        const formattedDate = formatPromiseDate(
-          promise.created_at || promise.updated_at || new Date().toISOString(),
-        );
+    const applyDailyPromise = (promise, allPromises = []) => {
+      if (!promise) {
+        clearDailyPromise();
+        return;
+      }
 
-        if (ui.dailyPromisePopup) {
-          ui.dailyPromisePopup.hidden = false;
-        }
+      const promiseText = promise.promise_text || "No promise text.";
+      const promiseAuthor = promise.author || "Scripture";
+      const topicText = buildPromiseTopic(promiseText);
+      const snippetText = buildPromiseSnippet(promiseText);
+      const formattedDate = formatPromiseDate(
+        promise.created_at || promise.updated_at || new Date().toISOString(),
+      );
 
-        if (ui.dailyPromiseTopic) {
-          ui.dailyPromiseTopic.textContent = topicText;
-        }
-        if (ui.dailyPromiseSnippet) {
-          ui.dailyPromiseSnippet.textContent = snippetText;
-        }
+      if (ui.dailyPromisePopup) {
+        ui.dailyPromisePopup.hidden = false;
+      }
 
-        if (ui.dailyUpdatePromiseText) {
-          setDailyPromiseText(promiseText);
+      if (ui.dailyPromiseTopic) {
+        ui.dailyPromiseTopic.textContent = topicText;
+      }
+      if (ui.dailyPromiseSnippet) {
+        ui.dailyPromiseSnippet.textContent = snippetText;
+      }
+
+      if (ui.dailyUpdatePromiseText) {
+        setDailyPromiseText(promiseText);
+      }
+      if (ui.dailyUpdatePromiseAuthor) {
+        ui.dailyUpdatePromiseAuthor.textContent = promiseAuthor;
+      }
+      if (ui.dailyUpdatePromiseDate) {
+        ui.dailyUpdatePromiseDate.textContent = `Posted on ${formattedDate}`;
+      }
+
+      renderDailyPromiseHistory(allPromises);
+    };
+
+    const clearDailyPromise = () => {
+      if (ui.dailyPromisePopup) {
+        ui.dailyPromisePopup.hidden = true;
+      }
+      if (ui.dailyUpdatePromiseText) {
+        setDailyPromiseText("No daily promise has been posted yet.");
+      }
+      if (ui.dailyUpdatePromiseAuthor) {
+        ui.dailyUpdatePromiseAuthor.textContent = "";
+      }
+      if (ui.dailyUpdatePromiseDate) {
+        ui.dailyUpdatePromiseDate.textContent = "";
+      }
+      renderDailyPromiseHistory([]);
+    };
+
+    const fetchJson = async (url) => {
+      const response = await fetch(url);
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected response format." }));
+      if (!response.ok) {
+        throw new Error(data?.error || "Request failed");
+      }
+      return data;
+    };
+
+    const loadDailyPromises = async () => {
+      try {
+        const data = await fetchJson(`${API_BASE}/daily-promises?limit=4`);
+        const promises = Array.isArray(data?.promises) ? data.promises : [];
+        if (!promises.length) {
+          clearDailyPromise();
+          return;
         }
-        if (ui.dailyUpdatePromiseAuthor) {
-          ui.dailyUpdatePromiseAuthor.textContent = promiseAuthor;
+        applyDailyPromise(promises[0], promises);
+      } catch (error) {
+        try {
+          const data = await fetchJson(`${API_BASE}/daily-promise/latest`);
+          if (!data?.promise) {
+            clearDailyPromise();
+            return;
+          }
+          applyDailyPromise(data.promise, [data.promise]);
+        } catch (fallbackError) {
+          clearDailyPromise();
         }
-        if (ui.dailyUpdatePromiseDate) {
-          ui.dailyUpdatePromiseDate.textContent = `Posted on ${formattedDate}`;
-        }
-      })
-      .catch(() => {
-        if (ui.dailyPromisePopup) {
-          ui.dailyPromisePopup.hidden = true;
-        }
-        if (ui.dailyUpdatePromiseText) {
-          setDailyPromiseText("No daily promise has been posted yet.");
-        }
-        if (ui.dailyUpdatePromiseAuthor) {
-          ui.dailyUpdatePromiseAuthor.textContent = "";
-        }
-        if (ui.dailyUpdatePromiseDate) {
-          ui.dailyUpdatePromiseDate.textContent = "";
-        }
+      }
+    };
+
+    loadDailyPromises();
+  }
+
+  function renderDailyPromiseHistory(promises = []) {
+    if (!ui.dailyPromiseHistory || !ui.dailyPromiseHistoryList) return;
+
+    const historyItems = Array.isArray(promises) ? promises.slice(1) : [];
+    ui.dailyPromiseHistoryList.innerHTML = "";
+
+    if (!historyItems.length) {
+      ui.dailyPromiseHistory.hidden = true;
+      return;
+    }
+
+    historyItems.forEach((promise) => {
+      const item = document.createElement("article");
+      item.className = "daily-promise-history-item";
+
+      const text = document.createElement("p");
+      text.className = "daily-promise-history-text";
+      text.textContent = buildPromiseSnippet(promise?.promise_text || "");
+
+      const meta = document.createElement("p");
+      meta.className = "daily-promise-history-meta";
+      const author = promise?.author || "Scripture";
+      const date = formatPromiseDate(
+        promise?.created_at || promise?.updated_at || new Date().toISOString(),
+      );
+      meta.textContent = `${author} - ${date}`;
+
+      item.append(text, meta);
+      ui.dailyPromiseHistoryList.appendChild(item);
     });
+
+    ui.dailyPromiseHistory.hidden = false;
   }
 
   function setDailyPromiseText(rawText = "") {

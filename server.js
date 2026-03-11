@@ -609,6 +609,12 @@ const isSupabasePayloadTooLargeError = (statusCode, details = "") => {
   }
 };
 
+const createPayloadTooLargeError = (message) => {
+  const error = new Error(message);
+  error.code = "PAYLOAD_TOO_LARGE";
+  return error;
+};
+
 const updateSupabaseStorageBucket = async () => {
   if (!isSupabaseStorageConfigured()) {
     return;
@@ -626,6 +632,12 @@ const updateSupabaseStorageBucket = async () => {
 
   if (!response.ok) {
     const details = await response.text().catch(() => "");
+    if (isSupabasePayloadTooLargeError(response.status, details)) {
+      const requestedLimit = SUPABASE_STORAGE_FILE_SIZE_LIMIT || 0;
+      throw createPayloadTooLargeError(
+        `Supabase storage rejected the requested bucket file size limit (${requestedLimit} bytes). Your project likely enforces a lower per-file cap. Reduce MAX_UPLOAD_SIZE_BYTES/SUPABASE_STORAGE_FILE_SIZE_LIMIT or increase the project limit in Supabase.`,
+      );
+    }
     throw new Error(
       `Failed to update storage bucket "${SUPABASE_STORAGE_BUCKET}" (${response.status}): ${
         details || response.statusText
@@ -704,6 +716,7 @@ const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
     return null;
   }
 
+  const fileSize = Number(file?.size || 0);
   const objectPath = buildSupabaseObjectPath(file, materialType);
   const encodedPath = encodeStoragePath(objectPath);
   const bucketSegment = encodeURIComponent(SUPABASE_STORAGE_BUCKET);
@@ -739,8 +752,9 @@ const uploadFileToSupabaseStorage = async (file, materialType = "file") => {
       if (!response.ok) {
         details = await response.text().catch(() => "");
         if (isSupabasePayloadTooLargeError(response.status, details)) {
-          throw new Error(
-            `Supabase storage bucket "${SUPABASE_STORAGE_BUCKET}" rejected this file size. Increase bucket file size limit to at least ${MAX_UPLOAD_SIZE_BYTES} bytes, or upload a smaller file.`,
+          const sizeLabel = fileSize ? `${fileSize} bytes` : "this size";
+          throw createPayloadTooLargeError(
+            `Supabase storage bucket "${SUPABASE_STORAGE_BUCKET}" rejected ${sizeLabel}. Increase the project/bucket file size limit or upload a smaller file.`,
           );
         }
         throw new Error(
@@ -1666,10 +1680,11 @@ app.post(
       if (req.file?.path) {
         safeUnlink(req.file.path);
       }
-      res.status(500).json({
+      const isPayloadTooLarge = error?.code === "PAYLOAD_TOO_LARGE";
+      res.status(isPayloadTooLarge ? 413 : 500).json({
         success: false,
-        error: "Failed to upload material",
-        details: error.message,
+        error: isPayloadTooLarge ? error.message : "Failed to upload material",
+        details: isPayloadTooLarge ? undefined : error.message,
       });
     }
   },
@@ -3428,6 +3443,38 @@ app.get("/api/daily-promise/latest", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to get latest daily promise",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/daily-promises", async (req, res) => {
+  try {
+    const rawLimit = parseInt(req.query.limit, 10);
+    const safeLimit = Number.isFinite(rawLimit) ? rawLimit : 5;
+    const clampedLimit = Math.min(Math.max(safeLimit, 1), 20);
+
+    const [rows] = await pool.execute(
+      "SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT ?",
+      [clampedLimit],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "No daily promises found",
+      });
+    }
+
+    res.json({
+      success: true,
+      promises: rows,
+    });
+  } catch (error) {
+    console.error("Get daily promises error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get daily promises",
       details: error.message,
     });
   }

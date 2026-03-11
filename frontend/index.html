@@ -147,19 +147,6 @@
 
     <main>
       <section id="home" class="hero">
-        <div class="hero-video-wrap" aria-hidden="true">
-          <div class="hero-video-loading">
-            <span class="hero-video-spinner" aria-hidden="true"></span>
-            <span class="hero-video-text">Loading video...</span>
-          </div>
-          <iframe
-            class="hero-video-embed"
-            src="https://www.youtube.com/embed/9Cc_s9DUC7U?autoplay=1&mute=1&loop=1&playlist=9Cc_s9DUC7U&controls=0&modestbranding=1&rel=0&playsinline=1&iv_load_policy=3&disablekb=1"
-            title="Hero background video"
-            frameborder="0"
-            allow="autoplay; encrypted-media; picture-in-picture"
-            referrerpolicy="strict-origin-when-cross-origin"></iframe>
-        </div>
         <div class="hero-decor hero-decor-1"></div>
         <div class="hero-decor hero-decor-2"></div>
 
@@ -392,6 +379,12 @@
             <p id="dailyUpdatePromiseAuthor" class="daily-update-author"></p>
             <p id="dailyUpdatePromiseDate" class="daily-update-date"></p>
           </article>
+          <div id="dailyPromiseHistory" class="daily-promise-history" hidden>
+            <p class="daily-promise-history-title">Previous Promises</p>
+            <div
+              id="dailyPromiseHistoryList"
+              class="daily-promise-history-list"></div>
+          </div>
         </div>
       </section>
 

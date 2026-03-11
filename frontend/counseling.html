@@ -65,42 +65,125 @@
     </header>
 
     <main>
-      <section class="section-space">
-        <div class="container">
-          <div class="section-head" data-reveal>
+      <section class="counseling-hero">
+        <div class="container counseling-hero-grid">
+          <div class="counseling-hero-copy" data-reveal>
             <p class="eyebrow">Members Area</p>
-            <h2>Counseling Section</h2>
-            <p>
-              Signed-in members can submit a counseling request or book a
-              counseling session below.
+            <h1>Counseling and Spiritual Guidance</h1>
+            <p class="counseling-hero-lead">
+              Request biblical counseling and receive thoughtful, scripture-centered support
+              from our ministry team.
             </p>
+            <div class="prayer-hero-pills">
+              <span class="prayer-pill"><i class="fa-solid fa-shield-heart"></i> Confidential Care</span>
+              <span class="prayer-pill"><i class="fa-solid fa-people-roof"></i> Family Focused</span>
+              <span class="prayer-pill"><i class="fa-solid fa-book-bible"></i> Scripture Guided</span>
+            </div>
           </div>
+          <aside class="counseling-hero-card" data-reveal>
+            <p class="counseling-hero-card-label">How it works</p>
+            <div class="prayer-steps">
+              <div class="prayer-step">
+                <span class="prayer-step-number">01</span>
+                <div>
+                  <strong>Select your intent</strong>
+                  <p>Choose between a counseling request or booking a session.</p>
+                </div>
+              </div>
+              <div class="prayer-step">
+                <span class="prayer-step-number">02</span>
+                <div>
+                  <strong>Share the details</strong>
+                  <p>Tell us the kind of guidance you need so we can prepare well.</p>
+                </div>
+              </div>
+              <div class="prayer-step">
+                <span class="prayer-step-number">03</span>
+                <div>
+                  <strong>We will follow up</strong>
+                  <p>Our team will reach out with next steps and availability.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </section>
 
-          <div id="login-wall" class="login-wall">
-            <p>Please log in to access this section.</p>
+      <section class="counseling-section section-space">
+        <div class="container">
+          <div id="login-wall" class="login-wall counseling-login">
+            <div>
+              <h3>Sign in required</h3>
+              <p>Please log in to access counseling requests and booking forms.</p>
+            </div>
             <button class="btn btn-solid" id="login-btn">Login to Continue</button>
           </div>
 
           <div id="counseling-form-container" style="display: none;">
-            <article class="panel">
-              <h3>Request Counseling or Book a Session</h3>
-              <form id="counselingForm" class="stack-form">
-                <select id="counselingIntent" required>
-                  <option value="">-- Select Option --</option>
-                  <option value="request">Submit Counseling Request</option>
-                  <option value="booking">Book Counseling Session</option>
-                </select>
-                <select id="counselingType" required>
-                  <option value="">-- Select Counseling Type --</option>
-                  <option value="individual">Individual</option>
-                  <option value="couple">Couple</option>
-                  <option value="family">Family</option>
-                </select>
-                <textarea id="counselingDescription" rows="5" placeholder="Briefly describe your counseling need" required></textarea>
-                <input type="text" id="counselingAvailability" placeholder="Your preferred availability (e.g., weekday evenings)" />
-                <button type="submit" class="btn btn-solid">Submit</button>
-              </form>
-            </article>
+            <div class="counseling-forms-grid">
+              <article class="panel counseling-card" data-reveal>
+                <div class="prayer-card-header">
+                  <h3>Request Counseling or Book a Session</h3>
+                  <p>Share your counseling needs and preferred availability.</p>
+                </div>
+                <form id="counselingForm" class="stack-form counseling-form">
+                  <div class="field">
+                    <label for="counselingIntent">Request Type</label>
+                    <select id="counselingIntent" required>
+                      <option value="">Select an option</option>
+                      <option value="request">Submit Counseling Request</option>
+                      <option value="booking">Book Counseling Session</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="counselingType">Counseling Type</label>
+                    <select id="counselingType" required>
+                      <option value="">Select counseling type</option>
+                      <option value="individual">Individual</option>
+                      <option value="couple">Couple</option>
+                      <option value="family">Family</option>
+                    </select>
+                  </div>
+                  <div class="field">
+                    <label for="counselingDescription">Counseling Need</label>
+                    <textarea
+                      id="counselingDescription"
+                      rows="5"
+                      placeholder="Briefly describe your counseling need"
+                      required></textarea>
+                  </div>
+                  <div class="field">
+                    <label for="counselingAvailability">Preferred Availability</label>
+                    <input
+                      type="text"
+                      id="counselingAvailability"
+                      placeholder="Weekday evenings, Saturday mornings, etc." />
+                  </div>
+                  <button type="submit" class="btn btn-solid">Submit</button>
+                </form>
+              </article>
+
+              <article class="panel counseling-card counseling-aside" data-reveal>
+                <div class="prayer-card-header">
+                  <h3>What to Expect</h3>
+                  <p>We aim to respond within 24-48 hours after submission.</p>
+                </div>
+                <ul class="care-list">
+                  <li>
+                    <i class="fa-solid fa-circle-check"></i>
+                    Sessions are confidential and handled with care.
+                  </li>
+                  <li>
+                    <i class="fa-solid fa-circle-check"></i>
+                    We offer individual, couple, and family guidance.
+                  </li>
+                  <li>
+                    <i class="fa-solid fa-circle-check"></i>
+                    You will receive follow-up details via email.
+                  </li>
+                </ul>
+              </article>
+            </div>
             <p id="form-message" class="auth-message"></p>
           </div>
         </div>

@@ -14,6 +14,11 @@
     <link
       rel="stylesheet"
       href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
     <style>
       * {
         margin: 0;
@@ -22,23 +27,29 @@
       }
 
       body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
+        background:
+          radial-gradient(circle at 12% 18%, rgba(46, 182, 159, 0.18), transparent 38%),
+          radial-gradient(circle at 86% 12%, rgba(215, 169, 94, 0.16), transparent 35%),
+          linear-gradient(135deg, #050d18 0%, #081727 45%, #0a2032 100%);
         min-height: 100vh;
         display: flex;
         justify-content: center;
         align-items: center;
         padding: 20px;
+        color: #e2e8f0;
       }
 
       .login-container {
-        background: white;
-        border-radius: 10px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+        background: rgba(8, 20, 32, 0.9);
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 24px 60px rgba(2, 8, 15, 0.45);
         width: 100%;
         max-width: 400px;
         padding: 40px;
         animation: slideUp 0.5s ease;
+        backdrop-filter: blur(6px);
       }
 
       @keyframes slideUp {
@@ -58,19 +69,29 @@
       }
 
       .login-icon {
-        font-size: 48px;
-        color: #667eea;
-        margin-bottom: 15px;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 16px;
+        border-radius: 18px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        color: #fff;
+        background: linear-gradient(135deg, #2eb69f 0%, #1f8f7e 100%);
+        box-shadow: 0 14px 30px rgba(31, 143, 126, 0.35);
       }
 
       .login-header h1 {
         font-size: 28px;
-        color: #333;
+        color: #f4f7fb;
         margin-bottom: 10px;
+        font-family: "Cormorant Garamond", serif;
+        letter-spacing: 0.5px;
       }
 
       .login-header p {
-        color: #666;
+        color: #b7c7d8;
         font-size: 14px;
       }
 
@@ -81,27 +102,31 @@
       label {
         display: block;
         margin-bottom: 8px;
-        color: #333;
+        color: #c3d3e3;
         font-weight: 600;
         font-size: 14px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
       }
 
       input[type="email"],
       input[type="password"] {
         width: 100%;
         padding: 12px 15px;
-        border: 2px solid #e0e0e0;
-        border-radius: 5px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        border-radius: 10px;
         font-size: 14px;
         transition: border-color 0.3s;
         font-family: inherit;
+        background: rgba(9, 24, 38, 0.8);
+        color: #f1f5f9;
       }
 
       input[type="email"]:focus,
       input[type="password"]:focus {
         outline: none;
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: #2eb69f;
+        box-shadow: 0 0 0 3px rgba(46, 182, 159, 0.18);
       }
 
       .remember-forgot {
@@ -110,25 +135,26 @@
         align-items: center;
         margin-bottom: 25px;
         font-size: 13px;
+        color: #c3d3e3;
       }
 
       .remember-forgot a {
-        color: #667eea;
+        color: #2eb69f;
         text-decoration: none;
         transition: color 0.3s;
       }
 
       .remember-forgot a:hover {
-        color: #764ba2;
+        color: #d7a95e;
       }
 
       .login-btn {
         width: 100%;
         padding: 12px;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2eb69f 0%, #1f8f7e 100%);
         color: white;
         border: none;
-        border-radius: 5px;
+        border-radius: 12px;
         font-size: 16px;
         font-weight: 600;
         cursor: pointer;
@@ -139,7 +165,7 @@
 
       .login-btn:hover {
         transform: translateY(-2px);
-        box-shadow: 0 5px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 14px 26px rgba(31, 143, 126, 0.4);
       }
 
       .login-btn:active {
@@ -152,14 +178,14 @@
       }
 
       .error-message {
-        background: #fee;
-        color: #c33;
+        background: rgba(181, 61, 61, 0.18);
+        color: #ffb4b4;
         padding: 12px;
-        border-radius: 5px;
+        border-radius: 10px;
         margin-bottom: 20px;
         display: none;
         font-size: 14px;
-        border-left: 4px solid #c33;
+        border-left: 4px solid #ef4444;
       }
 
       .error-message.show {
@@ -181,14 +207,14 @@
       }
 
       .success-message {
-        background: #efe;
-        color: #3c3;
+        background: rgba(31, 127, 86, 0.18);
+        color: #9ff0c8;
         padding: 12px;
-        border-radius: 5px;
+        border-radius: 10px;
         margin-bottom: 20px;
         display: none;
         font-size: 14px;
-        border-left: 4px solid #3c3;
+        border-left: 4px solid #22c55e;
       }
 
       .success-message.show {
@@ -209,7 +235,7 @@
       }
 
       .back-link a:hover {
-        color: #764ba2;
+        color: #d7a95e;
       }
 
       .loading-spinner {
@@ -295,7 +321,7 @@
       </form>
 
       <div class="back-link">
-        <a href="index.html">← Back to Home</a>
+        <a href="index.html">&larr; Back to Home</a>
       </div>
     </div>
 
