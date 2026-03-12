@@ -1707,6 +1707,14 @@
             </a>
           </li>
           <li>
+            <a href="#" class="nav-link" data-section="devotion-posts">
+              <div class="nav-icon">
+                <i class="fas fa-fire"></i>
+              </div>
+              <span class="nav-text">Devotion Posts</span>
+            </a>
+          </li>
+          <li>
             <a href="#" class="nav-link" data-section="daily-promise">
               <div class="nav-icon">
                 <i class="fas fa-bible"></i>
@@ -2355,6 +2363,86 @@
           </div>
         </section>
 
+        <!-- Devotion Posts Section -->
+        <section id="devotion-posts" class="content-section">
+          <h2 style="margin-bottom: 1.5rem; color: white">Devotion Posts</h2>
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Post a New Devotion</div>
+            </div>
+            <form id="devotionForm">
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="devotionTitle" class="form-label"
+                  >Title</label
+                >
+                <input
+                  type="text"
+                  id="devotionTitle"
+                  class="form-input"
+                  placeholder="Enter devotion title" />
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="devotionText" class="form-label"
+                  >Devotion Text <span class="required">*</span></label
+                >
+                <textarea
+                  id="devotionText"
+                  class="form-textarea"
+                  rows="5"
+                  placeholder="Write the devotion for today"
+                  required></textarea>
+              </div>
+              <div class="form-group" style="margin-bottom: 1.5rem">
+                <label for="devotionAuthor" class="form-label"
+                  >Author</label
+                >
+                <input
+                  type="text"
+                  id="devotionAuthor"
+                  class="form-input"
+                  placeholder="Enter author name" />
+              </div>
+              <div class="form-actions">
+                <button
+                  type="submit"
+                  class="btn btn-primary"
+                  id="devotionSubmitBtn">
+                  <i class="fas fa-paper-plane"></i> Post Devotion
+                </button>
+              </div>
+            </form>
+          </div>
+          <div class="card" style="margin-top: 1rem">
+            <div
+              class="card-header"
+              style="
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                gap: 1rem;
+              ">
+              <div class="card-title">Latest Devotion Preview</div>
+              <button
+                type="button"
+                class="btn btn-secondary"
+                id="refreshDevotionBtn">
+                <i class="fas fa-rotate-right"></i> Refresh
+              </button>
+            </div>
+            <div
+              id="devotionPreviewState"
+              style="color: rgba(255, 255, 255, 0.75)">
+              No devotion loaded yet.
+            </div>
+            <div id="devotionPreview" style="display: none">
+              <p id="devotionPreviewTitle" style="margin-top: 0.75rem; color: white"></p>
+              <p id="devotionPreviewText" style="margin-top: 0.5rem; color: #cbd5f5"></p>
+              <p id="devotionPreviewAuthor" style="margin-top: 0.25rem; color: #94a3b8"></p>
+              <p id="devotionPreviewDate" style="margin-top: 0.25rem; color: #94a3b8"></p>
+            </div>
+          </div>
+        </section>
+
         <!-- Daily Promise Section -->
         <section id="daily-promise" class="content-section">
           <h2 style="margin-bottom: 1.5rem; color: white">Daily Promise</h2>
@@ -2519,20 +2607,34 @@
 
     <script>
       // Configuration
-      const isLocalHost =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1";
+      const isLocalHost = (() => {
+        const host = window.location.hostname;
+        if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+          return true;
+        }
+        if (/^10\./.test(host) || /^192\.168\./.test(host)) {
+          return true;
+        }
+        if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) {
+          return true;
+        }
+        return false;
+      })();
+      const normalizeApiBase = (value) => {
+        if (!value) return value;
+        const trimmed = value.replace(/\/+$/, "");
+        return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
+      };
       const appConfigApiBase = window.APP_CONFIG?.API_BASE?.trim?.() || "";
       const configuredApiBase = document
         .querySelector('meta[name="api-base-url"]')
         ?.getAttribute("content")
         ?.trim();
-      const API_BASE =
+      const API_BASE = normalizeApiBase(
         appConfigApiBase ||
-        configuredApiBase ||
-        (isLocalHost
-          ? "http://localhost:5501/api"
-          : `${window.location.origin}/api`);
+          configuredApiBase ||
+          (isLocalHost ? "http://localhost:5501" : window.location.origin),
+      );
 
       // State management
       let currentSection = "dashboard";
@@ -2750,6 +2852,16 @@
             loadLatestDailyPromisePreview,
           );
         }
+
+        const devotionForm = document.getElementById("devotionForm");
+        if (devotionForm) {
+          devotionForm.addEventListener("submit", handleDevotionSubmit);
+        }
+
+        const refreshDevotionBtn = document.getElementById("refreshDevotionBtn");
+        if (refreshDevotionBtn) {
+          refreshDevotionBtn.addEventListener("click", loadLatestDevotionPreview);
+        }
       }
 
       // Debounce function for search
@@ -2825,6 +2937,9 @@
             case "requests":
               await loadRequests();
               break;
+            case "devotion-posts":
+              await loadLatestDevotionPreview();
+              break;
             case "settings":
               await loadSettings();
               break;
@@ -2846,6 +2961,7 @@
           analytics: "Analytics",
           users: "User Management",
           requests: "Member Requests",
+          "devotion-posts": "Devotion Posts",
           settings: "Settings",
           "daily-promise": "Daily Promise",
         };
@@ -4225,6 +4341,124 @@
         } catch (error) {
           console.error("Error saving settings:", error);
           showMessage("Failed to save settings: " + error.message, "error");
+        }
+      }
+
+      // Handle Devotion submission
+      async function handleDevotionSubmit(e) {
+        e.preventDefault();
+        const devotionText = document.getElementById("devotionText").value;
+        const devotionTitle = document.getElementById("devotionTitle").value;
+        const devotionAuthor = document.getElementById("devotionAuthor").value;
+        const submitBtn = document.getElementById("devotionSubmitBtn");
+
+        if (!devotionText) {
+          showMessage("Devotion text is required", "error");
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.innerHTML =
+          '<i class="fas fa-spinner fa-spin"></i> Posting...';
+
+        try {
+          const response = await fetch(`${API_BASE}/admin/devotion-posts`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${getAuthToken()}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              devotion_text: devotionText,
+              title: devotionTitle,
+              author: devotionAuthor,
+            }),
+          });
+
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Unexpected response format" }));
+
+          if (!response.ok || !data.success) {
+            const errorMessage =
+              data?.details || data?.error || "Failed to post devotion";
+            throw new Error(errorMessage);
+          }
+
+          showMessage("Devotion posted successfully", "success");
+          document.getElementById("devotionForm").reset();
+          await loadLatestDevotionPreview();
+        } catch (error) {
+          console.error("Error posting devotion:", error);
+          showMessage("Failed to post devotion: " + error.message, "error");
+        } finally {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML =
+            '<i class="fas fa-paper-plane"></i> Post Devotion';
+        }
+      }
+
+      async function loadLatestDevotionPreview() {
+        const stateElement = document.getElementById("devotionPreviewState");
+        const previewElement = document.getElementById("devotionPreview");
+        const titleElement = document.getElementById("devotionPreviewTitle");
+        const textElement = document.getElementById("devotionPreviewText");
+        const authorElement = document.getElementById("devotionPreviewAuthor");
+        const dateElement = document.getElementById("devotionPreviewDate");
+
+        if (
+          !stateElement ||
+          !previewElement ||
+          !titleElement ||
+          !textElement ||
+          !authorElement ||
+          !dateElement
+        ) {
+          return;
+        }
+
+        stateElement.style.display = "block";
+        stateElement.textContent = "Loading latest devotion...";
+        previewElement.style.display = "none";
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/devotion-posts?limit=1`,
+            getFetchOptions(),
+          );
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Unexpected response format" }));
+
+          if (response.status === 404) {
+            stateElement.textContent = "No devotion posts have been published yet.";
+            return;
+          }
+
+          if (!response.ok || !data.success || !data.posts?.length) {
+            throw new Error(data.error || "Failed to load latest devotion");
+          }
+
+          const devotion = data.posts[0];
+          const createdDate = new Date(devotion.created_at);
+          const formattedDate = Number.isNaN(createdDate.getTime())
+            ? "Unknown date"
+            : createdDate.toLocaleString();
+
+          titleElement.textContent = devotion.title || "Daily Devotion";
+          textElement.textContent = devotion.devotion_text || "";
+          authorElement.textContent = devotion.author
+            ? `Author: ${devotion.author}`
+            : "Author: Ministry Team";
+          dateElement.textContent = `Published: ${formattedDate}`;
+
+          stateElement.style.display = "none";
+          previewElement.style.display = "block";
+        } catch (error) {
+          console.error("Error loading latest devotion:", error);
+          stateElement.style.display = "block";
+          stateElement.textContent = `Failed to load devotion: ${error.message}`;
+          previewElement.style.display = "none";
         }
       }
 

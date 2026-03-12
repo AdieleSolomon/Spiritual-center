@@ -14,31 +14,48 @@ const App = (() => {
   const GOOGLE_MAPS_EMBED_URL = getConfigString("GOOGLE_MAPS_EMBED_URL");
   const GOOGLE_MAPS_DIRECTIONS_URL = getConfigString("GOOGLE_MAPS_DIRECTIONS_URL");
 
-  const isLocalHost =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1";
+  const isLocalHost = (() => {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+      return true;
+    }
+    if (/^10\./.test(host) || /^192\.168\./.test(host)) {
+      return true;
+    }
+    if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) {
+      return true;
+    }
+    return false;
+  })();
+
+  const normalizeApiBase = (value) => {
+    if (!value) return value;
+    const trimmed = value.replace(/\/+$/, "");
+    return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
+  };
 
   const getConfiguredApiBase = () => {
     const windowValue =
       window.APP_CONFIG?.API_BASE || window.__APP_CONFIG__?.API_BASE;
     if (typeof windowValue === "string" && windowValue.trim()) {
-      return windowValue.trim().replace(/\/$/, "");
+      return normalizeApiBase(windowValue.trim());
     }
 
     const metaValue = document
       .querySelector('meta[name="api-base-url"]')
       ?.getAttribute("content");
     if (typeof metaValue === "string" && metaValue.trim()) {
-      return metaValue.trim().replace(/\/$/, "");
+      return normalizeApiBase(metaValue.trim());
     }
 
     return null;
   };
 
   const configuredApiBase = getConfiguredApiBase();
-  const API_BASE =
+  const API_BASE = normalizeApiBase(
     configuredApiBase ||
-    (isLocalHost ? "http://localhost:5501/api" : `${window.location.origin}/api`);
+      (isLocalHost ? "http://localhost:5501" : window.location.origin),
+  );
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
   const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
   const DAILY_PROMISE_COLLAPSE_MIN_CHARS = 260;
@@ -101,6 +118,8 @@ const App = (() => {
     header: document.getElementById("siteHeader"),
     navToggle: document.getElementById("navToggle"),
     mainNav: document.getElementById("mainNav"),
+    navDropdownTrigger: document.getElementById("exploreDropdownBtn"),
+    navDropdownMenu: document.getElementById("exploreDropdownMenu"),
     openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")),
     resourceLoginBtn: document.getElementById("resourceLoginBtn"),
     logoutBtn: document.getElementById("logoutBtn"),
@@ -194,6 +213,11 @@ const App = (() => {
     dailyUpdatePromiseDate: document.getElementById("dailyUpdatePromiseDate"),
     dailyPromiseHistory: document.getElementById("dailyPromiseHistory"),
     dailyPromiseHistoryList: document.getElementById("dailyPromiseHistoryList"),
+    dailyPromiseCommentsList: document.getElementById("dailyPromiseCommentsList"),
+    dailyPromiseCommentForm: document.getElementById("dailyPromiseCommentForm"),
+    dailyPromiseCommentInput: document.getElementById("dailyPromiseCommentInput"),
+    devotionList: document.getElementById("devotionList"),
+    devotionNotice: document.getElementById("devotionNotice"),
   };
 
   function init() {
@@ -202,6 +226,7 @@ const App = (() => {
     setYear();
     setupScrollHeader();
     setupMobileNav();
+    setupNavDropdown();
     setupActiveNavTracking();
     setupRevealAnimations();
     setupModal();
@@ -216,6 +241,7 @@ const App = (() => {
     setupPrayerPage();
     setupCounselingPage();
     setupDailyPromise();
+    setupDevotionPage();
 
     updateAuthUI();
     hydrateSession().finally(() => {
@@ -251,6 +277,8 @@ const App = (() => {
     const closeMenu = () => {
       ui.mainNav.classList.remove("open");
       ui.navToggle.setAttribute("aria-expanded", "false");
+      ui.navDropdownMenu?.classList.remove("open");
+      ui.navDropdownTrigger?.setAttribute("aria-expanded", "false");
     };
 
     ui.navToggle.setAttribute("aria-expanded", "false");
@@ -279,6 +307,44 @@ const App = (() => {
 
     window.addEventListener("resize", () => {
       if (window.innerWidth > 900) {
+        closeMenu();
+      }
+    });
+  }
+
+  function setupNavDropdown() {
+    const trigger = ui.navDropdownTrigger;
+    const menu = ui.navDropdownMenu;
+    if (!trigger || !menu) return;
+
+    const closeMenu = () => {
+      menu.classList.remove("open");
+      trigger.setAttribute("aria-expanded", "false");
+    };
+
+    trigger.setAttribute("aria-expanded", "false");
+
+    trigger.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const nextOpen = !menu.classList.contains("open");
+      menu.classList.toggle("open", nextOpen);
+      trigger.setAttribute("aria-expanded", String(nextOpen));
+    });
+
+    menu.querySelectorAll("a").forEach((link) => {
+      link.addEventListener("click", closeMenu);
+    });
+
+    document.addEventListener("click", (event) => {
+      if (!menu.classList.contains("open")) return;
+      const target = event.target;
+      if (menu.contains(target) || trigger.contains(target)) return;
+      closeMenu();
+    });
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
         closeMenu();
       }
     });
@@ -1799,6 +1865,7 @@ const App = (() => {
       }
 
       renderDailyPromiseHistory(allPromises);
+      setupDailyPromiseComments(promise);
     };
 
     const clearDailyPromise = () => {
@@ -1815,6 +1882,7 @@ const App = (() => {
         ui.dailyUpdatePromiseDate.textContent = "";
       }
       renderDailyPromiseHistory([]);
+      clearDailyPromiseComments();
     };
 
     const fetchJson = async (url) => {
@@ -1830,7 +1898,10 @@ const App = (() => {
 
     const loadDailyPromises = async () => {
       try {
-        const data = await fetchJson(`${API_BASE}/daily-promises?limit=4`);
+        const promiseLimit = ui.dailyPromiseHistoryList ? 100 : 4;
+        const data = await fetchJson(
+          `${API_BASE}/daily-promises?limit=${promiseLimit}`,
+        );
         const promises = Array.isArray(data?.promises) ? data.promises : [];
         if (!promises.length) {
           clearDailyPromise();
@@ -1854,6 +1925,84 @@ const App = (() => {
     loadDailyPromises();
   }
 
+  function setupDevotionPage() {
+    if (!ui.devotionList || !ui.devotionNotice) return;
+    loadDevotionPosts();
+  }
+
+  function setDevotionNotice(text, tone = "") {
+    if (!ui.devotionNotice) return;
+    ui.devotionNotice.textContent = text;
+    ui.devotionNotice.className = "resource-notice";
+
+    if (tone === "warning") ui.devotionNotice.classList.add("is-warning");
+    if (tone === "error") ui.devotionNotice.classList.add("is-error");
+    if (tone === "success") ui.devotionNotice.classList.add("is-success");
+  }
+
+  function renderDevotionPost(post) {
+    const title = sanitize(post?.title || "Daily Devotion");
+    const author = sanitize(post?.author || "Pst. Wisdom C. Adiele");
+    const text = sanitize(post?.devotion_text || "");
+    const date = new Date(post?.created_at || Date.now()).toLocaleDateString(
+      undefined,
+      {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      },
+    );
+    const formattedText = text.replace(/\n/g, "<br />");
+
+    return `
+      <article class="devotion-card" data-reveal>
+        <div class="devotion-meta">
+          <span>${author}</span>
+          <span>${date}</span>
+        </div>
+        <h3>${title}</h3>
+        <p>${formattedText}</p>
+      </article>
+    `;
+  }
+
+  async function loadDevotionPosts() {
+    setDevotionNotice("Loading devotion posts...");
+
+    try {
+      const response = await fetch(`${API_BASE}/devotion-posts?limit=12`);
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected response format." }));
+
+      if (response.status === 404) {
+        setDevotionNotice("No devotion posts yet. Please check back soon!", "warning");
+        ui.devotionList.innerHTML = "";
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load devotion posts.");
+      }
+
+      const posts = Array.isArray(data?.posts) ? data.posts : [];
+      if (!posts.length) {
+        setDevotionNotice("No devotion posts yet. Please check back soon!", "warning");
+        ui.devotionList.innerHTML = "";
+        return;
+      }
+
+      setDevotionNotice("", "");
+      ui.devotionList.innerHTML = posts.map(renderDevotionPost).join("");
+      setupRevealAnimations();
+    } catch (error) {
+      setDevotionNotice(
+        "Unable to load devotion posts at the moment. Please try again soon.",
+        "error",
+      );
+    }
+  }
+
   function renderDailyPromiseHistory(promises = []) {
     if (!ui.dailyPromiseHistory || !ui.dailyPromiseHistoryList) return;
 
@@ -1871,7 +2020,7 @@ const App = (() => {
 
       const text = document.createElement("p");
       text.className = "daily-promise-history-text";
-      text.textContent = buildPromiseSnippet(promise?.promise_text || "");
+      text.textContent = promise?.promise_text || "";
 
       const meta = document.createElement("p");
       meta.className = "daily-promise-history-meta";
@@ -1886,6 +2035,126 @@ const App = (() => {
     });
 
     ui.dailyPromiseHistory.hidden = false;
+  }
+
+  function clearDailyPromiseComments() {
+    if (!ui.dailyPromiseCommentsList) return;
+    ui.dailyPromiseCommentsList.innerHTML =
+      '<p style="color: var(--ink-soft); font-size: 0.85rem;">No promise selected.</p>';
+    if (ui.dailyPromiseCommentForm) {
+      ui.dailyPromiseCommentForm.dataset.postId = "";
+    }
+  }
+
+  function renderCommentItem(comment) {
+    const username = sanitize(comment?.username || "Member");
+    const initial = username.charAt(0).toUpperCase();
+    const text = sanitize(comment?.comment_text || "");
+    const date = new Date(comment?.created_at || Date.now()).toLocaleDateString();
+
+    return `
+      <div class="feed-comment">
+        <div class="comment-avatar">${initial}</div>
+        <div class="comment-body">
+          <strong>${username}</strong>
+          <p>${text}</p>
+          <span class="comment-date">${date}</span>
+        </div>
+      </div>
+    `;
+  }
+
+  async function loadCommentsForPost(postType, postId, listElement) {
+    if (!listElement || !postType || !postId) return;
+    listElement.innerHTML =
+      '<p style="color: var(--ink-soft); font-size: 0.85rem;">Loading comments...</p>';
+
+    try {
+      const response = await fetch(
+        `${API_BASE}/comments?post_type=${postType}&post_id=${postId}`,
+      );
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected response format." }));
+
+      if (!response.ok) {
+        throw new Error(data?.error || "Failed to load comments.");
+      }
+
+      const comments = Array.isArray(data?.comments) ? data.comments : [];
+      if (!comments.length) {
+        listElement.innerHTML =
+          '<p style="color: var(--ink-soft); font-size: 0.85rem;">No comments yet. Be the first!</p>';
+        return;
+      }
+
+      listElement.innerHTML = comments.map(renderCommentItem).join("");
+    } catch (error) {
+      listElement.innerHTML =
+        '<p style="color: var(--ink-soft); font-size: 0.85rem;">Unable to load comments.</p>';
+    }
+  }
+
+  function setupDailyPromiseComments(promise) {
+    if (
+      !ui.dailyPromiseCommentsList ||
+      !ui.dailyPromiseCommentForm ||
+      !ui.dailyPromiseCommentInput
+    ) {
+      return;
+    }
+
+    const postId = promise?.id;
+    if (!postId) {
+      clearDailyPromiseComments();
+      return;
+    }
+
+    ui.dailyPromiseCommentForm.dataset.postId = String(postId);
+    loadCommentsForPost("promise", postId, ui.dailyPromiseCommentsList);
+
+    if (ui.dailyPromiseCommentForm.dataset.bound === "true") {
+      return;
+    }
+
+    ui.dailyPromiseCommentForm.dataset.bound = "true";
+    ui.dailyPromiseCommentForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const text = ui.dailyPromiseCommentInput.value.trim();
+      if (!text) return;
+
+      const token = state.token || localStorage.getItem("authToken");
+      if (!token) {
+        notify("Please sign in to comment.", "error");
+        return;
+      }
+
+      const formPostId = ui.dailyPromiseCommentForm.dataset.postId;
+      if (!formPostId) {
+        notify("Unable to comment right now. Please refresh.", "error");
+        return;
+      }
+
+      try {
+        await fetch(`${API_BASE}/comments`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            post_type: "promise",
+            post_id: formPostId,
+            comment_text: text,
+          }),
+        });
+
+        ui.dailyPromiseCommentInput.value = "";
+        await loadCommentsForPost("promise", formPostId, ui.dailyPromiseCommentsList);
+      } catch (error) {
+        notify("Unable to send comment. Please try again.", "error");
+      }
+    });
   }
 
   function setDailyPromiseText(rawText = "") {

@@ -1053,6 +1053,28 @@ const postgresSchemaStatements = [
   `,
   "CREATE INDEX IF NOT EXISTS idx_daily_promises_created ON daily_promises (created_at)",
   `
+    CREATE TABLE IF NOT EXISTS devotion_posts (
+      id SERIAL PRIMARY KEY,
+      title VARCHAR(255),
+      devotion_text TEXT NOT NULL,
+      author VARCHAR(255),
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS idx_devotion_posts_created ON devotion_posts (created_at)",
+  `
+    CREATE TABLE IF NOT EXISTS comments (
+      id SERIAL PRIMARY KEY,
+      post_type VARCHAR(50) NOT NULL,
+      post_id INTEGER NOT NULL,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      comment_text TEXT NOT NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_type, post_id)",
+  "CREATE INDEX IF NOT EXISTS idx_comments_created ON comments (created_at)",
+  `
     CREATE TABLE IF NOT EXISTS donations (
       id SERIAL PRIMARY KEY,
       amount DECIMAL(10,2) NOT NULL,
@@ -1188,6 +1210,73 @@ const ensureDefaultAdminUser = async (connection) => {
     email: adminEmail,
     password: adminRawPassword,
   };
+};
+
+let devotionTablesEnsured = false;
+
+const ensureDevotionTables = async () => {
+  if (devotionTablesEnsured) {
+    return;
+  }
+
+  const postgresStatements = [
+    `
+      CREATE TABLE IF NOT EXISTS devotion_posts (
+        id SERIAL PRIMARY KEY,
+        title VARCHAR(255),
+        devotion_text TEXT NOT NULL,
+        author VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    "CREATE INDEX IF NOT EXISTS idx_devotion_posts_created ON devotion_posts (created_at)",
+    `
+      CREATE TABLE IF NOT EXISTS comments (
+        id SERIAL PRIMARY KEY,
+        post_type VARCHAR(50) NOT NULL,
+        post_id INTEGER NOT NULL,
+        user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+        comment_text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `,
+    "CREATE INDEX IF NOT EXISTS idx_comments_post ON comments (post_type, post_id)",
+    "CREATE INDEX IF NOT EXISTS idx_comments_created ON comments (created_at)",
+  ];
+
+  const mysqlStatements = [
+    `
+      CREATE TABLE IF NOT EXISTS devotion_posts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255),
+        devotion_text TEXT NOT NULL,
+        author VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+    `
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        post_type VARCHAR(50) NOT NULL,
+        post_id INT NOT NULL,
+        user_id INT,
+        comment_text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_post (post_type, post_id),
+        INDEX idx_created (created_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `,
+  ];
+
+  const statements = IS_POSTGRES ? postgresStatements : mysqlStatements;
+
+  for (const statement of statements) {
+    await pool.execute(statement);
+  }
+
+  devotionTablesEnsured = true;
 };
 
 const initializePostgresDatabase = async () => {
@@ -1343,6 +1432,33 @@ const initializeDatabase = async () => {
         author VARCHAR(255),
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Devotion posts table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS devotion_posts (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        title VARCHAR(255),
+        devotion_text TEXT NOT NULL,
+        author VARCHAR(255),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    // Comments table
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS comments (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        post_type VARCHAR(50) NOT NULL,
+        post_id INT NOT NULL,
+        user_id INT,
+        comment_text TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_post (post_type, post_id),
+        INDEX idx_created (created_at),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -3452,7 +3568,7 @@ app.get("/api/daily-promises", async (req, res) => {
   try {
     const rawLimit = parseInt(req.query.limit, 10);
     const safeLimit = Number.isFinite(rawLimit) ? rawLimit : 5;
-    const clampedLimit = Math.min(Math.max(safeLimit, 1), 20);
+    const clampedLimit = Math.min(Math.max(safeLimit, 1), 100);
 
     const [rows] = await pool.execute(
       "SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT ?",
@@ -3475,6 +3591,190 @@ app.get("/api/daily-promises", async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to get daily promises",
+      details: error.message,
+    });
+  }
+});
+
+// ==================== DEVOTION ENDPOINTS ====================
+
+app.post("/api/admin/devotion-posts", authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== "admin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+
+    await ensureDevotionTables();
+
+    const { devotion_text, title, author } = req.body;
+
+    if (!devotion_text) {
+      return res.status(400).json({
+        success: false,
+        error: "Devotion text is required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO devotion_posts (title, devotion_text, author)
+      VALUES (?, ?, ?)
+    `,
+      [title, devotion_text, author],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Devotion added successfully",
+      devotion_id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Add devotion error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add devotion",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/devotion-posts", async (req, res) => {
+  try {
+    await ensureDevotionTables();
+
+    const rawLimit = parseInt(req.query.limit, 10);
+    const safeLimit = Number.isFinite(rawLimit) ? rawLimit : 10;
+    const clampedLimit = Math.min(Math.max(safeLimit, 1), 50);
+
+    const [rows] = await pool.execute(
+      "SELECT * FROM devotion_posts ORDER BY created_at DESC LIMIT ?",
+      [clampedLimit],
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "No devotion posts found",
+      });
+    }
+
+    res.json({
+      success: true,
+      posts: rows,
+    });
+  } catch (error) {
+    console.error("Get devotion posts error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get devotion posts",
+      details: error.message,
+    });
+  }
+});
+
+// ==================== COMMENT ENDPOINTS ====================
+
+app.post("/api/comments", authenticateToken, async (req, res) => {
+  try {
+    await ensureDevotionTables();
+
+    const postType = String(req.body.post_type || "").trim().toLowerCase();
+    const postId = Number(req.body.post_id);
+    const commentText = String(req.body.comment_text || "").trim();
+    const allowedTypes = new Set(["devotion", "promise"]);
+
+    if (!allowedTypes.has(postType)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid post type",
+      });
+    }
+
+    if (!Number.isFinite(postId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid post id",
+      });
+    }
+
+    if (!commentText) {
+      return res.status(400).json({
+        success: false,
+        error: "Comment text is required",
+      });
+    }
+
+    const [result] = await pool.execute(
+      `
+      INSERT INTO comments (post_type, post_id, user_id, comment_text)
+      VALUES (?, ?, ?, ?)
+    `,
+      [postType, postId, req.user.userId, commentText],
+    );
+
+    res.status(201).json({
+      success: true,
+      message: "Comment added successfully",
+      comment_id: result.insertId,
+    });
+  } catch (error) {
+    console.error("Add comment error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to add comment",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/comments", async (req, res) => {
+  try {
+    await ensureDevotionTables();
+
+    const postType = String(req.query.post_type || "").trim().toLowerCase();
+    const postId = Number(req.query.post_id);
+    const allowedTypes = new Set(["devotion", "promise"]);
+
+    if (!allowedTypes.has(postType)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid post type",
+      });
+    }
+
+    if (!Number.isFinite(postId)) {
+      return res.status(400).json({
+        success: false,
+        error: "Invalid post id",
+      });
+    }
+
+    const [rows] = await pool.execute(
+      `
+      SELECT
+        c.id,
+        c.post_type,
+        c.post_id,
+        c.comment_text,
+        c.created_at,
+        u.username
+      FROM comments c
+      LEFT JOIN users u ON c.user_id = u.id
+      WHERE c.post_type = ? AND c.post_id = ?
+      ORDER BY c.created_at ASC
+    `,
+      [postType, postId],
+    );
+
+    res.json({
+      success: true,
+      comments: rows,
+    });
+  } catch (error) {
+    console.error("Get comments error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get comments",
       details: error.message,
     });
   }

@@ -43,11 +43,10 @@
     <meta
       name="google-site-verification"
       content="cNif3_RpinazDFWrunZlfPVG1DqiIwMQ0AKZOj5D_lE" />
-
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
       rel="stylesheet" />
     <link
       rel="stylesheet"
@@ -75,6 +74,7 @@
     </script>
   </head>
   <body>
+    <!-- TOP BAR -->
     <div class="topbar">
       <div class="container topbar-inner">
         <a href="tel:+2349072560420" class="top-link"
@@ -84,28 +84,29 @@
           ><i class="fa-solid fa-envelope"></i> Wisdomadiele57@gmail.com</a
         >
         <a href="prayer.html" data-protected-section class="top-link"
-          ><i class="fa-solid fa-hands-praying"></i> Prayer Request Section</a
+          ><i class="fa-solid fa-hands-praying"></i> Prayer Request</a
         >
         <a
           href="https://www.youtube.com/@Adiele.Solomon.C"
           target="_blank"
           rel="noopener noreferrer"
           class="top-link"
-          ><i class="fa-brands fa-youtube"></i> Watch on YouTube</a
+          ><i class="fa-brands fa-youtube"></i> YouTube</a
         >
         <a href="index-youth.html" class="top-link"
-          ><i class="fa-solid fa-right-left"></i> Switch to Youth Version</a
+          ><i class="fa-solid fa-right-left"></i> Youth Version</a
         >
       </div>
     </div>
 
+    <!-- HEADER -->
     <header class="site-header" id="siteHeader">
       <div class="container header-inner">
         <a href="#home" class="brand">
           <span class="brand-mark">
             <img
               src="./587-5875144_sda-church-logo-png-seventh-day-adventist-church.png"
-              alt="Seventh-day Adventist logo"
+              alt="SDA logo"
               class="brand-logo" />
           </span>
           <span class="brand-text">
@@ -119,12 +120,49 @@
         </button>
 
         <nav class="main-nav" id="mainNav">
-          <a href="#home" class="active">Home</a>
-          <a href="#about">About</a>
-          <a href="#services">What We Do</a>
-          <a href="#daily-update">Daily Update</a>
-          <a href="#content">Resources</a>
-          <a href="#contact">Contact</a>
+          <!-- Sections dropdown -->
+          <div class="nav-dropdown">
+            <button
+              class="nav-dropdown-trigger"
+              id="exploreDropdownBtn"
+              aria-expanded="false">
+              <i class="fa-solid fa-compass"></i> Explore
+              <i class="fa-solid fa-chevron-down nav-chevron"></i>
+            </button>
+            <div class="nav-dropdown-menu" id="exploreDropdownMenu">
+              <a href="#home" class="dropdown-link"
+                ><i class="fa-solid fa-house"></i> Home</a
+              >
+              <a href="#about" class="dropdown-link"
+                ><i class="fa-solid fa-church"></i> About Ministry</a
+              >
+              <a href="#services" class="dropdown-link"
+                ><i class="fa-solid fa-hands-praying"></i> What We Do</a
+              >
+              <a href="#content" class="dropdown-link"
+                ><i class="fa-solid fa-book-bible"></i> Resources</a
+              >
+              <a href="#contact" class="dropdown-link"
+                ><i class="fa-solid fa-envelope"></i> Contact</a
+              >
+            </div>
+          </div>
+          <!-- Page links -->
+          <a href="bible-reading.html" class="nav-page-link"
+            ><i class="fa-solid fa-book-open"></i> Bible Reading</a
+          >
+          <a href="devotion.html" class="nav-page-link"
+            ><i class="fa-solid fa-fire-flame-curved"></i> Devotion</a
+          >
+          <a href="daily-promise.html" class="nav-page-link"
+            ><i class="fa-solid fa-star"></i> Daily Promise</a
+          >
+          <a href="prayer.html" class="nav-page-link" data-protected-section
+            ><i class="fa-solid fa-hands-praying"></i> Prayer</a
+          >
+          <a href="counseling.html" class="nav-page-link" data-protected-section
+            ><i class="fa-solid fa-user-doctor"></i> Counseling</a
+          >
           <div class="mobile-nav-actions">
             <button class="btn btn-outline" data-open-auth>
               Member Sign-In
@@ -143,69 +181,222 @@
     </header>
 
     <main>
-      <section id="home" class="hero">
-        <div class="hero-decor hero-decor-1"></div>
-        <div class="hero-decor hero-decor-2"></div>
-
-        <div class="container hero-grid">
-          <div class="hero-copy" data-reveal>
-            <p class="eyebrow">Grounded in Truth, Growing in Grace</p>
-            <h1>
-              A Christ-centered ministry for biblical depth, spiritual renewal,
-              and purposeful living.
-            </h1>
-          </div>
-
-          <article class="hero-profile" data-reveal>
-            <img src="./1U4A1819.JPG" alt="Pastor Wisdom C. Adiele" />
-            <div class="profile-meta">
-              <h2>Pst. Wisdom C. Adiele</h2>
-              <p>Presiding Minister and Spiritual Mentor</p>
-            </div>
-          </article>
-
-          <div class="hero-support" data-reveal>
+      <!-- HERO -->
+      <section id="home" class="hero-pro">
+        <div class="hero-pro-bg"></div>
+        <div class="container hero-pro-grid">
+          <div class="hero-pro-copy" data-reveal>
+            <span class="pro-eyebrow"
+              ><i class="fa-solid fa-dove"></i> SDA Ministry Network</span
+            >
+            <h1>Connect, learn, and grow in Christ together</h1>
             <p>
-              We help believers grow through scripture-based teaching, focused
-              intercession, pastoral guidance, and practical discipleship for
-              everyday life.
+              Follow daily devotionals, promises, and prayer updates from the
+              ministry team. Join the community feed to encourage one another.
             </p>
-            <div class="hero-actions">
+            <div class="hero-pro-actions">
               <a href="#services" class="btn btn-solid"
-                >Discover Our Ministry</a
+                ><i class="fa-solid fa-compass"></i> Discover Ministry</a
               >
               <a href="#contact" class="btn btn-outline">Request Counsel</a>
               <a
                 href="https://www.youtube.com/@Adiele.Solomon.C"
                 target="_blank"
                 rel="noopener noreferrer"
-                class="btn btn-youtube">
-                <i class="fa-brands fa-youtube"></i> Subscribe on YouTube
-              </a>
+                class="btn btn-youtube"
+                ><i class="fa-brands fa-youtube"></i> YouTube</a
+              >
+            </div>
+            <div class="hero-pro-pages">
+              <a href="bible-reading.html" class="pro-page-chip"
+                ><i class="fa-solid fa-book-open"></i> Bible Reading</a
+              >
+              <a href="devotion.html" class="pro-page-chip"
+                ><i class="fa-solid fa-fire-flame-curved"></i> Devotion</a
+              >
+              <a href="daily-promise.html" class="pro-page-chip"
+                ><i class="fa-solid fa-star"></i> Daily Promise</a
+              >
             </div>
           </div>
-        </div>
-
-        <div class="container stat-grid" data-reveal>
-          <div class="stat-card">
-            <strong>Prayer and Pastoral Care</strong>
-            <span>Confidential support throughout the week</span>
-          </div>
-          <div class="stat-card">
-            <strong>Biblical Instruction</strong>
-            <span>Scripture-rich studies for all growth stages</span>
-          </div>
-          <div class="stat-card">
-            <strong>Family and Leadership Formation</strong>
-            <span>Practical discipleship for home and service</span>
-          </div>
-          <div class="stat-card">
-            <strong>Community and Intercession</strong>
-            <span>Consistent prayer covering and accountability</span>
+          <div class="hero-pro-profile" data-reveal>
+            <div class="pro-profile-card">
+              <div class="pro-profile-banner"></div>
+              <div class="pro-profile-body">
+                <div class="pro-avatar-wrap">
+                  <img
+                    src="./1U4A1819.JPG"
+                    alt="Pastor Wisdom C. Adiele"
+                    class="pro-avatar" />
+                </div>
+                <h2 class="pro-profile-name">Pst. Wisdom C. Adiele</h2>
+                <p class="pro-profile-role">
+                  Presiding Minister &amp; Spiritual Mentor
+                </p>
+                <div class="pro-profile-stats">
+                  <div class="pro-stat">
+                    <strong>Prayer</strong><span>Intercession</span>
+                  </div>
+                  <div class="pro-stat">
+                    <strong>Teaching</strong><span>Biblical</span>
+                  </div>
+                  <div class="pro-stat">
+                    <strong>Counsel</strong><span>Pastoral</span>
+                  </div>
+                </div>
+                <a href="#contact" class="btn btn-solid pro-connect-btn"
+                  ><i class="fa-solid fa-handshake"></i> Connect</a
+                >
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- QUICK ACCESS CARDS -->
+      <section class="quick-access section-space">
+        <div class="container">
+          <div class="quick-access-grid" data-reveal>
+            <a href="bible-reading.html" class="qa-card">
+              <div class="qa-icon"><i class="fa-solid fa-book-open"></i></div>
+              <div class="qa-info">
+                <h3>Bible Reading</h3>
+                <p>Today: 2 Kings 17</p>
+              </div>
+              <i class="fa-solid fa-arrow-right qa-arrow"></i>
+            </a>
+            <a href="devotion.html" class="qa-card">
+              <div class="qa-icon devotion">
+                <i class="fa-solid fa-fire-flame-curved"></i>
+              </div>
+              <div class="qa-info">
+                <h3>Daily Devotion</h3>
+                <p>Morning &amp; evening devotionals</p>
+              </div>
+              <i class="fa-solid fa-arrow-right qa-arrow"></i>
+            </a>
+            <a href="daily-promise.html" class="qa-card">
+              <div class="qa-icon promise">
+                <i class="fa-solid fa-star"></i>
+              </div>
+              <div class="qa-info">
+                <h3>Daily Promise</h3>
+                <p>God's promise for today</p>
+              </div>
+              <i class="fa-solid fa-arrow-right qa-arrow"></i>
+            </a>
+            <a href="prayer.html" class="qa-card" data-protected-section>
+              <div class="qa-icon prayer">
+                <i class="fa-solid fa-hands-praying"></i>
+              </div>
+              <div class="qa-info">
+                <h3>Prayer Request</h3>
+                <p>Submit your prayer needs</p>
+              </div>
+              <i class="fa-solid fa-arrow-right qa-arrow"></i>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      <!-- POSTS FEED -->
+      <section id="posts-feed" class="posts-feed section-space">
+        <div class="container feed-layout">
+          <div class="feed-main">
+            <div class="feed-header" data-reveal>
+              <h2 class="feed-title">
+                <i class="fa-solid fa-newspaper"></i> Community Feed
+              </h2>
+              <p class="feed-sub">
+                Read ministry posts and share encouragement in the comments
+              </p>
+            </div>
+            <p id="feedNotice" class="resource-notice">
+              Loading devotion posts...
+            </p>
+            <div id="feedPosts" class="feed-posts-list"></div>
+          </div>
+          <aside class="feed-aside">
+            <div class="aside-card" data-reveal>
+              <h3 class="aside-title">
+                <i class="fa-solid fa-church"></i> Ministry Links
+              </h3>
+              <ul class="aside-links">
+                <li>
+                  <a href="bible-reading.html"
+                    ><i class="fa-solid fa-book-open"></i> Bible Reading Plan</a
+                  >
+                </li>
+                <li>
+                  <a href="devotion.html"
+                    ><i class="fa-solid fa-fire-flame-curved"></i> Daily
+                    Devotion</a
+                  >
+                </li>
+                <li>
+                  <a href="daily-promise.html"
+                    ><i class="fa-solid fa-star"></i> Daily Promise</a
+                  >
+                </li>
+                <li>
+                  <a href="prayer.html" data-protected-section
+                    ><i class="fa-solid fa-hands-praying"></i> Prayer Section</a
+                  >
+                </li>
+                <li>
+                  <a href="counseling.html" data-protected-section
+                    ><i class="fa-solid fa-user-doctor"></i> Counseling</a
+                  >
+                </li>
+                <li>
+                  <a href="all-materials.html"
+                    ><i class="fa-solid fa-file-alt"></i> All Materials</a
+                  >
+                </li>
+                <li>
+                  <a
+                    href="https://www.youtube.com/@Adiele.Solomon.C"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    ><i class="fa-brands fa-youtube"></i> YouTube Channel</a
+                  >
+                </li>
+              </ul>
+            </div>
+            <div class="aside-card aside-scripture" data-reveal>
+              <p class="aside-scripture-label">
+                <i class="fa-solid fa-quote-left"></i> Scripture
+              </p>
+              <blockquote>
+                "Be very careful, then, how you live — not as unwise but as
+                wise, making the most of every opportunity."
+              </blockquote>
+              <cite>Ephesians 5:15-16</cite>
+            </div>
+            <div class="aside-card" data-reveal>
+              <h3 class="aside-title">
+                <i class="fa-solid fa-users"></i> Join the Community
+              </h3>
+              <p
+                style="
+                  color: var(--ink-soft);
+                  font-size: 0.9rem;
+                  margin-bottom: 12px;
+                ">
+                Sign in to access prayer, counseling, and exclusive content.
+              </p>
+              <button
+                class="btn btn-solid"
+                style="width: 100%; justify-content: center"
+                data-open-auth>
+                <i class="fa-solid fa-right-to-bracket"></i> Member Sign-In
+              </button>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- RESOURCES -->
       <section id="content" class="resources section-space">
         <div class="container">
           <div class="section-head" data-reveal>
@@ -217,11 +408,9 @@
               practice.
             </p>
           </div>
-
           <p id="resourceNotice" class="resource-notice" aria-live="polite">
             Loading teachings...
           </p>
-
           <div id="resourceGrid" class="resource-grid"></div>
           <div class="resource-actions">
             <p id="resourceCount" class="resource-count"></p>
@@ -231,23 +420,25 @@
                 id="resourceLoadMore"
                 class="btn btn-outline resource-load-more"
                 hidden>
-                Load More Materials
+                Load More
               </button>
               <a
                 href="all-materials.html"
                 id="resourceViewAll"
                 class="btn btn-solid resource-view-all"
-                hidden>
-                View All Materials
-              </a>
+                hidden
+                >View All Materials</a
+              >
             </div>
           </div>
         </div>
       </section>
 
+      <!-- ABOUT -->
       <section id="about" class="about section-space">
         <div class="container about-grid">
           <div class="about-card" data-reveal>
+            <p class="eyebrow">About</p>
             <h2>About Our Ministry</h2>
             <p>
               We are committed to discipling believers into spiritual maturity,
@@ -259,7 +450,6 @@
               purpose.
             </p>
           </div>
-
           <div class="about-points" data-reveal>
             <article>
               <h3>Vision</h3>
@@ -286,13 +476,13 @@
         </div>
       </section>
 
+      <!-- SERVICES -->
       <section id="services" class="services section-space">
         <div class="container">
           <div class="section-head" data-reveal>
             <p class="eyebrow">What We Do</p>
             <h2>Core Ministry Services</h2>
           </div>
-
           <div class="service-grid">
             <article class="service-card" data-reveal>
               <i class="fa-solid fa-hands-praying"></i>
@@ -320,7 +510,7 @@
             </article>
             <article class="service-card" data-reveal>
               <i class="fa-solid fa-fire"></i>
-              <h3>Revival & End-Time Messages</h3>
+              <h3>Revival &amp; End-Time Messages</h3>
               <p>
                 Prophetic and revival teachings that call believers to holy
                 living and kingdom readiness.
@@ -346,6 +536,7 @@
         </div>
       </section>
 
+      <!-- CTA BAND -->
       <section class="cta-band section-space">
         <div class="container cta-grid" data-reveal>
           <article>
@@ -354,9 +545,9 @@
               Submit your prayer request and our team will stand with you in
               faith.
             </p>
-            <a href="prayer.html" class="btn btn-solid" data-protected-section>
-              <i class="fa-solid fa-hands-praying"></i> Go to Prayer Section
-            </a>
+            <a href="prayer.html" class="btn btn-solid" data-protected-section
+              ><i class="fa-solid fa-hands-praying"></i> Go to Prayer Section</a
+            >
           </article>
           <article>
             <h3>Counseling Section</h3>
@@ -367,124 +558,15 @@
             <a
               href="counseling.html"
               class="btn btn-outline"
-              data-protected-section>
-              <i class="fa-solid fa-user-doctor"></i> Go to Counseling Section
-            </a>
+              data-protected-section
+              ><i class="fa-solid fa-user-doctor"></i> Go to Counseling
+              Section</a
+            >
           </article>
         </div>
       </section>
 
-      <section id="daily-update" class="daily-update section-space">
-        <div class="container">
-          <div class="section-head" data-reveal>
-            <p class="eyebrow">Daily Update</p>
-            <h2>Daily Promise from God</h2>
-          </div>
-          <article class="daily-update-card" data-reveal>
-            <p id="dailyUpdatePromiseText" class="daily-update-text">
-              Loading today's promise...
-            </p>
-            <button
-              type="button"
-              id="dailyUpdateToggleBtn"
-              class="daily-update-toggle"
-              aria-expanded="false"
-              hidden>
-              View More
-            </button>
-            <p id="dailyUpdatePromiseAuthor" class="daily-update-author"></p>
-            <p id="dailyUpdatePromiseDate" class="daily-update-date"></p>
-          </article>
-          <div id="dailyPromiseHistory" class="daily-promise-history" hidden>
-            <p class="daily-promise-history-title">Previous Promises</p>
-            <div
-              id="dailyPromiseHistoryList"
-              class="daily-promise-history-list"></div>
-          </div>
-        </div>
-      </section>
-
-      <section class="engage section-space">
-        <div class="container engage-grid">
-          <article class="panel" data-reveal>
-            <h3>Prayer and Counseling Access</h3>
-            <p>
-              Prayer and counseling sections are available to signed-in members.
-              Open a section below to submit a prayer request or book a session.
-            </p>
-            <div class="stack-form">
-              <a
-                href="prayer.html"
-                class="btn btn-solid"
-                data-protected-section>
-                <i class="fa-solid fa-hands-praying"></i> Prayer Section
-              </a>
-              <a
-                href="counseling.html"
-                class="btn btn-outline"
-                data-protected-section>
-                <i class="fa-solid fa-user-doctor"></i> Counseling Section
-              </a>
-            </div>
-            <p class="resource-notice is-warning">
-              Sign in is required before opening these sections.
-            </p>
-          </article>
-
-          <article class="panel quick-links" data-reveal>
-            <h3>Ministry Quick Links</h3>
-            <ul>
-              <li>
-                <a href="admin-login.html"
-                  ><i class="fa-solid fa-chart-line"></i> Admin Dashboard</a
-                >
-              </li>
-              <li>
-                <a href="counseling.html" data-protected-section
-                  ><i class="fa-solid fa-user-doctor"></i> Counseling Request
-                  Section</a
-                >
-              </li>
-              <li>
-                <a
-                  href="https://www.youtube.com/@Adiele.Solomon.C"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  ><i class="fa-brands fa-youtube"></i> YouTube Channel</a
-                >
-              </li>
-              <li>
-                <a
-                  href="https://youtube.com/channel/UCFp25-UmkyXpp6oBRxJZ3oQ"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  ><i class="fa-brands fa-youtube"></i> YouTube Channel (Alt
-                  Link)</a
-                >
-              </li>
-              <li>
-                <a href="mailto:Wisdomadiele57@gmail.com"
-                  ><i class="fa-solid fa-envelope"></i> Email Contact</a
-                >
-              </li>
-              <li>
-                <a href="tel:+2349072560420"
-                  ><i class="fa-solid fa-phone"></i> Call Ministry Line</a
-                >
-              </li>
-            </ul>
-
-            <div class="quote-block">
-              <p>
-                "Be very careful, then, how you live... making the most of every
-                opportunity."
-              </p>
-              <span>Ephesians 5:15-16</span>
-            </div>
-          </article>
-        </div>
-      </section>
-
+      <!-- CONTACT -->
       <section id="contact" class="contact section-space">
         <div class="container contact-grid">
           <article data-reveal>
@@ -510,12 +592,12 @@
               >
             </div>
             <div class="contact-map">
-              <h3>Find Seventh-day Adventist Churches Near You</h3>
+              <h3>Find SDA Churches Near You</h3>
               <div class="map-frame">
                 <iframe
                   id="googleMapEmbed"
                   loading="lazy"
-                  title="Seventh-day Adventist churches near your location on Google Maps"></iframe>
+                  title="Seventh-day Adventist churches near your location"></iframe>
               </div>
               <a
                 id="googleDirectionsLink"
@@ -527,7 +609,6 @@
               </a>
             </div>
           </article>
-
           <article class="panel" data-reveal>
             <form id="contactForm" class="stack-form">
               <input
@@ -559,6 +640,7 @@
       </section>
     </main>
 
+    <!-- FOOTER -->
     <footer class="site-footer">
       <div class="container footer-inner">
         <div>
@@ -566,7 +648,7 @@
             <span class="brand-mark">
               <img
                 src="./587-5875144_sda-church-logo-png-seventh-day-adventist-church.png"
-                alt="Seventh-day Adventist logo"
+                alt="SDA logo"
                 class="brand-logo" />
             </span>
             <span class="brand-text">
@@ -583,28 +665,22 @@
           <a href="#about">About</a>
           <a href="#services">Services</a>
           <a href="#content">Resources</a>
+          <a href="bible-reading.html">Bible Reading</a>
+          <a href="devotion.html">Devotion</a>
+          <a href="daily-promise.html">Daily Promise</a>
           <a href="#contact">Contact</a>
           <a href="tel:+2349072560420" class="mobile-footer-only"
             ><i class="fa-solid fa-phone"></i> +234 907 256 0420</a
           >
           <a href="mailto:Wisdomadiele57@gmail.com" class="mobile-footer-only"
-            ><i class="fa-solid fa-envelope"></i> Wisdomadiele57@gmail.com</a
-          >
-          <a
-            href="prayer.html"
-            data-protected-section
-            class="mobile-footer-only"
-            ><i class="fa-solid fa-hands-praying"></i> Prayer Request Section</a
+            ><i class="fa-solid fa-envelope"></i> Email</a
           >
           <a
             href="https://www.youtube.com/@Adiele.Solomon.C"
             target="_blank"
             rel="noopener noreferrer"
             class="mobile-footer-only"
-            ><i class="fa-brands fa-youtube"></i> Watch on YouTube</a
-          >
-          <a href="index-youth.html" class="mobile-footer-only"
-            ><i class="fa-solid fa-right-left"></i> Switch to Youth Version</a
+            ><i class="fa-brands fa-youtube"></i> YouTube</a
           >
         </div>
       </div>
@@ -613,35 +689,29 @@
           >&copy; <span id="year"></span> Center of Knowledge and Spiritual
           Enrichment. All rights reserved.</small
         >
-        <small>
-          Developer:
+        <small
+          >Developer:
           <a
             href="https://adiele-solomon-github-io.vercel.app/"
             target="_blank"
-            rel="noopener noreferrer">
-            Solomon Adiele
-          </a>
-        </small>
+            rel="noopener noreferrer"
+            >Solomon Adiele</a
+          ></small
+        >
       </div>
     </footer>
 
+    <!-- AUTH MODAL -->
     <div class="modal" id="authModal" aria-hidden="true">
       <div class="modal-card">
-        <button
-          class="modal-close"
-          id="closeAuthBtn"
-          aria-label="Close login dialog">
+        <button class="modal-close" id="closeAuthBtn" aria-label="Close">
           <i class="fa-solid fa-xmark"></i>
         </button>
         <h3 id="authModalTitle">Member Access</h3>
         <p id="authModalSubtitle">
           Sign in to access prayer and counseling sections.
         </p>
-
-        <div
-          class="auth-tabs"
-          role="tablist"
-          aria-label="Authentication options">
+        <div class="auth-tabs" role="tablist">
           <button
             type="button"
             class="auth-tab active"
@@ -667,7 +737,6 @@
             Recover
           </button>
         </div>
-
         <form
           id="loginForm"
           class="stack-form auth-view"
@@ -697,7 +766,6 @@
             </button>
           </p>
         </form>
-
         <form
           id="registerForm"
           class="stack-form auth-view"
@@ -719,7 +787,7 @@
           <input
             type="password"
             id="registerPassword"
-            placeholder="Password (minimum 8 characters)"
+            placeholder="Password (min 8 chars)"
             autocomplete="new-password"
             minlength="8"
             required />
@@ -743,7 +811,6 @@
             </button>
           </p>
         </form>
-
         <form
           id="recoverForm"
           class="stack-form auth-view"
@@ -764,7 +831,7 @@
           <input
             type="password"
             id="recoverPassword"
-            placeholder="New password (minimum 8 characters)"
+            placeholder="New password (min 8 chars)"
             autocomplete="new-password"
             minlength="8"
             required />
@@ -787,7 +854,7 @@
             </button>
           </div>
           <p class="auth-inline-note">
-            Remembered your password?
+            Remembered?
             <button
               type="button"
               class="auth-inline-link"
@@ -800,29 +867,218 @@
       </div>
     </div>
 
-    <div class="daily-promise-popup" id="dailyPromisePopup" hidden>
-      <button
-        type="button"
-        id="dailyPromiseCloseBtn"
-        class="daily-promise-close"
-        aria-label="Close daily promise popup">
-        &times;
-      </button>
-      <p class="daily-promise-label">Daily Promise Announcement</p>
-      <h4 id="dailyPromiseTopic" class="daily-promise-topic">
-        Today's Promise from God
-      </h4>
-      <p id="dailyPromiseSnippet" class="daily-promise-snippet">
-        Click show more to read today's promise update.
-      </p>
-      <a
-        href="#daily-update"
-        id="dailyPromiseLink"
-        class="btn btn-outline daily-promise-more">
-        Show More
-      </a>
-    </div>
-
     <script src="./script.js"></script>
+    <script>
+      // Feed posts loader
+      (function () {
+        const isLocalHost = (() => {
+          const host = window.location.hostname;
+          if (
+            host === "localhost" ||
+            host === "127.0.0.1" ||
+            host === "0.0.0.0"
+          ) {
+            return true;
+          }
+          if (/^10\./.test(host) || /^192\.168\./.test(host)) {
+            return true;
+          }
+          if (/^172\.(1[6-9]|2\d|3[0-1])\./.test(host)) {
+            return true;
+          }
+          return false;
+        })();
+        const normalizeApiBase = (value) => {
+          if (!value) return value;
+          const trimmed = value.replace(/\/+$/, "");
+          return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
+        };
+        const configuredApiBase = window.APP_CONFIG?.API_BASE?.trim?.() || "";
+        const API_BASE = normalizeApiBase(
+          configuredApiBase ||
+            (isLocalHost ? "http://localhost:5501" : window.location.origin),
+        );
+        const feedPosts = document.getElementById("feedPosts");
+        const feedNotice = document.getElementById("feedNotice");
+
+        async function loadFeedPosts() {
+          if (!feedPosts) return;
+          try {
+            const devotionRes = await fetch(
+              `${API_BASE}/devotion-posts?limit=6`,
+            )
+              .then((r) => r.json())
+              .catch(() => null);
+
+            const posts = [];
+
+            if (devotionRes?.posts?.length) {
+              devotionRes.posts.forEach((p) =>
+                posts.push({ ...p, kind: "devotion" }),
+              );
+            }
+
+            if (!posts.length) {
+              feedNotice.textContent =
+                "No devotion posts yet. Check back soon!";
+              feedNotice.className = "resource-notice is-warning";
+              return;
+            }
+
+            feedNotice.style.display = "none";
+            feedPosts.innerHTML = posts
+              .slice(0, 6)
+              .map((post) => renderFeedPost(post))
+              .join("");
+            setupCommentForms();
+          } catch (e) {
+            feedNotice.textContent = "Unable to load posts at this time.";
+            feedNotice.className = "resource-notice is-warning";
+          }
+        }
+
+        function sanitize(str) {
+          return String(str || "")
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;");
+        }
+
+        function renderFeedPost(post) {
+          const date = new Date(post.created_at).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          });
+          const kind = post.kind;
+          const iconClass =
+            kind === "devotion" ? "fa-fire-flame-curved" : "fa-star";
+          const kindLabel = kind === "devotion" ? "Devotion" : "Daily Promise";
+          const text = post.devotion_text || post.promise_text || "";
+          const title =
+            post.title ||
+            (kind === "devotion" ? "Daily Devotion" : "Today's Promise");
+          const href =
+            kind === "devotion" ? "devotion.html" : "daily-promise.html";
+          const author = post.author || "Pst. Wisdom C. Adiele";
+          const snippet = text.length > 220 ? text.slice(0, 220) + "..." : text;
+
+          return `
+            <article class="feed-post-card">
+              <div class="feed-post-header">
+                <div class="feed-post-avatar"><i class="fa-solid ${iconClass}"></i></div>
+                <div class="feed-post-meta">
+                  <strong>${sanitize(author)}</strong>
+                  <span class="feed-post-type">${kindLabel}</span>
+                  <span class="feed-post-date">${date}</span>
+                </div>
+              </div>
+              <h3 class="feed-post-title">${sanitize(title)}</h3>
+              <p class="feed-post-body">${sanitize(snippet)}</p>
+              <div class="feed-post-actions">
+                <a href="${href}" class="feed-action-btn"><i class="fa-solid fa-book-open"></i> Read More</a>
+                <button class="feed-action-btn toggle-comments" data-id="${post.id}" data-kind="${kind}"><i class="fa-regular fa-comment"></i> Comments</button>
+              </div>
+              <div class="feed-comments-box" id="comments-${kind}-${post.id}" hidden>
+                <div class="feed-comments-list" id="comments-list-${kind}-${post.id}">
+                  <p style="color:var(--ink-soft);font-size:0.85rem;">Loading comments...</p>
+                </div>
+                <form class="feed-comment-form" data-post-id="${post.id}" data-kind="${kind}">
+                  <input type="text" class="comment-input" placeholder="Write a comment..." required />
+                  <button type="submit" class="btn btn-solid" style="padding:8px 14px;font-size:0.82rem;"><i class="fa-solid fa-paper-plane"></i></button>
+                </form>
+              </div>
+            </article>
+          `;
+        }
+
+        function setupCommentForms() {
+          document.querySelectorAll(".toggle-comments").forEach((btn) => {
+            btn.addEventListener("click", async () => {
+              const id = btn.dataset.id;
+              const kind = btn.dataset.kind;
+              const box = document.getElementById(`comments-${kind}-${id}`);
+              if (!box) return;
+              const isHidden = box.hidden;
+              box.hidden = !isHidden;
+              if (isHidden) await loadComments(id, kind);
+            });
+          });
+
+          document.querySelectorAll(".feed-comment-form").forEach((form) => {
+            form.addEventListener("submit", async (e) => {
+              e.preventDefault();
+              const input = form.querySelector(".comment-input");
+              const text = input.value.trim();
+              if (!text) return;
+              const postId = form.dataset.postId;
+              const kind = form.dataset.kind;
+              const token = localStorage.getItem("authToken");
+              if (!token) {
+                alert("Please sign in to comment.");
+                return;
+              }
+              try {
+                await fetch(`${API_BASE}/comments`, {
+                  method: "POST",
+                  headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`,
+                  },
+                  body: JSON.stringify({
+                    post_type: kind,
+                    post_id: postId,
+                    comment_text: text,
+                  }),
+                });
+                input.value = "";
+                await loadComments(postId, kind);
+              } catch (err) {
+                console.error(err);
+              }
+            });
+          });
+        }
+
+        async function loadComments(postId, kind) {
+          const list = document.getElementById(
+            `comments-list-${kind}-${postId}`,
+          );
+          if (!list) return;
+          try {
+            const res = await fetch(
+              `${API_BASE}/comments?post_type=${kind}&post_id=${postId}`,
+            );
+            const data = await res.json();
+            const comments = data.comments || [];
+            if (!comments.length) {
+              list.innerHTML =
+                '<p style="color:var(--ink-soft);font-size:0.85rem;padding:8px 0;">No comments yet. Be the first!</p>';
+              return;
+            }
+            list.innerHTML = comments
+              .map(
+                (c) => `
+              <div class="feed-comment">
+                <div class="comment-avatar">${(c.username || "U").charAt(0).toUpperCase()}</div>
+                <div class="comment-body">
+                  <strong>${sanitize(c.username || "Member")}</strong>
+                  <p>${sanitize(c.comment_text)}</p>
+                  <span class="comment-date">${new Date(c.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            `,
+              )
+              .join("");
+          } catch (e) {
+            list.innerHTML =
+              '<p style="color:var(--ink-soft);font-size:0.85rem;">Unable to load comments.</p>';
+          }
+        }
+
+        loadFeedPosts();
+      })();
+    </script>
   </body>
 </html>
