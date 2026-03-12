@@ -904,6 +904,10 @@ h3 {
   letter-spacing: 0.01em;
 }
 
+.daily-promise-history-item .feed-comments-box {
+  margin-top: 12px;
+}
+
 .resources {
   background: linear-gradient(180deg, rgba(7, 20, 34, 0.56), rgba(6, 18, 30, 0.64));
 }

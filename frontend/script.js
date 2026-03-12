@@ -202,11 +202,6 @@ const App = (() => {
     loginBtn: document.getElementById("login-btn"),
     formMessage: document.getElementById("form-message"),
     // Daily Promise
-    dailyPromisePopup: document.getElementById("dailyPromisePopup"),
-    dailyPromiseTopic: document.getElementById("dailyPromiseTopic"),
-    dailyPromiseSnippet: document.getElementById("dailyPromiseSnippet"),
-    dailyPromiseLink: document.getElementById("dailyPromiseLink"),
-    dailyPromiseCloseBtn: document.getElementById("dailyPromiseCloseBtn"),
     dailyUpdatePromiseText: document.getElementById("dailyUpdatePromiseText"),
     dailyUpdateToggleBtn: document.getElementById("dailyUpdateToggleBtn"),
     dailyUpdatePromiseAuthor: document.getElementById("dailyUpdatePromiseAuthor"),
@@ -1801,29 +1796,9 @@ const App = (() => {
   }
 
   function setupDailyPromise() {
-    const hasPopup = Boolean(
-      ui.dailyPromisePopup &&
-        ui.dailyPromiseTopic &&
-        ui.dailyPromiseSnippet &&
-        ui.dailyPromiseLink,
-    );
     const hasDailyUpdate = Boolean(ui.dailyUpdatePromiseText);
 
-    if (!hasPopup && !hasDailyUpdate) return;
-
-    ui.dailyPromiseLink?.addEventListener("click", () => {
-      if (ui.dailyPromisePopup) {
-        ui.dailyPromisePopup.hidden = true;
-      }
-      trackEvent("daily_promise_show_more_click", { source: "popup" });
-    });
-
-    ui.dailyPromiseCloseBtn?.addEventListener("click", () => {
-      if (ui.dailyPromisePopup) {
-        ui.dailyPromisePopup.hidden = true;
-      }
-      trackEvent("daily_promise_close_click", { source: "popup" });
-    });
+    if (!hasDailyUpdate) return;
 
     ui.dailyUpdateToggleBtn?.addEventListener("click", () => {
       toggleDailyPromiseTextExpanded();
@@ -1837,22 +1812,9 @@ const App = (() => {
 
       const promiseText = promise.promise_text || "No promise text.";
       const promiseAuthor = promise.author || "Scripture";
-      const topicText = buildPromiseTopic(promiseText);
-      const snippetText = buildPromiseSnippet(promiseText);
       const formattedDate = formatPromiseDate(
         promise.created_at || promise.updated_at || new Date().toISOString(),
       );
-
-      if (ui.dailyPromisePopup) {
-        ui.dailyPromisePopup.hidden = false;
-      }
-
-      if (ui.dailyPromiseTopic) {
-        ui.dailyPromiseTopic.textContent = topicText;
-      }
-      if (ui.dailyPromiseSnippet) {
-        ui.dailyPromiseSnippet.textContent = snippetText;
-      }
 
       if (ui.dailyUpdatePromiseText) {
         setDailyPromiseText(promiseText);
@@ -1869,9 +1831,6 @@ const App = (() => {
     };
 
     const clearDailyPromise = () => {
-      if (ui.dailyPromisePopup) {
-        ui.dailyPromisePopup.hidden = true;
-      }
       if (ui.dailyUpdatePromiseText) {
         setDailyPromiseText("No daily promise has been posted yet.");
       }
@@ -1962,6 +1921,24 @@ const App = (() => {
         </div>
         <h3>${title}</h3>
         <p>${formattedText}</p>
+        <div class="feed-comments-box">
+          <div class="feed-comments-list" id="devotion-comments-list-${post.id}">
+            <p style="color: var(--ink-soft); font-size: 0.85rem;">Loading comments...</p>
+          </div>
+          <form class="feed-comment-form devotion-comment-form" data-post-id="${post.id}">
+            <input
+              type="text"
+              class="comment-input"
+              placeholder="Share a comment..."
+              required />
+            <button
+              type="submit"
+              class="btn btn-solid"
+              style="padding: 8px 14px; font-size: 0.82rem;">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
       </article>
     `;
   }
@@ -1994,6 +1971,7 @@ const App = (() => {
 
       setDevotionNotice("", "");
       ui.devotionList.innerHTML = posts.map(renderDevotionPost).join("");
+      bindDevotionComments(posts);
       setupRevealAnimations();
     } catch (error) {
       setDevotionNotice(
@@ -2001,6 +1979,70 @@ const App = (() => {
         "error",
       );
     }
+  }
+
+  function bindDevotionComments(posts = []) {
+    posts.forEach((post) => {
+      const listElement = document.getElementById(
+        `devotion-comments-list-${post.id}`,
+      );
+      if (listElement) {
+        loadCommentsForPost("devotion", post.id, listElement);
+      }
+    });
+
+    document.querySelectorAll(".devotion-comment-form").forEach((form) => {
+      if (form.dataset.bound === "true") return;
+      form.dataset.bound = "true";
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = form.querySelector(".comment-input");
+        const text = input?.value.trim();
+        if (!text) return;
+
+        const token =
+          state.token ||
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("adminToken");
+        if (!token) {
+          notify("Please sign in to comment.", "error");
+          return;
+        }
+
+        const postId = form.dataset.postId;
+        if (!postId) {
+          notify("Unable to comment right now. Please refresh.", "error");
+          return;
+        }
+
+        try {
+          await fetch(`${API_BASE}/comments`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              post_type: "devotion",
+              post_id: postId,
+              comment_text: text,
+            }),
+          });
+
+          if (input) {
+            input.value = "";
+          }
+
+          const listElement = document.getElementById(
+            `devotion-comments-list-${postId}`,
+          );
+          await loadCommentsForPost("devotion", postId, listElement);
+        } catch (error) {
+          notify("Unable to send comment. Please try again.", "error");
+        }
+      });
+    });
   }
 
   function renderDailyPromiseHistory(promises = []) {
@@ -2031,10 +2073,43 @@ const App = (() => {
       meta.textContent = `${author} - ${date}`;
 
       item.append(text, meta);
+
+      if (promise?.id) {
+        const commentsBox = document.createElement("div");
+        commentsBox.className = "feed-comments-box";
+
+        const commentsList = document.createElement("div");
+        commentsList.className = "feed-comments-list";
+        commentsList.id = `promise-comments-list-${promise.id}`;
+        commentsList.innerHTML =
+          '<p style="color: var(--ink-soft); font-size: 0.85rem;">Loading comments...</p>';
+
+        const commentForm = document.createElement("form");
+        commentForm.className = "feed-comment-form promise-comment-form";
+        commentForm.dataset.postId = String(promise.id);
+        commentForm.innerHTML = `
+          <input
+            type="text"
+            class="comment-input"
+            placeholder="Write a comment..."
+            required />
+          <button
+            type="submit"
+            class="btn btn-solid"
+            style="padding: 8px 14px; font-size: 0.82rem;">
+            <i class="fa-solid fa-paper-plane"></i>
+          </button>
+        `;
+
+        commentsBox.append(commentsList, commentForm);
+        item.append(commentsBox);
+      }
+
       ui.dailyPromiseHistoryList.appendChild(item);
     });
 
     ui.dailyPromiseHistory.hidden = false;
+    bindPromiseHistoryComments(historyItems);
   }
 
   function clearDailyPromiseComments() {
@@ -2044,6 +2119,70 @@ const App = (() => {
     if (ui.dailyPromiseCommentForm) {
       ui.dailyPromiseCommentForm.dataset.postId = "";
     }
+  }
+
+  function bindPromiseHistoryComments(promises = []) {
+    promises.forEach((promise) => {
+      const listElement = document.getElementById(
+        `promise-comments-list-${promise.id}`,
+      );
+      if (listElement) {
+        loadCommentsForPost("promise", promise.id, listElement);
+      }
+    });
+
+    document.querySelectorAll(".promise-comment-form").forEach((form) => {
+      if (form.dataset.bound === "true") return;
+      form.dataset.bound = "true";
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const input = form.querySelector(".comment-input");
+        const text = input?.value.trim();
+        if (!text) return;
+
+        const token =
+          state.token ||
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("adminToken");
+        if (!token) {
+          notify("Please sign in to comment.", "error");
+          return;
+        }
+
+        const postId = form.dataset.postId;
+        if (!postId) {
+          notify("Unable to comment right now. Please refresh.", "error");
+          return;
+        }
+
+        try {
+          await fetch(`${API_BASE}/comments`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              post_type: "promise",
+              post_id: postId,
+              comment_text: text,
+            }),
+          });
+
+          if (input) {
+            input.value = "";
+          }
+
+          const listElement = document.getElementById(
+            `promise-comments-list-${postId}`,
+          );
+          await loadCommentsForPost("promise", postId, listElement);
+        } catch (error) {
+          notify("Unable to send comment. Please try again.", "error");
+        }
+      });
+    });
   }
 
   function renderCommentItem(comment) {
@@ -2123,7 +2262,10 @@ const App = (() => {
       const text = ui.dailyPromiseCommentInput.value.trim();
       if (!text) return;
 
-      const token = state.token || localStorage.getItem("authToken");
+        const token =
+          state.token ||
+          localStorage.getItem("authToken") ||
+          localStorage.getItem("adminToken");
       if (!token) {
         notify("Please sign in to comment.", "error");
         return;
@@ -2188,21 +2330,6 @@ const App = (() => {
       source: "daily_update",
       state: nextExpanded ? "expanded" : "collapsed",
     });
-  }
-
-  function buildPromiseTopic(promiseText) {
-    const firstLine = String(promiseText)
-      .split("\n")
-      .map((line) => line.trim())
-      .find(Boolean);
-    if (!firstLine) return "Today's Promise from God";
-    return firstLine.length > 72 ? `${firstLine.slice(0, 69)}...` : firstLine;
-  }
-
-  function buildPromiseSnippet(promiseText) {
-    const compactText = String(promiseText).replace(/\s+/g, " ").trim();
-    if (compactText.length <= 110) return compactText;
-    return `${compactText.slice(0, 107)}...`;
   }
 
   function formatPromiseDate(rawDate) {

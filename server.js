@@ -1149,62 +1149,82 @@ const ensureUserAuthColumns = async (connection) => {
 };
 
 const ensureDefaultAdminUser = async (connection) => {
+  const upsertAdminUser = async ({ email, username, password }) => {
+    const normalizedEmail = String(email).trim().toLowerCase();
+    const normalizedUsername = String(username).trim().toLowerCase();
+    const hashedPassword = await bcrypt.hash(password, 12);
+
+    const [emailMatches] = await connection.execute(
+      "SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1",
+      [normalizedEmail],
+    );
+
+    if (emailMatches.length > 0) {
+      await connection.execute(
+        `
+          UPDATE users
+          SET username = ?,
+              password = ?,
+              role = ?,
+              is_approved = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `,
+        [username, hashedPassword, "admin", true, emailMatches[0].id],
+      );
+      return;
+    }
+
+    const [usernameMatches] = await connection.execute(
+      "SELECT id FROM users WHERE LOWER(username) = ? LIMIT 1",
+      [normalizedUsername],
+    );
+
+    if (usernameMatches.length > 0) {
+      await connection.execute(
+        `
+          UPDATE users
+          SET email = ?,
+              password = ?,
+              role = ?,
+              is_approved = ?,
+              updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `,
+        [email, hashedPassword, "admin", true, usernameMatches[0].id],
+      );
+      return;
+    }
+
+    await connection.execute(
+      "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
+      [username, email, hashedPassword, "admin", true],
+    );
+  };
+
   const adminEmail =
     process.env.DEFAULT_ADMIN_EMAIL || "Wisdomadiele57@gmail.com";
   const adminRawPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
-  const adminPassword = await bcrypt.hash(adminRawPassword, 12);
+  const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || "admin";
 
-  const [emailMatches] = await connection.execute(
-    "SELECT id FROM users WHERE email = ? LIMIT 1",
-    [adminEmail],
-  );
+  await upsertAdminUser({
+    email: adminEmail,
+    username: adminUsername,
+    password: adminRawPassword,
+  });
 
-  if (emailMatches.length > 0) {
-    await connection.execute(
-      `
-        UPDATE users
-        SET password = ?,
-            role = ?,
-            is_approved = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `,
-      [adminPassword, "admin", true, emailMatches[0].id],
-    );
-    return {
-      email: adminEmail,
-      password: adminRawPassword,
-    };
-  }
+  const secondaryAdminEmail =
+    process.env.SECONDARY_ADMIN_EMAIL || "admin@spiritualcenter.com";
+  const secondaryAdminPassword =
+    process.env.SECONDARY_ADMIN_PASSWORD || "admin123";
+  const secondaryAdminUsername =
+    process.env.SECONDARY_ADMIN_USERNAME || "admin2";
 
-  const [usernameMatches] = await connection.execute(
-    "SELECT id FROM users WHERE username = ? LIMIT 1",
-    ["admin"],
-  );
-
-  if (usernameMatches.length > 0) {
-    await connection.execute(
-      `
-        UPDATE users
-        SET email = ?,
-            password = ?,
-            role = ?,
-            is_approved = ?,
-            updated_at = CURRENT_TIMESTAMP
-        WHERE id = ?
-      `,
-      [adminEmail, adminPassword, "admin", true, usernameMatches[0].id],
-    );
-    return {
-      email: adminEmail,
-      password: adminRawPassword,
-    };
-  }
-
-  await connection.execute(
-    "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
-    ["admin", adminEmail, adminPassword, "admin", true],
-  );
+  await upsertAdminUser({
+    email: secondaryAdminEmail,
+    username: secondaryAdminUsername,
+    password: secondaryAdminPassword,
+  });
 
   return {
     email: adminEmail,

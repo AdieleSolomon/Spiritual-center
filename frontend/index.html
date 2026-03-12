@@ -312,7 +312,7 @@
               </p>
             </div>
             <p id="feedNotice" class="resource-notice">
-              Loading devotion posts...
+              Loading devotion and promise posts...
             </p>
             <div id="feedPosts" class="feed-posts-list"></div>
           </div>
@@ -904,29 +904,50 @@
         async function loadFeedPosts() {
           if (!feedPosts) return;
           try {
-            const devotionRes = await fetch(
-              `${API_BASE}/devotion-posts?limit=6`,
-            )
-              .then((r) => r.json())
-              .catch(() => null);
+            const [devotionRes, promiseRes] = await Promise.all([
+              fetch(`${API_BASE}/devotion-posts?limit=6`)
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+              fetch(`${API_BASE}/daily-promises?limit=6`)
+                .then((r) => (r.ok ? r.json() : null))
+                .catch(() => null),
+            ]);
 
             const posts = [];
 
             if (devotionRes?.posts?.length) {
               devotionRes.posts.forEach((p) =>
-                posts.push({ ...p, kind: "devotion" }),
+                posts.push({
+                  ...p,
+                  kind: "devotion",
+                  created_at: p.created_at || p.updated_at || new Date().toISOString(),
+                }),
+              );
+            }
+
+            if (promiseRes?.promises?.length) {
+              promiseRes.promises.forEach((p) =>
+                posts.push({
+                  ...p,
+                  kind: "promise",
+                  created_at: p.created_at || p.updated_at || new Date().toISOString(),
+                }),
               );
             }
 
             if (!posts.length) {
               feedNotice.textContent =
-                "No devotion posts yet. Check back soon!";
+                "No devotion or promise posts yet. Check back soon!";
               feedNotice.className = "resource-notice is-warning";
               return;
             }
 
+            const sortedPosts = posts.sort(
+              (a, b) => new Date(b.created_at) - new Date(a.created_at),
+            );
+
             feedNotice.style.display = "none";
-            feedPosts.innerHTML = posts
+            feedPosts.innerHTML = sortedPosts
               .slice(0, 6)
               .map((post) => renderFeedPost(post))
               .join("");
@@ -1014,7 +1035,9 @@
               if (!text) return;
               const postId = form.dataset.postId;
               const kind = form.dataset.kind;
-              const token = localStorage.getItem("authToken");
+              const token =
+                localStorage.getItem("authToken") ||
+                localStorage.getItem("adminToken");
               if (!token) {
                 alert("Please sign in to comment.");
                 return;
