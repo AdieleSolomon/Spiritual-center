@@ -1,6 +1,6 @@
 node_modules/
 .env
-.render.env
+.railway.env
 .vercel.env
 uploads/
 *.log

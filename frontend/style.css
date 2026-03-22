@@ -280,6 +280,78 @@ h3 {
   display: none;
 }
 
+body.nav-open {
+  overflow: hidden;
+}
+
+.landing-home .nav-overlay,
+.landing-home .mobile-nav-panel,
+.landing-home .hero-mobile-hint {
+  display: none;
+}
+
+.landing-home .mobile-nav-group {
+  display: grid;
+  gap: 10px;
+}
+
+.landing-home .mobile-nav-title {
+  margin: 0 0 2px;
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(228, 239, 232, 0.72);
+}
+
+.landing-home .mobile-nav-link {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 18px 28px rgba(1, 8, 14, 0.18);
+}
+
+.landing-home .mobile-nav-link::after {
+  content: none;
+}
+
+.landing-home .mobile-nav-link i {
+  width: 18px;
+  text-align: center;
+  color: #9fd6ff;
+}
+
+.landing-home .mobile-nav-link:hover {
+  background: rgba(255, 255, 255, 0.16);
+  border-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.landing-home .mobile-nav-link--youtube {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 29, 72, 0.22),
+    rgba(183, 15, 42, 0.34)
+  );
+  border-color: rgba(255, 107, 136, 0.4);
+}
+
+.landing-home .hero-mobile-hint {
+  margin: 18px 0 0;
+  padding: 12px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(4, 16, 26, 0.46);
+  color: rgba(255, 255, 255, 0.84);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
 .nav-toggle {
   display: none;
   width: 42px;
@@ -3170,6 +3242,98 @@ h3 {
   }
 }
 
+@media (max-width: 900px) {
+  .landing-home .nav-overlay {
+    display: block;
+    position: fixed;
+    inset: 0;
+    border: 0;
+    background: rgba(3, 10, 18, 0.62);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--transition), visibility var(--transition);
+    z-index: 29;
+  }
+
+  .landing-home .nav-overlay.open {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .landing-home .main-nav {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: auto;
+    width: min(88vw, 360px);
+    max-height: none;
+    padding: 88px 20px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 18px;
+    border: 0;
+    border-left: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 28px 0 0 28px;
+    background:
+      linear-gradient(
+        180deg,
+        rgba(7, 18, 28, 0.98) 0%,
+        rgba(8, 24, 38, 0.96) 100%
+      ),
+      url("./photo-1462331940025-496dfbfc7564.avif");
+    background-size: cover;
+    background-position: center;
+    box-shadow: 0 28px 48px rgba(1, 8, 14, 0.42);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    transform: translateX(106%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform 0.28s ease,
+      opacity 0.22s ease,
+      visibility 0.22s ease;
+    z-index: 30;
+  }
+
+  .landing-home .main-nav.open {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+  }
+
+  .landing-home .desktop-nav-item {
+    display: none;
+  }
+
+  .landing-home .mobile-nav-panel {
+    display: grid;
+    gap: 18px;
+  }
+
+  .landing-home .mobile-nav-actions {
+    margin-top: auto;
+    padding-top: 18px;
+    border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+
+  .landing-home .hero-mobile-hint {
+    display: block;
+  }
+
+  .landing-home .hero-pro-actions,
+  .landing-home .hero-pro-pages,
+  .landing-home .ministry-links-card {
+    display: none;
+  }
+}
+
 @media (max-width: 680px) {
   .hero-pro-actions,
   .hero-pro-pages {
@@ -3292,6 +3456,20 @@ h3 {
 @media (max-width: 520px) {
   .container {
     width: min(1080px, 92vw);
+  }
+
+  .landing-home .main-nav {
+    width: min(92vw, 340px);
+    padding: 82px 18px 20px;
+  }
+
+  .landing-home .mobile-nav-link {
+    padding: 13px 14px;
+    border-radius: 16px;
+  }
+
+  .landing-home .hero-mobile-hint {
+    font-size: 0.88rem;
   }
 
   .hero-pro-copy h1,

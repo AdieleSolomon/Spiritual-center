@@ -118,6 +118,7 @@ const App = (() => {
     header: document.getElementById("siteHeader"),
     navToggle: document.getElementById("navToggle"),
     mainNav: document.getElementById("mainNav"),
+    navOverlay: document.getElementById("navOverlay"),
     navDropdownTrigger: document.getElementById("exploreDropdownBtn"),
     navDropdownMenu: document.getElementById("exploreDropdownMenu"),
     openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")),
@@ -269,9 +270,15 @@ const App = (() => {
   function setupMobileNav() {
     if (!ui.navToggle || !ui.mainNav) return;
 
+    const syncMenuState = (isOpen) => {
+      ui.mainNav.classList.toggle("open", isOpen);
+      ui.navToggle.setAttribute("aria-expanded", String(isOpen));
+      ui.navOverlay?.classList.toggle("open", isOpen);
+      document.body.classList.toggle("nav-open", isOpen);
+    };
+
     const closeMenu = () => {
-      ui.mainNav.classList.remove("open");
-      ui.navToggle.setAttribute("aria-expanded", "false");
+      syncMenuState(false);
       ui.navDropdownMenu?.classList.remove("open");
       ui.navDropdownTrigger?.setAttribute("aria-expanded", "false");
     };
@@ -280,8 +287,7 @@ const App = (() => {
     ui.navToggle.setAttribute("aria-controls", "mainNav");
 
     ui.navToggle.addEventListener("click", () => {
-      const isOpen = ui.mainNav.classList.toggle("open");
-      ui.navToggle.setAttribute("aria-expanded", String(isOpen));
+      syncMenuState(!ui.mainNav.classList.contains("open"));
     });
 
     ui.mainNav.querySelectorAll("a").forEach((link) => {
@@ -298,6 +304,14 @@ const App = (() => {
       if (ui.mainNav.contains(target) || ui.navToggle.contains(target)) return;
 
       closeMenu();
+    });
+
+    ui.navOverlay?.addEventListener("click", closeMenu);
+
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape" && ui.mainNav.classList.contains("open")) {
+        closeMenu();
+      }
     });
 
     window.addEventListener("resize", () => {
@@ -419,6 +433,8 @@ const App = (() => {
       ui.authModal.setAttribute("aria-hidden", "false");
       ui.mainNav?.classList.remove("open");
       ui.navToggle?.setAttribute("aria-expanded", "false");
+      ui.navOverlay?.classList.remove("open");
+      document.body.classList.remove("nav-open");
       focusAuthField();
     };
 

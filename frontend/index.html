@@ -73,7 +73,7 @@
       }
     </script>
   </head>
-  <body>
+  <body class="landing-home">
     <!-- TOP BAR -->
     <div class="topbar">
       <div class="container topbar-inner">
@@ -121,7 +121,7 @@
 
         <nav class="main-nav" id="mainNav">
           <!-- Sections dropdown -->
-          <div class="nav-dropdown">
+          <div class="nav-dropdown desktop-nav-item">
             <button
               class="nav-dropdown-trigger"
               id="exploreDropdownBtn"
@@ -148,21 +148,69 @@
             </div>
           </div>
           <!-- Page links -->
-          <a href="bible-reading.html" class="nav-page-link"
+          <a href="bible-reading.html" class="nav-page-link desktop-nav-item"
             ><i class="fa-solid fa-book-open"></i> Bible Reading</a
           >
-          <a href="devotion.html" class="nav-page-link"
+          <a href="devotion.html" class="nav-page-link desktop-nav-item"
             ><i class="fa-solid fa-fire-flame-curved"></i> Devotion</a
           >
-          <a href="daily-promise.html" class="nav-page-link"
+          <a href="daily-promise.html" class="nav-page-link desktop-nav-item"
             ><i class="fa-solid fa-star"></i> Daily Promise</a
           >
-          <a href="prayer.html" class="nav-page-link" data-protected-section
+          <a
+            href="prayer.html"
+            class="nav-page-link desktop-nav-item"
+            data-protected-section
             ><i class="fa-solid fa-hands-praying"></i> Prayer</a
           >
-          <a href="counseling.html" class="nav-page-link" data-protected-section
+          <a
+            href="counseling.html"
+            class="nav-page-link desktop-nav-item"
+            data-protected-section
             ><i class="fa-solid fa-user-doctor"></i> Counseling</a
           >
+          <div class="mobile-nav-panel">
+            <div class="mobile-nav-group">
+              <p class="mobile-nav-title">Quick Access</p>
+              <a href="#services" class="mobile-nav-link">
+                <i class="fa-solid fa-compass"></i> Discover Ministry
+              </a>
+              <a href="#contact" class="mobile-nav-link">
+                <i class="fa-solid fa-handshake"></i> Request Counsel
+              </a>
+              <a
+                href="https://www.youtube.com/@Adiele.Solomon.C"
+                target="_blank"
+                rel="noopener noreferrer"
+                class="mobile-nav-link mobile-nav-link--youtube">
+                <i class="fa-brands fa-youtube"></i> YouTube
+              </a>
+            </div>
+            <div class="mobile-nav-group">
+              <p class="mobile-nav-title">Daily Resources</p>
+              <a href="bible-reading.html" class="mobile-nav-link">
+                <i class="fa-solid fa-book-open"></i> Bible Reading
+              </a>
+              <a href="devotion.html" class="mobile-nav-link">
+                <i class="fa-solid fa-fire-flame-curved"></i> Devotion
+              </a>
+              <a href="daily-promise.html" class="mobile-nav-link">
+                <i class="fa-solid fa-star"></i> Daily Promise
+              </a>
+            </div>
+            <div class="mobile-nav-group">
+              <p class="mobile-nav-title">Care &amp; Support</p>
+              <a href="prayer.html" class="mobile-nav-link" data-protected-section>
+                <i class="fa-solid fa-hands-praying"></i> Prayer
+              </a>
+              <a
+                href="counseling.html"
+                class="mobile-nav-link"
+                data-protected-section>
+                <i class="fa-solid fa-user-doctor"></i> Counseling
+              </a>
+            </div>
+          </div>
           <div class="mobile-nav-actions">
             <button class="btn btn-outline" data-open-auth>
               Member Sign-In
@@ -170,6 +218,11 @@
             <a href="admin-login.html" class="btn btn-solid">Admin</a>
           </div>
         </nav>
+        <button
+          class="nav-overlay"
+          id="navOverlay"
+          type="button"
+          aria-label="Close menu"></button>
 
         <div class="header-actions">
           <button class="btn btn-outline" id="openAuthBtn" data-open-auth>
@@ -193,6 +246,10 @@
             <p>
               Follow daily devotionals, promises, and prayer updates from the
               ministry team. Join the community feed to encourage one another.
+            </p>
+            <p class="hero-mobile-hint">
+              Open the menu for devotion, daily promise, prayer, counseling,
+              and ministry shortcuts.
             </p>
             <div class="hero-pro-actions">
               <a href="#services" class="btn btn-solid"
@@ -317,7 +374,7 @@
             <div id="feedPosts" class="feed-posts-list"></div>
           </div>
           <aside class="feed-aside">
-            <div class="aside-card" data-reveal>
+            <div class="aside-card ministry-links-card" data-reveal>
               <h3 class="aside-title">
                 <i class="fa-solid fa-church"></i> Ministry Links
               </h3>
@@ -920,7 +977,8 @@
                 posts.push({
                   ...p,
                   kind: "devotion",
-                  created_at: p.created_at || p.updated_at || new Date().toISOString(),
+                  created_at:
+                    p.created_at || p.updated_at || new Date().toISOString(),
                 }),
               );
             }
@@ -930,7 +988,8 @@
                 posts.push({
                   ...p,
                   kind: "promise",
-                  created_at: p.created_at || p.updated_at || new Date().toISOString(),
+                  created_at:
+                    p.created_at || p.updated_at || new Date().toISOString(),
                 }),
               );
             }

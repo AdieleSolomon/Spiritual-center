@@ -21,17 +21,19 @@ const { Pool: PostgresPool } = pg;
 
 const app = express();
 const PORT = process.env.PORT || 5501;
-const SUPABASE_PROVIDER_ALIASES = new Set([
+const POSTGRES_PROVIDER_ALIASES = new Set([
   "postgres",
   "postgresql",
   "supabase",
+  "railway",
+  "railway-postgres",
 ]);
 const MYSQL_PROVIDER_ALIASES = new Set(["mysql", "laragon"]);
 
 const resolveDbProvider = () => {
   const rawProvider = (process.env.DB_PROVIDER || "mysql").toLowerCase().trim();
 
-  if (SUPABASE_PROVIDER_ALIASES.has(rawProvider)) {
+  if (POSTGRES_PROVIDER_ALIASES.has(rawProvider)) {
     return "postgres";
   }
 
@@ -245,47 +247,51 @@ if (parseBoolean(process.env.DB_SSL, false)) {
 }
 
 const postgresSslEnabled = parseBoolean(
-  process.env.SUPABASE_DB_SSL ?? process.env.POSTGRES_SSL ?? process.env.DB_SSL,
+  process.env.POSTGRES_SSL ??
+    process.env.DATABASE_SSL ??
+    process.env.SUPABASE_DB_SSL ??
+    process.env.DB_SSL,
   true,
 );
 
-const supabaseConnectionString =
-  process.env.SUPABASE_DATABASE_URL ||
+const postgresConnectionString =
   process.env.DATABASE_URL ||
+  process.env.DATABASE_PUBLIC_URL ||
   process.env.POSTGRES_URL ||
-  process.env.POSTGRES_CONNECTION_STRING;
+  process.env.POSTGRES_CONNECTION_STRING ||
+  process.env.SUPABASE_DATABASE_URL;
 
-const postgresConfig = supabaseConnectionString
+const postgresConfig = postgresConnectionString
   ? {
-      connectionString: supabaseConnectionString,
+      connectionString: postgresConnectionString,
       max: Number(process.env.DB_CONNECTION_LIMIT || 10),
       ssl: postgresSslEnabled ? { rejectUnauthorized: false } : false,
     }
   : {
       host:
-        process.env.SUPABASE_DB_HOST ||
-        process.env.POSTGRES_HOST ||
         process.env.PGHOST ||
+        process.env.POSTGRES_HOST ||
+        process.env.SUPABASE_DB_HOST ||
         "localhost",
       user:
-        process.env.SUPABASE_DB_USER ||
-        process.env.POSTGRES_USER ||
         process.env.PGUSER ||
+        process.env.POSTGRES_USER ||
+        process.env.SUPABASE_DB_USER ||
         "postgres",
       password:
-        process.env.SUPABASE_DB_PASSWORD ||
-        process.env.POSTGRES_PASSWORD ||
         process.env.PGPASSWORD ||
+        process.env.POSTGRES_PASSWORD ||
+        process.env.SUPABASE_DB_PASSWORD ||
         "",
       database:
-        process.env.SUPABASE_DB_NAME ||
-        process.env.POSTGRES_DB ||
         process.env.PGDATABASE ||
+        process.env.POSTGRES_DB ||
+        process.env.SUPABASE_DB_NAME ||
         "postgres",
       port: Number(
-        process.env.SUPABASE_DB_PORT ||
+        process.env.PGPORT ||
           process.env.POSTGRES_PORT ||
-          process.env.PGPORT ||
+          process.env.SUPABASE_DB_PORT ||
           5432,
       ),
       max: Number(process.env.DB_CONNECTION_LIMIT || 10),
@@ -303,8 +309,7 @@ const resolveSupabaseUrl = () => {
     return explicitUrl;
   }
 
-  const candidateConnectionString =
-    supabaseConnectionString || process.env.SUPABASE_DATABASE_URL || "";
+  const candidateConnectionString = process.env.SUPABASE_DATABASE_URL || "";
   if (!candidateConnectionString) {
     return "";
   }
@@ -373,7 +378,7 @@ let supabaseBucketVerified = false;
 if (SUPABASE_STORAGE_ENABLED && (!SUPABASE_URL || !SUPABASE_STORAGE_API_KEY)) {
   if (REQUIRE_PERSISTENT_STORAGE) {
     console.warn(
-      "Supabase Storage is not fully configured. Uploads will be blocked until storage credentials are set.",
+      "Supabase Storage is not fully configured. Uploads will be blocked until storage credentials are set or REQUIRE_PERSISTENT_STORAGE is disabled.",
     );
   } else {
     console.warn(
@@ -1733,7 +1738,7 @@ app.post(
         return res.status(500).json({
           success: false,
           error:
-            "Persistent storage is not configured. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET.",
+            "Persistent storage is not configured. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET, or set REQUIRE_PERSISTENT_STORAGE=false to allow local /uploads storage.",
         });
       }
 

@@ -1,39 +1,37 @@
-# Spiritual Center Website Setup Guide
+# Center of Knowledge Deployment Guide
 
-## Prerequisites
-- Node.js (v16 or higher)
-- MySQL Server // deploy to railway.app
-- backend // deploy to render.com
-- frontend // deploy to vercel.com
-- npm or yarn
+## Deployment split
+- Database: Railway PostgreSQL
+- Backend API: Railway
+- Frontend: Vercel
 
-## Installation Steps
+## Local development
+- Frontend: serve the `frontend/` folder locally on `http://localhost:5500`
+- Backend: run `npm run dev` on `http://localhost:5501`
+- Database: Laragon MySQL
+- MySQL host: `127.0.0.1`
+- MySQL port: `3306`
+- MySQL user: `root`
+- MySQL password: empty
+- MySQL database: `spiritual_center`
 
-### 1. Database Setup
-```bash
-# Login to MySQL
-mysql -u root -p
+## Environment files
+- `.env`: local development values
+- `.railway.env`: Railway backend values
+- `.vercel.env`: Vercel frontend reference values
 
-# Create database
-CREATE DATABASE spiritual_center;
+## Railway backend notes
+- Use `DATABASE_URL` for the Railway backend service because it points to the internal Railway Postgres host.
+- `DATABASE_PUBLIC_URL` is kept for external tools that need to reach the database from outside Railway.
+- The backend now accepts both `DATABASE_URL` and the standard `PG*` variables directly.
+- `railway.json` now points Railway health checks at `/api/health`.
 
+## Frontend note
+- `frontend/app-config.js` is the live runtime config for the static frontend.
+- Update `frontend/app-config.js` with your real Railway backend domain after Railway generates it.
+- The current placeholder is `https://your-railway-backend.up.railway.app/api`.
 
-# git commands
-# Check what's changed
-git status
-
-# Add all changes
-git add .
-
-# Commit
-git commit -m "preparing for Render deployment"
-
-# Push
-git push origin main
-
-
-
-git status
-git add .
-git commit -m "preparing for Render deployment"
-git push origin main
+## File uploads
+- This project still uses the existing optional Supabase storage integration for persistent uploads.
+- If you want uploads to survive Railway redeploys, add persistent storage credentials.
+- If you want temporary local `/uploads` storage instead, set `REQUIRE_PERSISTENT_STORAGE=false`.
