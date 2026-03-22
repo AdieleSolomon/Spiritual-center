@@ -600,6 +600,34 @@
         width: 240px;
       }
 
+      .support-toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        align-items: center;
+      }
+
+      .support-toolbar .table-search {
+        flex: 1 1 260px;
+      }
+
+      .support-toolbar .form-control {
+        min-width: 170px;
+      }
+
+      .support-detail {
+        margin-top: 0.35rem;
+        color: var(--gray);
+        font-size: 0.8rem;
+        line-height: 1.45;
+      }
+
+      .support-actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.5rem;
+      }
+
       .request-table .materials-table th {
         background: rgba(255, 255, 255, 0.03);
       }
@@ -629,7 +657,15 @@
         display: flex;
         justify-content: space-between;
         align-items: center;
+        flex-wrap: wrap;
+        gap: 1rem;
         margin-bottom: 1.5rem;
+      }
+
+      .section-heading {
+        display: flex;
+        flex-direction: column;
+        gap: 0.45rem;
       }
 
       .section-title {
@@ -640,10 +676,25 @@
         display: flex;
         align-items: center;
         gap: 0.75rem;
+        margin: 0;
       }
 
       .section-title i {
         color: var(--primary);
+      }
+
+      .section-description {
+        margin: 0;
+        color: var(--gray);
+        font-size: 0.95rem;
+        line-height: 1.65;
+        max-width: 64ch;
+      }
+
+      .section-header .table-actions {
+        margin-left: auto;
+        flex-wrap: wrap;
+        align-items: center;
       }
 
       /* Dashboard Content */
@@ -678,6 +729,73 @@
         font-size: 1.125rem;
         font-weight: 600;
         color: white;
+      }
+
+      .section-body-grid {
+        display: grid;
+        grid-template-columns: minmax(0, 1.08fr) minmax(300px, 0.92fr);
+        gap: 1.5rem;
+        align-items: start;
+      }
+
+      .info-panel {
+        padding: 1.5rem;
+        border-radius: 12px;
+        background: rgba(15, 23, 42, 0.55);
+        border: 1px solid rgba(148, 163, 184, 0.16);
+        color: white;
+      }
+
+      .info-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 1rem 1.5rem;
+      }
+
+      .info-item {
+        display: grid;
+        gap: 0.45rem;
+      }
+
+      .info-item.full-width {
+        grid-column: 1 / -1;
+      }
+
+      .info-label {
+        color: var(--gray);
+        font-size: 0.74rem;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+      }
+
+      .info-value {
+        color: #cbd5f5;
+        line-height: 1.65;
+      }
+
+      .preview-state {
+        color: rgba(255, 255, 255, 0.75);
+      }
+
+      .preview-title {
+        margin-top: 0.75rem;
+        color: white;
+        font-size: 1.05rem;
+        font-weight: 600;
+      }
+
+      .preview-text {
+        margin-top: 0.5rem;
+        color: #cbd5f5;
+        line-height: 1.7;
+        white-space: pre-wrap;
+      }
+
+      .preview-meta {
+        margin-top: 0.25rem;
+        color: #94a3b8;
+        font-size: 0.92rem;
       }
 
       .quick-actions {
@@ -1494,6 +1612,10 @@
         .dashboard-grid {
           grid-template-columns: 1fr;
         }
+
+        .section-body-grid {
+          grid-template-columns: 1fr;
+        }
       }
 
       @media (max-width: 768px) {
@@ -1514,6 +1636,11 @@
         .top-bar {
           flex-direction: column;
           gap: 1rem;
+          align-items: stretch;
+        }
+
+        .section-header {
+          flex-direction: column;
           align-items: stretch;
         }
 
@@ -1543,8 +1670,17 @@
           justify-content: space-between;
         }
 
+        .section-header .table-actions {
+          margin-left: 0;
+          width: 100%;
+        }
+
         .table-search input {
           width: 100%;
+        }
+
+        .info-grid {
+          grid-template-columns: 1fr;
         }
 
         .request-intro-card {
@@ -1568,6 +1704,16 @@
 
         .request-panel .table-search input {
           width: 100%;
+        }
+
+        .support-toolbar {
+          width: 100%;
+          flex-direction: column;
+          align-items: stretch;
+        }
+
+        .support-toolbar .form-control {
+          min-width: 0;
         }
 
         .mobile-menu-btn {
@@ -1707,6 +1853,14 @@
             </a>
           </li>
           <li>
+            <a href="#" class="nav-link" data-section="support">
+              <div class="nav-icon">
+                <i class="fas fa-donate"></i>
+              </div>
+              <span class="nav-text">Support</span>
+            </a>
+          </li>
+          <li>
             <a href="#" class="nav-link" data-section="devotion-posts">
               <div class="nav-icon">
                 <i class="fas fa-fire"></i>
@@ -1780,6 +1934,18 @@
 
         <!-- Dashboard Section -->
         <section id="dashboard" class="content-section active">
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-gauge-high"></i> Dashboard Overview
+              </h2>
+              <p class="section-description">
+                Track content activity, member engagement, and the admin tools
+                you need most from one place.
+              </p>
+            </div>
+          </div>
+
           <!-- Dashboard Stats -->
           <div class="dashboard-stats">
             <div class="stat-card">
@@ -1878,6 +2044,12 @@
                   </div>
                   <div class="action-text">View Requests</div>
                 </a>
+                <a class="action-btn" onclick="navigateTo('support')">
+                  <div class="action-icon">
+                    <i class="fas fa-donate"></i>
+                  </div>
+                  <div class="action-text">Support Desk</div>
+                </a>
                 <a class="action-btn" onclick="showAddUserModal()">
                   <div class="action-icon">
                     <i class="fas fa-user-plus"></i>
@@ -1939,9 +2111,15 @@
         <!-- Upload Material Section -->
         <section id="upload" class="content-section">
           <div class="section-header">
-            <h2 class="section-title">
-              <i class="fas fa-cloud-upload-alt"></i> Upload New Material
-            </h2>
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-cloud-upload-alt"></i> Upload New Material
+              </h2>
+              <p class="section-description">
+                Add a new sermon, teaching resource, worship file, or study
+                document to the ministry library.
+              </p>
+            </div>
           </div>
 
           <form class="upload-form" id="uploadForm">
@@ -2056,9 +2234,15 @@
         <!-- Manage Materials Section -->
         <section id="materials" class="content-section">
           <div class="section-header">
-            <h2 class="section-title">
-              <i class="fas fa-file-alt"></i> Manage Materials
-            </h2>
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-file-alt"></i> Manage Materials
+              </h2>
+              <p class="section-description">
+                Search, review, and update the materials already published in
+                the ministry library.
+              </p>
+            </div>
             <div class="table-actions">
               <div class="table-search">
                 <i class="fas fa-search"></i>
@@ -2110,9 +2294,17 @@
 
         <!-- Analytics Section -->
         <section id="analytics" class="content-section">
-          <h2 style="margin-bottom: 1.5rem; color: white">
-            Analytics Dashboard
-          </h2>
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-chart-pie"></i> Analytics Dashboard
+              </h2>
+              <p class="section-description">
+                Monitor views, downloads, active users, and which materials are
+                performing best across the platform.
+              </p>
+            </div>
+          </div>
           <div class="dashboard-stats">
             <div class="stat-card">
               <div class="stat-content">
@@ -2159,32 +2351,42 @@
               </div>
             </div>
           </div>
-          <div
-            style="
-              background: rgba(30, 41, 59, 0.7);
-              border-radius: 12px;
-              padding: 1.5rem;
-              margin-top: 1.5rem;
-              color: white;
-            ">
-            <h3 style="margin-bottom: 1rem">Content Performance</h3>
-            <div id="analyticsContent" style="color: var(--gray)"></div>
+
+          <div class="card">
+            <div class="card-header">
+              <div class="card-title">Content Performance</div>
+            </div>
+            <div id="analyticsContent" class="section-description"></div>
           </div>
         </section>
 
         <!-- Users Section -->
         <section id="users" class="content-section">
-          <div class="table-actions" style="margin-bottom: 1.5rem">
-            <h2 style="color: white">User Management</h2>
-            <div class="table-search">
-              <i class="fas fa-search search-icon"></i>
-              <input
-                type="text"
-                id="searchUsers"
-                placeholder="Search users..."
-                class="form-control" />
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-users-cog"></i> User Management
+              </h2>
+              <p class="section-description">
+                Search members, review roles, and manage platform access from
+                one organized table.
+              </p>
+            </div>
+            <div class="table-actions">
+              <div class="table-search">
+                <i class="fas fa-search"></i>
+                <input
+                  type="text"
+                  id="searchUsers"
+                  placeholder="Search users..."
+                  class="form-control" />
+              </div>
+              <button class="btn btn-primary" onclick="loadUsers()">
+                <i class="fas fa-sync-alt"></i> Refresh
+              </button>
             </div>
           </div>
+
           <div class="materials-table-container">
             <div class="table-responsive">
               <table class="materials-table" id="usersTable">
@@ -2363,44 +2565,279 @@
           </div>
         </section>
 
-        <!-- Devotion Posts Section -->
-        <section id="devotion-posts" class="content-section">
-          <h2 style="margin-bottom: 1.5rem; color: white">Devotion Posts</h2>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Post a New Devotion</div>
+        <!-- Support Section -->
+        <section id="support" class="content-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="fas fa-donate"></i> Ministry Support
+            </h2>
+            <button class="btn btn-primary" onclick="loadSupportData()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+
+          <div class="request-intro-card">
+            <div>
+              <p class="request-intro-label">Support Desk</p>
+              <h3>Manage the ministry payment details</h3>
+              <p>
+                Control the giving details and payment destination shown on the
+                public website without touching code.
+              </p>
             </div>
-            <form id="devotionForm">
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="devotionTitle" class="form-label"
-                  >Title</label
+            <div class="request-intro-actions">
+              <i class="fas fa-circle-check"></i>
+              <span>Steward support well</span>
+            </div>
+          </div>
+
+          <div class="dashboard-stats requests-stats">
+            <div class="stat-card">
+              <div class="stat-content">
+                <div class="stat-info">
+                  <h3>Bank Name</h3>
+                  <div class="stat-value" id="supportPreviewBankName">-</div>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-building-columns"></i>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-content">
+                <div class="stat-info">
+                  <h3>Account Name</h3>
+                  <div class="stat-value" id="supportPreviewAccountName">-</div>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-id-card"></i>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-content">
+                <div class="stat-info">
+                  <h3>Account Number</h3>
+                  <div class="stat-value" id="supportPreviewAccountNumber">-</div>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-hashtag"></i>
+                </div>
+              </div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-content">
+                <div class="stat-info">
+                  <h3>Payment Button Target</h3>
+                  <div class="stat-value" id="supportPreviewPaymentMode">Built-in Page</div>
+                </div>
+                <div class="stat-icon">
+                  <i class="fas fa-link"></i>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="request-panel">
+            <div class="request-panel-header">
+              <div>
+                <h3>Public Payment Destination</h3>
+                <p>
+                  Preview exactly where the website payment button will send
+                  people.
+                </p>
+              </div>
+            </div>
+            <div class="info-panel">
+              <div class="info-grid">
+                <div class="info-item">
+                  <div class="info-label">Button Destination</div>
+                  <div id="supportPreviewPaymentTarget" class="info-value">
+                    Built-in support payment page (`support-payment.html`)
+                  </div>
+                </div>
+                <div class="info-item">
+                  <div class="info-label">Support Contacts</div>
+                  <div id="supportPreviewContacts" class="info-value">
+                    admin@spiritualcenter.com | +2349072560420
+                  </div>
+                </div>
+                <div class="info-item full-width">
+                  <div class="info-label">Public Payment Note</div>
+                  <div id="supportPreviewNote" class="info-value">
+                    After sending your support, reach the ministry through
+                    WhatsApp or email with your transfer details so it can be
+                    confirmed quickly.
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <form
+            id="supportSettingsForm"
+            class="upload-form support-settings-card"
+            style="margin-top: 1.5rem">
+            <div class="card-header" style="margin-bottom: 1.5rem; padding: 0">
+              <div class="card-title">Public Support Settings</div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group full-width">
+                <label for="supportSettingsHeading" class="form-label"
+                  >Section Heading</label
                 >
                 <input
                   type="text"
-                  id="devotionTitle"
+                  id="supportSettingsHeading"
                   class="form-input"
-                  placeholder="Enter devotion title" />
+                  placeholder="Support the Ministry" />
               </div>
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="devotionText" class="form-label"
-                  >Devotion Text <span class="required">*</span></label
+              <div class="form-group full-width">
+                <label for="supportSettingsIntro" class="form-label"
+                  >Section Intro</label
                 >
                 <textarea
-                  id="devotionText"
+                  id="supportSettingsIntro"
                   class="form-textarea"
-                  rows="5"
-                  placeholder="Write the devotion for today"
-                  required></textarea>
+                  rows="4"
+                  placeholder="Explain what ministry support makes possible"></textarea>
               </div>
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="devotionAuthor" class="form-label"
-                  >Author</label
+              <div class="form-group">
+                <label for="supportSettingsCurrency" class="form-label"
+                  >Currency</label
                 >
                 <input
                   type="text"
-                  id="devotionAuthor"
+                  id="supportSettingsCurrency"
                   class="form-input"
-                  placeholder="Enter author name" />
+                  placeholder="NGN" />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsEmail" class="form-label"
+                  >Support Email</label
+                >
+                <input
+                  type="email"
+                  id="supportSettingsEmail"
+                  class="form-input"
+                  placeholder="support@example.com" />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsWhatsapp" class="form-label"
+                  >Support WhatsApp</label
+                >
+                <input
+                  type="text"
+                  id="supportSettingsWhatsapp"
+                  class="form-input"
+                  placeholder="+234..." />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsPaymentLink" class="form-label"
+                  >Online Payment Link</label
+                >
+                <input
+                  type="url"
+                  id="supportSettingsPaymentLink"
+                  class="form-input"
+                  placeholder="https://... (leave blank to use support-payment.html)" />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsBankName" class="form-label"
+                  >Bank Name</label
+                >
+                <input
+                  type="text"
+                  id="supportSettingsBankName"
+                  class="form-input"
+                  placeholder="Enter bank name" />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsAccountName" class="form-label"
+                  >Account Name</label
+                >
+                <input
+                  type="text"
+                  id="supportSettingsAccountName"
+                  class="form-input"
+                  placeholder="Enter account name" />
+              </div>
+              <div class="form-group">
+                <label for="supportSettingsAccountNumber" class="form-label"
+                  >Account Number</label
+                >
+                <input
+                  type="text"
+                  id="supportSettingsAccountNumber"
+                  class="form-input"
+                  placeholder="Enter account number" />
+              </div>
+              <div class="form-group full-width">
+                <label for="supportSettingsPaymentNote" class="form-label"
+                  >Payment Note</label
+                >
+                <textarea
+                  id="supportSettingsPaymentNote"
+                  class="form-textarea"
+                  rows="4"
+                  placeholder="Instructions shown beneath the support details"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Support Settings
+              </button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Devotion Posts Section -->
+        <section id="devotion-posts" class="content-section">
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-fire-flame-curved"></i> Devotion Posts
+              </h2>
+              <p class="section-description">
+                Publish today's devotion and confirm that the latest post is
+                showing the right content before members read it.
+              </p>
+            </div>
+          </div>
+
+          <div class="section-body-grid">
+            <form id="devotionForm" class="upload-form">
+              <div class="card-header">
+                <div class="card-title">Post a New Devotion</div>
+              </div>
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label for="devotionTitle" class="form-label">Title</label>
+                  <input
+                    type="text"
+                    id="devotionTitle"
+                    class="form-input"
+                    placeholder="Enter devotion title" />
+                </div>
+                <div class="form-group full-width">
+                  <label for="devotionText" class="form-label"
+                    >Devotion Text <span class="required">*</span></label
+                  >
+                  <textarea
+                    id="devotionText"
+                    class="form-textarea"
+                    rows="7"
+                    placeholder="Write the devotion for today"
+                    required></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="devotionAuthor" class="form-label">Author</label>
+                  <input
+                    type="text"
+                    id="devotionAuthor"
+                    class="form-input"
+                    placeholder="Enter author name" />
+                </div>
               </div>
               <div class="form-actions">
                 <button
@@ -2411,66 +2848,71 @@
                 </button>
               </div>
             </form>
-          </div>
-          <div class="card" style="margin-top: 1rem">
-            <div
-              class="card-header"
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 1rem;
-              ">
-              <div class="card-title">Latest Devotion Preview</div>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                id="refreshDevotionBtn">
-                <i class="fas fa-rotate-right"></i> Refresh
-              </button>
-            </div>
-            <div
-              id="devotionPreviewState"
-              style="color: rgba(255, 255, 255, 0.75)">
-              No devotion loaded yet.
-            </div>
-            <div id="devotionPreview" style="display: none">
-              <p id="devotionPreviewTitle" style="margin-top: 0.75rem; color: white"></p>
-              <p id="devotionPreviewText" style="margin-top: 0.5rem; color: #cbd5f5"></p>
-              <p id="devotionPreviewAuthor" style="margin-top: 0.25rem; color: #94a3b8"></p>
-              <p id="devotionPreviewDate" style="margin-top: 0.25rem; color: #94a3b8"></p>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Latest Devotion Preview</div>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  id="refreshDevotionBtn">
+                  <i class="fas fa-rotate-right"></i> Refresh
+                </button>
+              </div>
+              <div id="devotionPreviewState" class="preview-state">
+                No devotion loaded yet.
+              </div>
+              <div id="devotionPreview" style="display: none">
+                <p id="devotionPreviewTitle" class="preview-title"></p>
+                <p id="devotionPreviewText" class="preview-text"></p>
+                <p id="devotionPreviewAuthor" class="preview-meta"></p>
+                <p id="devotionPreviewDate" class="preview-meta"></p>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- Daily Promise Section -->
         <section id="daily-promise" class="content-section">
-          <h2 style="margin-bottom: 1.5rem; color: white">Daily Promise</h2>
-          <div class="card">
-            <div class="card-header">
-              <div class="card-title">Post a New Daily Promise</div>
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-star"></i> Daily Promise
+              </h2>
+              <p class="section-description">
+                Publish today's promise and keep a clean preview of what members
+                will see on the public site.
+              </p>
             </div>
-            <form id="dailyPromiseForm">
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseText" class="form-label"
-                  >Promise Text <span class="required">*</span></label
-                >
-                <textarea
-                  id="dailyPromiseText"
-                  class="form-textarea"
-                  rows="4"
-                  placeholder="Enter the daily promise"
-                  required></textarea>
+          </div>
+
+          <div class="section-body-grid">
+            <form id="dailyPromiseForm" class="upload-form">
+              <div class="card-header">
+                <div class="card-title">Post a New Daily Promise</div>
               </div>
-              <div class="form-group" style="margin-bottom: 1.5rem">
-                <label for="dailyPromiseAuthor" class="form-label"
-                  >Author (e.g., John 3:16)</label
-                >
-                <input
-                  type="text"
-                  id="dailyPromiseAuthor"
-                  class="form-input"
-                  placeholder="Enter the author or source" />
+              <div class="form-grid">
+                <div class="form-group full-width">
+                  <label for="dailyPromiseText" class="form-label"
+                    >Promise Text <span class="required">*</span></label
+                  >
+                  <textarea
+                    id="dailyPromiseText"
+                    class="form-textarea"
+                    rows="6"
+                    placeholder="Enter the daily promise"
+                    required></textarea>
+                </div>
+                <div class="form-group">
+                  <label for="dailyPromiseAuthor" class="form-label"
+                    >Author (e.g., John 3:16)</label
+                  >
+                  <input
+                    type="text"
+                    id="dailyPromiseAuthor"
+                    class="form-input"
+                    placeholder="Enter the author or source" />
+                </div>
               </div>
               <div class="form-actions">
                 <button
@@ -2481,126 +2923,99 @@
                 </button>
               </div>
             </form>
-          </div>
-          <div class="card" style="margin-top: 1rem">
-            <div
-              class="card-header"
-              style="
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                gap: 1rem;
-              ">
-              <div class="card-title">Current Published Promise</div>
-              <button
-                type="button"
-                class="btn btn-secondary"
-                id="refreshDailyPromiseBtn">
-                <i class="fas fa-rotate-right"></i> Refresh
-              </button>
-            </div>
-            <div
-              id="dailyPromisePreviewState"
-              style="color: rgba(255, 255, 255, 0.75)">
-              No promise loaded yet.
-            </div>
-            <div id="dailyPromisePreview" style="display: none">
-              <p
-                id="dailyPromisePreviewText"
-                style="margin-top: 0.75rem; color: white"></p>
-              <p
-                id="dailyPromisePreviewAuthor"
-                style="margin-top: 0.25rem; color: #94a3b8"></p>
-              <p
-                id="dailyPromisePreviewDate"
-                style="margin-top: 0.25rem; color: #94a3b8"></p>
+
+            <div class="card">
+              <div class="card-header">
+                <div class="card-title">Current Published Promise</div>
+                <button
+                  type="button"
+                  class="btn btn-secondary"
+                  id="refreshDailyPromiseBtn">
+                  <i class="fas fa-rotate-right"></i> Refresh
+                </button>
+              </div>
+              <div id="dailyPromisePreviewState" class="preview-state">
+                No promise loaded yet.
+              </div>
+              <div id="dailyPromisePreview" style="display: none">
+                <p id="dailyPromisePreviewText" class="preview-title"></p>
+                <p id="dailyPromisePreviewAuthor" class="preview-meta"></p>
+                <p id="dailyPromisePreviewDate" class="preview-meta"></p>
+              </div>
             </div>
           </div>
         </section>
 
         <!-- Settings Section -->
         <section id="settings" class="content-section">
-          <h2 style="margin-bottom: 1.5rem; color: white">Settings</h2>
-          <div
-            style="
-              background: rgba(30, 41, 59, 0.7);
-              border-radius: 12px;
-              padding: 1.5rem;
-              color: white;
-            ">
-            <div class="form-group" style="margin-bottom: 1.5rem">
-              <label
-                style="display: block; margin-bottom: 0.5rem; font-weight: 500"
-                >Site Title</label
-              >
-              <input
-                type="text"
-                id="siteTitle"
-                class="form-control"
-                placeholder="Enter site title"
-                style="
-                  background: rgba(15, 23, 42, 0.5);
-                  border: 1px solid rgba(255, 255, 255, 0.1);
-                  color: white;
-                  padding: 0.75rem;
-                  border-radius: 8px;
-                  width: 100%;
-                " />
+          <div class="section-header">
+            <div class="section-heading">
+              <h2 class="section-title">
+                <i class="fas fa-gear"></i> Settings
+              </h2>
+              <p class="section-description">
+                Update the public ministry title, description, and contact
+                details used across the website.
+              </p>
             </div>
-            <div class="form-group" style="margin-bottom: 1.5rem">
-              <label
-                style="display: block; margin-bottom: 0.5rem; font-weight: 500"
-                >Site Description</label
-              >
-              <textarea
-                id="siteDescription"
-                class="form-control"
-                rows="4"
-                placeholder="Enter site description"
-                style="
-                  background: rgba(15, 23, 42, 0.5);
-                  border: 1px solid rgba(255, 255, 255, 0.1);
-                  color: white;
-                  padding: 0.75rem;
-                  border-radius: 8px;
-                  width: 100%;
-                  font-family: inherit;
-                "></textarea>
-            </div>
-            <div class="form-group" style="margin-bottom: 1.5rem">
-              <label
-                style="display: block; margin-bottom: 0.5rem; font-weight: 500"
-                >Contact Email</label
-              >
-              <input
-                type="email"
-                id="contactEmail"
-                class="form-control"
-                placeholder="Enter contact email"
-                style="
-                  background: rgba(15, 23, 42, 0.5);
-                  border: 1px solid rgba(255, 255, 255, 0.1);
-                  color: white;
-                  padding: 0.75rem;
-                  border-radius: 8px;
-                  width: 100%;
-                " />
-            </div>
-            <button
-              class="btn btn-primary"
-              onclick="saveSettings()"
-              style="
-                padding: 0.75rem 1.5rem;
-                border-radius: 8px;
-                border: none;
-                background: linear-gradient(135deg, #6366f1, #4f46e5);
-                color: white;
-                cursor: pointer;
-                font-weight: 500;
-              ">
-              Save Settings
-            </button>
           </div>
+
+          <form id="settingsForm" class="upload-form">
+            <div class="card-header">
+              <div class="card-title">General Site Settings</div>
+            </div>
+            <div class="form-grid">
+              <div class="form-group">
+                <label for="siteTitle" class="form-label">Site Title</label>
+                <input
+                  type="text"
+                  id="siteTitle"
+                  class="form-input"
+                  placeholder="Enter site title" />
+              </div>
+              <div class="form-group">
+                <label for="contactEmail" class="form-label">Contact Email</label>
+                <input
+                  type="email"
+                  id="contactEmail"
+                  class="form-input"
+                  placeholder="Enter contact email" />
+              </div>
+              <div class="form-group">
+                <label for="contactPhone" class="form-label">Contact Phone</label>
+                <input
+                  type="text"
+                  id="contactPhone"
+                  class="form-input"
+                  placeholder="Enter contact phone" />
+              </div>
+              <div class="form-group">
+                <label for="whatsappNumber" class="form-label"
+                  >WhatsApp Number</label
+                >
+                <input
+                  type="text"
+                  id="whatsappNumber"
+                  class="form-input"
+                  placeholder="Enter WhatsApp number" />
+              </div>
+              <div class="form-group full-width">
+                <label for="siteDescription" class="form-label"
+                  >Site Description</label
+                >
+                <textarea
+                  id="siteDescription"
+                  class="form-textarea"
+                  rows="5"
+                  placeholder="Enter site description"></textarea>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn btn-primary">
+                <i class="fas fa-save"></i> Save Settings
+              </button>
+            </div>
+          </form>
         </section>
       </main>
     </div>
@@ -2625,14 +3040,22 @@
         const trimmed = value.replace(/\/+$/, "");
         return /\/api$/i.test(trimmed) ? trimmed : `${trimmed}/api`;
       };
-      const appConfigApiBase = window.APP_CONFIG?.API_BASE?.trim?.() || "";
+      const resolveConfiguredApiBase = (value) => {
+        const normalized = normalizeApiBase(String(value || "").trim());
+        if (!normalized || /your-railway-backend/i.test(normalized)) {
+          return "";
+        }
+        return normalized;
+      };
+      const appConfigApiBase = resolveConfiguredApiBase(
+        window.APP_CONFIG?.API_BASE,
+      );
       const configuredApiBase = document
         .querySelector('meta[name="api-base-url"]')
-        ?.getAttribute("content")
-        ?.trim();
+        ?.getAttribute("content");
       const API_BASE = normalizeApiBase(
         appConfigApiBase ||
-          configuredApiBase ||
+          resolveConfiguredApiBase(configuredApiBase) ||
           (isLocalHost ? "http://localhost:5501" : window.location.origin),
       );
 
@@ -2824,9 +3247,16 @@
         }
 
         // Settings form
-        const settingsForm = document.querySelector("#settings form");
+        const settingsForm = document.getElementById("settingsForm");
         if (settingsForm) {
           settingsForm.addEventListener("submit", saveSettings);
+        }
+
+        const supportSettingsForm = document.getElementById(
+          "supportSettingsForm",
+        );
+        if (supportSettingsForm) {
+          supportSettingsForm.addEventListener("submit", saveSupportSettings);
         }
 
         // Notification button
@@ -2937,6 +3367,9 @@
             case "requests":
               await loadRequests();
               break;
+            case "support":
+              await loadSupportData();
+              break;
             case "devotion-posts":
               await loadLatestDevotionPreview();
               break;
@@ -2961,6 +3394,7 @@
           analytics: "Analytics",
           users: "User Management",
           requests: "Member Requests",
+          support: "Ministry Support",
           "devotion-posts": "Devotion Posts",
           settings: "Settings",
           "daily-promise": "Daily Promise",
@@ -4089,6 +4523,83 @@
         renderCounselingRequests();
       }
 
+      function renderSupportOverview() {
+        const paymentLink = String(settings.support_payment_link || "").trim();
+        const paymentMode = paymentLink ? "External Link" : "Built-in Page";
+        const paymentTarget = paymentLink || "support-payment.html";
+        const previewBankName = document.getElementById("supportPreviewBankName");
+        const previewAccountName = document.getElementById(
+          "supportPreviewAccountName",
+        );
+        const previewAccountNumber = document.getElementById(
+          "supportPreviewAccountNumber",
+        );
+        const previewPaymentMode = document.getElementById(
+          "supportPreviewPaymentMode",
+        );
+        const previewPaymentTarget = document.getElementById(
+          "supportPreviewPaymentTarget",
+        );
+        const previewContacts = document.getElementById("supportPreviewContacts");
+        const previewNote = document.getElementById("supportPreviewNote");
+
+        if (previewBankName) {
+          previewBankName.textContent = settings.support_bank_name || "-";
+        }
+        if (previewAccountName) {
+          previewAccountName.textContent = settings.support_account_name || "-";
+        }
+        if (previewAccountNumber) {
+          previewAccountNumber.textContent =
+            settings.support_account_number || "-";
+        }
+        if (previewPaymentMode) {
+          previewPaymentMode.textContent = paymentMode;
+        }
+        if (previewPaymentTarget) {
+          previewPaymentTarget.textContent = paymentTarget;
+        }
+        if (previewContacts) {
+          previewContacts.textContent = [
+            settings.support_email || settings.contact_email || "admin@spiritualcenter.com",
+            settings.support_whatsapp || settings.whatsapp_number || "+2349072560420",
+          ]
+            .filter(Boolean)
+            .join(" | ");
+        }
+        if (previewNote) {
+          previewNote.textContent =
+            settings.support_payment_note ||
+            "After sending your support, reach the ministry through WhatsApp or email with your transfer details so it can be confirmed quickly.";
+        }
+      }
+
+      async function loadSupportData() {
+        try {
+          showLoading("support");
+
+          const response = await fetch(`${API_BASE}/settings`, getFetchOptions());
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Unexpected response format" }));
+
+          if (!response.ok || !data.success) {
+            throw new Error(data.error || "Failed to load support settings");
+          }
+
+          settings = data.settings || {};
+          renderSettings();
+          renderSupportSettings();
+          renderSupportOverview();
+
+          hideLoading("support");
+        } catch (error) {
+          console.error("Error loading support data:", error);
+          showMessage("Failed to load support data: " + error.message, "error");
+          hideLoading("support");
+        }
+      }
+
       // Load analytics
       async function loadAnalytics() {
         try {
@@ -4268,12 +4779,7 @@
       async function loadSettings() {
         try {
           showLoading("settings");
-
-          const response = await fetch(`${API_BASE}/settings`, {
-            headers: {
-              Authorization: `Bearer ${getAuthToken()}`,
-            },
-          });
+          const response = await fetch(`${API_BASE}/settings`, getFetchOptions());
 
           if (!response.ok) throw new Error("Failed to load settings");
 
@@ -4281,6 +4787,7 @@
           if (data.success) {
             settings = data.settings || {};
             renderSettings();
+            renderSupportSettings();
           } else {
             throw new Error(data.error || "Failed to load settings");
           }
@@ -4295,16 +4802,79 @@
 
       // Render settings
       function renderSettings() {
-        // Populate form fields
-        document.getElementById("siteTitle").value = settings.site_title || "";
-        document.getElementById("siteDescription").value =
-          settings.site_description || "";
-        document.getElementById("contactEmail").value =
-          settings.contact_email || "";
-        document.getElementById("contactPhone").value =
-          settings.contact_phone || "";
-        document.getElementById("whatsappNumber").value =
-          settings.whatsapp_number || "";
+        const siteTitle = document.getElementById("siteTitle");
+        const siteDescription = document.getElementById("siteDescription");
+        const contactEmail = document.getElementById("contactEmail");
+        const contactPhone = document.getElementById("contactPhone");
+        const whatsappNumber = document.getElementById("whatsappNumber");
+
+        if (siteTitle) siteTitle.value = settings.site_title || "";
+        if (siteDescription) {
+          siteDescription.value = settings.site_description || "";
+        }
+        if (contactEmail) contactEmail.value = settings.contact_email || "";
+        if (contactPhone) contactPhone.value = settings.contact_phone || "";
+        if (whatsappNumber) {
+          whatsappNumber.value = settings.whatsapp_number || "";
+        }
+      }
+
+      function renderSupportSettings() {
+        const setValue = (id, value) => {
+          const field = document.getElementById(id);
+          if (field) {
+            field.value = value || "";
+          }
+        };
+
+        setValue("supportSettingsHeading", settings.support_heading || "");
+        setValue("supportSettingsIntro", settings.support_intro || "");
+        setValue("supportSettingsCurrency", settings.support_currency || "NGN");
+        setValue("supportSettingsBankName", settings.support_bank_name || "");
+        setValue(
+          "supportSettingsAccountName",
+          settings.support_account_name || "",
+        );
+        setValue(
+          "supportSettingsAccountNumber",
+          settings.support_account_number || "",
+        );
+        setValue(
+          "supportSettingsPaymentNote",
+          settings.support_payment_note || "",
+        );
+        setValue(
+          "supportSettingsPaymentLink",
+          settings.support_payment_link || "",
+        );
+        setValue("supportSettingsEmail", settings.support_email || "");
+        setValue("supportSettingsWhatsapp", settings.support_whatsapp || "");
+        renderSupportOverview();
+      }
+
+      async function persistSettings(settingsToSave, successMessage) {
+        const response = await fetch(`${API_BASE}/settings`, {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${getAuthToken()}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(settingsToSave),
+        });
+
+        const data = await response
+          .json()
+          .catch(() => ({ error: "Unexpected response format" }));
+
+        if (!response.ok || !data.success) {
+          throw new Error(data.error || "Failed to save settings");
+        }
+
+        settings = { ...settings, ...settingsToSave };
+        renderSettings();
+        renderSupportSettings();
+        renderSupportOverview();
+        showMessage(successMessage, "success");
       }
 
       // Save settings
@@ -4320,27 +4890,47 @@
             whatsapp_number: document.getElementById("whatsappNumber").value,
           };
 
-          const response = await fetch(`${API_BASE}/settings`, {
-            method: "PUT",
-            headers: {
-              Authorization: `Bearer ${getAuthToken()}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(settingsToSave),
-          });
-
-          if (!response.ok) throw new Error("Failed to save settings");
-
-          const data = await response.json();
-          if (data.success) {
-            showMessage("Settings saved successfully", "success");
-            settings = { ...settings, ...settingsToSave };
-          } else {
-            throw new Error(data.error || "Save failed");
-          }
+          await persistSettings(settingsToSave, "Settings saved successfully");
         } catch (error) {
           console.error("Error saving settings:", error);
           showMessage("Failed to save settings: " + error.message, "error");
+        }
+      }
+
+      async function saveSupportSettings(e) {
+        if (e) e.preventDefault();
+
+        try {
+          const settingsToSave = {
+            support_heading: document.getElementById("supportSettingsHeading").value,
+            support_intro: document.getElementById("supportSettingsIntro").value,
+            support_currency:
+              document.getElementById("supportSettingsCurrency").value || "NGN",
+            support_bank_name:
+              document.getElementById("supportSettingsBankName").value,
+            support_account_name:
+              document.getElementById("supportSettingsAccountName").value,
+            support_account_number:
+              document.getElementById("supportSettingsAccountNumber").value,
+            support_payment_note:
+              document.getElementById("supportSettingsPaymentNote").value,
+            support_payment_link:
+              document.getElementById("supportSettingsPaymentLink").value,
+            support_email: document.getElementById("supportSettingsEmail").value,
+            support_whatsapp:
+              document.getElementById("supportSettingsWhatsapp").value,
+          };
+
+          await persistSettings(
+            settingsToSave,
+            "Support settings saved successfully",
+          );
+        } catch (error) {
+          console.error("Error saving support settings:", error);
+          showMessage(
+            "Failed to save support settings: " + error.message,
+            "error",
+          );
         }
       }
 
@@ -4821,6 +5411,8 @@
         setInterval(() => {
           if (currentSection === "dashboard") {
             loadDashboardData();
+          } else if (currentSection === "support") {
+            loadSupportData();
           }
         }, 60000);
       }

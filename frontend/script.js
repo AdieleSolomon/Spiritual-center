@@ -1,9 +1,19 @@
 document.documentElement.classList.add("js");
 
+try {
+  const hasInitialSession =
+    Boolean(localStorage.getItem("authToken")) ||
+    Boolean(localStorage.getItem("adminToken"));
+  document.documentElement.classList.toggle("has-auth-session", hasInitialSession);
+} catch (error) {
+  document.documentElement.classList.remove("has-auth-session");
+}
+
 const App = (() => {
   const WHATSAPP_PHONE = "2349072560420";
   const CONTACT_EMAIL = "Wisdomadiele57@gmail.com";
   const DEFAULT_MAP_QUERY = "Seventh-day Adventist church near me";
+  const MEMBER_DISPLAY_NAME_KEY = "memberDisplayName";
 
   const getConfigString = (key) => {
     const value = window.APP_CONFIG?.[key] ?? window.__APP_CONFIG__?.[key];
@@ -62,6 +72,13 @@ const App = (() => {
   const RESOURCE_PAGE_SIZE = 6;
   const RESOURCE_MAX_LIMIT = 100;
   const ALL_MATERIALS_PAGE_SIZE = 24;
+  const COMMUNITY_PAGE = "community.html";
+  const COMMUNITY_READING_THREAD_ID = 1;
+  const SUPPORT_PAYMENT_PAGE = "support-payment.html";
+  const MINISTRY_TIME_ZONE = "Africa/Lagos";
+  const currentPathName = window.location.pathname.toLowerCase();
+  const onSupportPaymentPage = currentPathName.endsWith(`/${SUPPORT_PAYMENT_PAGE}`) ||
+    currentPathName.endsWith(SUPPORT_PAYMENT_PAGE);
 
   const state = {
     token: localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
@@ -85,6 +102,30 @@ const App = (() => {
     category: "",
     type: "",
     loading: false,
+  };
+
+  const supportState = {
+    config: {
+      heading: "Support the Ministry",
+      intro:
+        "Your support helps sustain biblical teaching, prayer care, counseling, outreach, and ministry media.",
+      currency: "NGN",
+      bank_name: "",
+      account_name: "",
+      account_number: "",
+      payment_note:
+        "After sending your support, reach the ministry through WhatsApp or email with your transfer details so it can be confirmed quickly.",
+      payment_link: "",
+      support_email: "admin@spiritualcenter.com",
+      support_whatsapp: "2349072560420",
+    },
+  };
+
+  const communityState = {
+    threads: [],
+    activeFilter: "all",
+    focusType: "",
+    focusId: "",
   };
 
   const fallbackResources = [
@@ -114,6 +155,95 @@ const App = (() => {
     },
   ];
 
+  const DAILY_BIBLE_READING_DAY_MS = 24 * 60 * 60 * 1000;
+  const DAILY_BIBLE_READING_ANCHOR = Object.freeze({
+    date: "2026-03-12",
+    reference: "2 Kings 17",
+    version: "NKJV",
+  });
+  const DAILY_BIBLE_BOOKS = Object.freeze([
+    ["Genesis", 50],
+    ["Exodus", 40],
+    ["Leviticus", 27],
+    ["Numbers", 36],
+    ["Deuteronomy", 34],
+    ["Joshua", 24],
+    ["Judges", 21],
+    ["Ruth", 4],
+    ["1 Samuel", 31],
+    ["2 Samuel", 24],
+    ["1 Kings", 22],
+    ["2 Kings", 25],
+    ["1 Chronicles", 29],
+    ["2 Chronicles", 36],
+    ["Ezra", 10],
+    ["Nehemiah", 13],
+    ["Esther", 10],
+    ["Job", 42],
+    ["Psalms", 150],
+    ["Proverbs", 31],
+    ["Ecclesiastes", 12],
+    ["Song of Solomon", 8],
+    ["Isaiah", 66],
+    ["Jeremiah", 52],
+    ["Lamentations", 5],
+    ["Ezekiel", 48],
+    ["Daniel", 12],
+    ["Hosea", 14],
+    ["Joel", 3],
+    ["Amos", 9],
+    ["Obadiah", 1],
+    ["Jonah", 4],
+    ["Micah", 7],
+    ["Nahum", 3],
+    ["Habakkuk", 3],
+    ["Zephaniah", 3],
+    ["Haggai", 2],
+    ["Zechariah", 14],
+    ["Malachi", 4],
+    ["Matthew", 28],
+    ["Mark", 16],
+    ["Luke", 24],
+    ["John", 21],
+    ["Acts", 28],
+    ["Romans", 16],
+    ["1 Corinthians", 16],
+    ["2 Corinthians", 13],
+    ["Galatians", 6],
+    ["Ephesians", 6],
+    ["Philippians", 4],
+    ["Colossians", 4],
+    ["1 Thessalonians", 5],
+    ["2 Thessalonians", 3],
+    ["1 Timothy", 6],
+    ["2 Timothy", 4],
+    ["Titus", 3],
+    ["Philemon", 1],
+    ["Hebrews", 13],
+    ["James", 5],
+    ["1 Peter", 5],
+    ["2 Peter", 3],
+    ["1 John", 5],
+    ["2 John", 1],
+    ["3 John", 1],
+    ["Jude", 1],
+    ["Revelation", 22],
+  ]);
+  const DAILY_BIBLE_CHAPTERS = DAILY_BIBLE_BOOKS.reduce((chapters, [book, count]) => {
+    for (let chapter = 1; chapter <= count; chapter += 1) {
+      chapters.push({
+        book,
+        chapter,
+        reference: `${book} ${chapter}`,
+      });
+    }
+
+    return chapters;
+  }, []);
+  const DAILY_BIBLE_CHAPTER_INDEX = new Map(
+    DAILY_BIBLE_CHAPTERS.map((entry, index) => [entry.reference.toLowerCase(), index]),
+  );
+
   const ui = {
     header: document.getElementById("siteHeader"),
     navToggle: document.getElementById("navToggle"),
@@ -121,7 +251,15 @@ const App = (() => {
     navOverlay: document.getElementById("navOverlay"),
     navDropdownTrigger: document.getElementById("exploreDropdownBtn"),
     navDropdownMenu: document.getElementById("exploreDropdownMenu"),
-    openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")),
+    openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")).map((button) => {
+      if (!button.dataset.authDefaultHtml) {
+        button.dataset.authDefaultHtml = button.innerHTML;
+      }
+      if (!button.dataset.authDefaultLabel) {
+        button.dataset.authDefaultLabel = button.textContent.trim();
+      }
+      return button;
+    }),
     resourceLoginBtn: document.getElementById("resourceLoginBtn"),
     logoutBtn: document.getElementById("logoutBtn"),
     userBadge: document.getElementById("userBadge"),
@@ -176,6 +314,16 @@ const App = (() => {
     contactEmail: document.getElementById("contactEmail"),
     contactSubject: document.getElementById("contactSubject"),
     contactMessage: document.getElementById("contactMessage"),
+    supportHeading: document.getElementById("supportHeading"),
+    supportIntro: document.getElementById("supportIntro"),
+    supportCurrencyBadge: document.getElementById("supportCurrencyBadge"),
+    supportBankName: document.getElementById("supportBankName"),
+    supportAccountName: document.getElementById("supportAccountName"),
+    supportAccountNumber: document.getElementById("supportAccountNumber"),
+    supportPaymentNote: document.getElementById("supportPaymentNote"),
+    supportEmailLink: document.getElementById("supportEmailLink"),
+    supportWhatsappLink: document.getElementById("supportWhatsappLink"),
+    supportPaymentLink: document.getElementById("supportPaymentLink"),
     googleMapEmbed: document.getElementById("googleMapEmbed"),
     googleDirectionsLink: document.getElementById("googleDirectionsLink"),
     year: document.getElementById("year"),
@@ -212,14 +360,21 @@ const App = (() => {
     dailyPromiseCommentsList: document.getElementById("dailyPromiseCommentsList"),
     dailyPromiseCommentForm: document.getElementById("dailyPromiseCommentForm"),
     dailyPromiseCommentInput: document.getElementById("dailyPromiseCommentInput"),
+    dailyPromiseCommunityLink: document.getElementById("dailyPromiseCommunityLink"),
     devotionList: document.getElementById("devotionList"),
     devotionNotice: document.getElementById("devotionNotice"),
+    communityNotice: document.getElementById("communityNotice"),
+    communityThreads: document.getElementById("communityThreads"),
+    communityFilterButtons: Array.from(
+      document.querySelectorAll("[data-community-filter]"),
+    ),
   };
 
   function init() {
     setupGoogleAnalytics();
     setupGoogleMap();
     setYear();
+    setupDailyBibleReading();
     setupScrollHeader();
     setupMobileNav();
     setupNavDropdown();
@@ -238,6 +393,8 @@ const App = (() => {
     setupCounselingPage();
     setupDailyPromise();
     setupDevotionPage();
+    setupCommunityPage();
+    loadSupportConfig();
 
     updateAuthUI();
     hydrateSession().finally(() => {
@@ -250,6 +407,168 @@ const App = (() => {
     if (ui.year) {
       ui.year.textContent = String(new Date().getFullYear());
     }
+  }
+
+  function getStoredMemberDisplayName() {
+    try {
+      return String(localStorage.getItem(MEMBER_DISPLAY_NAME_KEY) || "").trim();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function persistMemberDisplayName(user = null, fallback = "") {
+    const displayName = String(
+      user?.username || user?.email || fallback || "",
+    ).trim();
+
+    if (!displayName) {
+      return "";
+    }
+
+    try {
+      localStorage.setItem(MEMBER_DISPLAY_NAME_KEY, displayName);
+    } catch (error) {
+      return displayName;
+    }
+
+    return displayName;
+  }
+
+  function renderOpenAuthButton(button, label, isSignedIn) {
+    if (!button) return;
+
+    if (isSignedIn) {
+      button.hidden = false;
+      button.textContent = label;
+      button.classList.add("auth-user-button");
+      button.dataset.authState = "member";
+      button.setAttribute("aria-label", `Signed in as ${label}`);
+      button.title = label;
+      return;
+    }
+
+    button.hidden = false;
+    button.innerHTML =
+      button.dataset.authDefaultHtml || button.dataset.authDefaultLabel || "Member Sign-In";
+    button.classList.remove("auth-user-button");
+    button.dataset.authState = "guest";
+    const defaultLabel =
+      button.dataset.authDefaultLabel || button.textContent.trim() || "Member Sign-In";
+    button.setAttribute("aria-label", defaultLabel);
+    button.removeAttribute("title");
+  }
+
+  function parseIsoDateParts(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(value || "").trim());
+    if (!match) return null;
+
+    return {
+      year: Number(match[1]),
+      month: Number(match[2]),
+      day: Number(match[3]),
+    };
+  }
+
+  function getDatePartsInTimeZone(date, timeZone = MINISTRY_TIME_ZONE) {
+    const parts = new Intl.DateTimeFormat("en-CA", {
+      timeZone,
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).formatToParts(date);
+    const values = {};
+
+    parts.forEach((part) => {
+      if (part.type === "year" || part.type === "month" || part.type === "day") {
+        values[part.type] = Number(part.value);
+      }
+    });
+
+    if (!values.year || !values.month || !values.day) {
+      return null;
+    }
+
+    return values;
+  }
+
+  function getDayNumberFromParts(parts) {
+    return Math.floor(
+      Date.UTC(parts.year, parts.month - 1, parts.day) / DAILY_BIBLE_READING_DAY_MS,
+    );
+  }
+
+  function formatBibleReadingDate(date) {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: MINISTRY_TIME_ZONE,
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    }).format(date);
+  }
+
+  function getDailyBibleReading(date = new Date()) {
+    const anchorIndex = DAILY_BIBLE_CHAPTER_INDEX.get(
+      DAILY_BIBLE_READING_ANCHOR.reference.toLowerCase(),
+    );
+    if (!Number.isFinite(anchorIndex) || !DAILY_BIBLE_CHAPTERS.length) {
+      return null;
+    }
+
+    const targetDateParts = getDatePartsInTimeZone(date);
+    const anchorDateParts = parseIsoDateParts(DAILY_BIBLE_READING_ANCHOR.date);
+    if (!targetDateParts || !anchorDateParts) {
+      return null;
+    }
+
+    const daysSinceAnchor =
+      getDayNumberFromParts(targetDateParts) - getDayNumberFromParts(anchorDateParts);
+    const totalChapters = DAILY_BIBLE_CHAPTERS.length;
+    const chapterIndex =
+      ((anchorIndex + daysSinceAnchor) % totalChapters + totalChapters) %
+      totalChapters;
+    const chapter = DAILY_BIBLE_CHAPTERS[chapterIndex];
+    const url =
+      `https://www.biblegateway.com/passage/?search=${encodeURIComponent(chapter.reference)}` +
+      `&version=${DAILY_BIBLE_READING_ANCHOR.version}`;
+
+    return {
+      ...chapter,
+      url,
+      dateLabel: formatBibleReadingDate(date),
+      summary:
+        "Read prayerfully, note what stands out, and carry one clear insight into prayer and community conversation.",
+      focus:
+        `Read ${chapter.reference} slowly. Notice what it reveals about God, ` +
+        "the choices being made, and one step of obedience for today.",
+    };
+  }
+
+  function setupDailyBibleReading() {
+    const reading = getDailyBibleReading();
+    if (!reading) return;
+
+    document.querySelectorAll("[data-daily-bible-reference]").forEach((element) => {
+      const prefix = element.getAttribute("data-daily-bible-prefix") || "";
+      element.textContent = `${prefix}${reading.reference}`;
+    });
+
+    document.querySelectorAll("[data-daily-bible-link]").forEach((element) => {
+      element.setAttribute("href", reading.url);
+    });
+
+    document.querySelectorAll("[data-daily-bible-date]").forEach((element) => {
+      element.textContent = reading.dateLabel;
+    });
+
+    document.querySelectorAll("[data-daily-bible-summary]").forEach((element) => {
+      element.textContent = reading.summary;
+    });
+
+    document.querySelectorAll("[data-daily-bible-focus]").forEach((element) => {
+      element.textContent = reading.focus;
+    });
   }
 
   function setupScrollHeader() {
@@ -448,6 +767,9 @@ const App = (() => {
 
     ui.openAuthBtns.forEach((button) => {
       button.addEventListener("click", () => {
+        if (document.documentElement.classList.contains("has-auth-session")) {
+          return;
+        }
         open(button.dataset.openAuthMode || "login");
       });
     });
@@ -623,6 +945,131 @@ const App = (() => {
     });
   }
 
+  function buildWhatsAppSupportUrl(phone, message) {
+    const digits = String(phone || "").replace(/[^\d]/g, "");
+    if (!digits) return "";
+    const text = encodeURIComponent(message || "");
+    return text ? `https://wa.me/${digits}?text=${text}` : `https://wa.me/${digits}`;
+  }
+
+  function getSupportPaymentUrl(config = {}) {
+    const configuredPaymentLink = String(config.payment_link || "").trim();
+    if (configuredPaymentLink) {
+      return configuredPaymentLink;
+    }
+
+    if (onSupportPaymentPage) {
+      return "";
+    }
+
+    return SUPPORT_PAYMENT_PAGE;
+  }
+
+  function applySupportConfig(config = {}) {
+    supportState.config = {
+      ...supportState.config,
+      ...config,
+    };
+
+    const resolvedConfig = supportState.config;
+    const paymentLink = String(resolvedConfig.payment_link || "").trim();
+    const supportPaymentUrl = getSupportPaymentUrl(resolvedConfig);
+    const whatsappUrl = buildWhatsAppSupportUrl(
+      resolvedConfig.support_whatsapp,
+      "Hello, I would like to support the ministry.",
+    );
+    const bankName =
+      String(resolvedConfig.bank_name || "").trim() ||
+      "Add your bank name from the admin panel";
+    const accountName =
+      String(resolvedConfig.account_name || "").trim() ||
+      "Add your account name from the admin panel";
+    const accountNumber =
+      String(resolvedConfig.account_number || "").trim() ||
+      "Add your account number from the admin panel";
+    const supportEmail =
+      String(resolvedConfig.support_email || "").trim() ||
+      "admin@spiritualcenter.com";
+    const currency = String(resolvedConfig.currency || "NGN").trim().toUpperCase();
+
+    if (ui.supportHeading) {
+      ui.supportHeading.textContent =
+        resolvedConfig.heading || "Support the Ministry";
+    }
+
+    if (ui.supportIntro) {
+      ui.supportIntro.textContent =
+        resolvedConfig.intro ||
+        "Your support helps sustain biblical teaching, prayer care, counseling, outreach, and ministry media.";
+    }
+
+    if (ui.supportCurrencyBadge) {
+      ui.supportCurrencyBadge.textContent = currency || "NGN";
+    }
+
+    if (ui.supportBankName) {
+      ui.supportBankName.textContent = bankName;
+    }
+
+    if (ui.supportAccountName) {
+      ui.supportAccountName.textContent = accountName;
+    }
+
+    if (ui.supportAccountNumber) {
+      ui.supportAccountNumber.textContent = accountNumber;
+    }
+
+    if (ui.supportPaymentNote) {
+      ui.supportPaymentNote.textContent =
+        resolvedConfig.payment_note ||
+        "After sending your support, reach the ministry through WhatsApp or email with your transfer details so it can be confirmed quickly.";
+    }
+
+    if (ui.supportEmailLink) {
+      ui.supportEmailLink.textContent = supportEmail;
+      ui.supportEmailLink.href = `mailto:${supportEmail}`;
+    }
+
+    if (ui.supportWhatsappLink) {
+      ui.supportWhatsappLink.href = whatsappUrl || "#support";
+      ui.supportWhatsappLink.hidden = !whatsappUrl;
+    }
+
+    if (ui.supportPaymentLink) {
+      const shouldShowPaymentLink = Boolean(supportPaymentUrl);
+      ui.supportPaymentLink.hidden = !shouldShowPaymentLink;
+      ui.supportPaymentLink.href = shouldShowPaymentLink
+        ? supportPaymentUrl
+        : "#support";
+      if (shouldShowPaymentLink) {
+        ui.supportPaymentLink.target = paymentLink ? "_blank" : "_self";
+        ui.supportPaymentLink.rel = paymentLink
+          ? "noopener noreferrer"
+          : "";
+      }
+    }
+  }
+
+  async function loadSupportConfig() {
+    if (!ui.supportHeading) return;
+
+    try {
+      const response = await fetch(`${API_BASE}/support/config`);
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected response format" }));
+
+      if (!response.ok || !data?.success || !data.support) {
+        throw new Error(data?.error || "Failed to load support details");
+      }
+
+      applySupportConfig(data.support);
+    } catch (error) {
+      console.error("Support config load error:", error);
+      applySupportConfig(supportState.config);
+    }
+  }
+
   function setupLoginForm() {
     if (!ui.loginForm) return;
 
@@ -659,6 +1106,7 @@ const App = (() => {
         state.user = data.user || null;
 
         localStorage.setItem("authToken", data.token);
+        persistMemberDisplayName(data.user, email);
 
         updateAuthUI();
         loadResources();
@@ -738,6 +1186,7 @@ const App = (() => {
         state.token = data.token;
         state.user = data.user || null;
         localStorage.setItem("authToken", data.token);
+        persistMemberDisplayName(data.user, username || email);
 
         updateAuthUI();
         loadResources();
@@ -857,6 +1306,7 @@ const App = (() => {
         state.token = data.token;
         state.user = data.user || null;
         localStorage.setItem("authToken", data.token);
+        persistMemberDisplayName(data.user, email);
 
         updateAuthUI();
         loadResources();
@@ -1172,6 +1622,7 @@ const App = (() => {
       }
 
       state.user = data.user;
+      persistMemberDisplayName(data.user);
       updateAuthUI();
     } catch (error) {
       clearSession();
@@ -1186,10 +1637,25 @@ const App = (() => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminEmail");
+    localStorage.removeItem(MEMBER_DISPLAY_NAME_KEY);
   }
 
   function updateAuthUI() {
+    const hasStoredSession = Boolean(
+      state.token ||
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("adminToken"),
+    );
     const loggedIn = Boolean(state.token && state.user);
+    const resolvedDisplayName = loggedIn
+      ? persistMemberDisplayName(state.user)
+      : getStoredMemberDisplayName();
+    const authButtonLabel = resolvedDisplayName || "Member";
+
+    document.documentElement.classList.toggle(
+      "has-auth-session",
+      hasStoredSession,
+    );
 
     if (ui.userBadge) {
       ui.userBadge.hidden = !loggedIn;
@@ -1200,11 +1666,11 @@ const App = (() => {
     }
 
     if (ui.resourceLoginBtn) {
-      ui.resourceLoginBtn.hidden = loggedIn;
+      ui.resourceLoginBtn.hidden = hasStoredSession;
     }
 
     ui.openAuthBtns.forEach((button) => {
-      button.hidden = loggedIn;
+      renderOpenAuthButton(button, authButtonLabel, hasStoredSession);
     });
 
     if (loggedIn) {
@@ -1915,6 +2381,360 @@ const App = (() => {
     if (tone === "success") ui.devotionNotice.classList.add("is-success");
   }
 
+  function getAuthToken() {
+    return (
+      state.token ||
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("adminToken")
+    );
+  }
+
+  function normalizeCommunityFilter(value = "") {
+    const normalized = String(value || "").trim().toLowerCase();
+    const allowedFilters = new Set(["all", "devotion", "promise", "reading"]);
+    return allowedFilters.has(normalized) ? normalized : "all";
+  }
+
+  function buildCommunityUrl({ postType = "", postId = "", filter = "" } = {}) {
+    const params = new URLSearchParams();
+    const normalizedFilter = normalizeCommunityFilter(filter);
+    const normalizedPostType = normalizeCommunityFilter(postType);
+    const numericPostId = Number(postId);
+
+    if (normalizedFilter !== "all") {
+      params.set("filter", normalizedFilter);
+    }
+
+    if (normalizedPostType !== "all") {
+      params.set("postType", normalizedPostType);
+    }
+
+    if (Number.isFinite(numericPostId) && numericPostId > 0) {
+      params.set("postId", String(numericPostId));
+    }
+
+    const query = params.toString();
+    return `${COMMUNITY_PAGE}${query ? `?${query}` : ""}#community-discussions`;
+  }
+
+  function getCommunityThreadElementId(postType, postId) {
+    return `community-thread-${postType}-${postId}`;
+  }
+
+  function formatCommunityDate(value) {
+    return new Date(value || Date.now()).toLocaleDateString(undefined, {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  }
+
+  function getCommunityReadingThread() {
+    return {
+      id: COMMUNITY_READING_THREAD_ID,
+      kind: "reading",
+      author: "Bible Reading Circle",
+      title: "Bible Reading Discussion Room",
+      summary:
+        "Share the verse that stood out to you, ask a question, or talk through the action step you are taking from today's reading.",
+      href: "bible-reading.html",
+      created_at: new Date().toISOString(),
+      iconClass: "fa-book-bible",
+      label: "Bible Reading",
+      ctaLabel: "Open Bible Reading",
+    };
+  }
+
+  function sortCommunityThreads(threads = []) {
+    return [...threads].sort((left, right) => {
+      if (left.kind === "reading" && right.kind !== "reading") return -1;
+      if (right.kind === "reading" && left.kind !== "reading") return 1;
+      return new Date(right.created_at || Date.now()) - new Date(left.created_at || Date.now());
+    });
+  }
+
+  function renderCommunityThread(thread) {
+    const postType = normalizeCommunityFilter(thread?.kind);
+    const postId = Number(thread?.id);
+    const title = sanitize(thread?.title || "Community Discussion");
+    const author = sanitize(thread?.author || "Community");
+    const label = sanitize(thread?.label || "Discussion");
+    const href = sanitize(thread?.href || "#");
+    const ctaLabel = sanitize(thread?.ctaLabel || "Open Source Page");
+    const iconClass = sanitize(thread?.iconClass || "fa-comments");
+    const summarySource = String(thread?.summary || "").replace(/\s+/g, " ").trim();
+    const summary = sanitize(
+      summarySource.length > 240 ? `${summarySource.slice(0, 240)}...` : summarySource,
+    );
+    const date = formatCommunityDate(thread?.created_at);
+    const isFocused =
+      communityState.focusType === postType && communityState.focusId === String(postId);
+
+    return `
+      <article
+        class="feed-post-card community-thread-card${isFocused ? " is-focused" : ""}"
+        id="${getCommunityThreadElementId(postType, postId)}"
+        data-thread-type="${postType}"
+        data-thread-id="${postId}"
+        data-reveal>
+        <div class="feed-post-header">
+          <div class="feed-post-avatar"><i class="fa-solid ${iconClass}"></i></div>
+          <div class="feed-post-meta">
+            <strong>${author}</strong>
+            <span class="feed-post-type">${label}</span>
+            <span class="feed-post-date">${sanitize(date)}</span>
+          </div>
+        </div>
+        <h3 class="feed-post-title">${title}</h3>
+        <p class="feed-post-body">${summary}</p>
+        <div class="feed-post-actions">
+          <a href="${href}" class="feed-action-btn">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i> ${ctaLabel}
+          </a>
+        </div>
+        <div class="feed-comments-box">
+          <p class="community-thread-hint">
+            Sign in to add your encouragement, questions, and prayer responses.
+          </p>
+          <div
+            class="feed-comments-list"
+            id="community-comments-list-${postType}-${postId}">
+            <p style="color: var(--ink-soft); font-size: 0.85rem;">Loading comments...</p>
+          </div>
+          <form
+            class="feed-comment-form community-comment-form"
+            data-post-id="${postId}"
+            data-post-type="${postType}">
+            <input
+              type="text"
+              class="comment-input"
+              placeholder="Write a response for the community..."
+              required />
+            <button
+              type="submit"
+              class="btn btn-solid"
+              style="padding: 8px 14px; font-size: 0.82rem;">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+        </div>
+      </article>
+    `;
+  }
+
+  function syncCommunityFilterButtons() {
+    ui.communityFilterButtons.forEach((button) => {
+      const buttonFilter = normalizeCommunityFilter(button.dataset.communityFilter);
+      const isActive = buttonFilter === communityState.activeFilter;
+      button.classList.toggle("active", isActive);
+      button.setAttribute("aria-pressed", String(isActive));
+    });
+  }
+
+  function focusCommunityThread() {
+    if (!communityState.focusType || !communityState.focusId) return;
+
+    const target = document.getElementById(
+      getCommunityThreadElementId(communityState.focusType, communityState.focusId),
+    );
+    if (!target) return;
+
+    requestAnimationFrame(() => {
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function bindCommunityCommentForms() {
+    document.querySelectorAll(".community-comment-form").forEach((form) => {
+      if (form.dataset.bound === "true") return;
+      form.dataset.bound = "true";
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+
+        const input = form.querySelector(".comment-input");
+        const text = input?.value.trim();
+        const postType = normalizeCommunityFilter(form.dataset.postType);
+        const postId = form.dataset.postId;
+        const token = getAuthToken();
+
+        if (!text) return;
+
+        if (!token) {
+          notify("Please sign in to join the community discussion.", "error");
+          return;
+        }
+
+        if (!postId || postType === "all") {
+          notify("Unable to open this discussion right now. Please refresh.", "error");
+          return;
+        }
+
+        try {
+          const response = await fetch(`${API_BASE}/comments`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+              post_type: postType,
+              post_id: postId,
+              comment_text: text,
+            }),
+          });
+
+          const data = await response
+            .json()
+            .catch(() => ({ error: "Unexpected response format." }));
+
+          if (!response.ok) {
+            throw new Error(data?.error || "Failed to send response.");
+          }
+
+          if (input) {
+            input.value = "";
+          }
+
+          const listElement = document.getElementById(
+            `community-comments-list-${postType}-${postId}`,
+          );
+          await loadCommentsForPost(postType, postId, listElement);
+        } catch (error) {
+          notify("Unable to send your response. Please try again.", "error");
+        }
+      });
+    });
+  }
+
+  function renderCommunityThreads() {
+    if (!ui.communityThreads || !ui.communityNotice) return;
+
+    const visibleThreads = communityState.threads.filter((thread) => {
+      if (communityState.activeFilter === "all") return true;
+      return normalizeCommunityFilter(thread?.kind) === communityState.activeFilter;
+    });
+
+    syncCommunityFilterButtons();
+
+    if (!visibleThreads.length) {
+      ui.communityNotice.textContent = "No discussion threads are available for this view yet.";
+      ui.communityNotice.className = "resource-notice is-warning";
+      ui.communityThreads.innerHTML = "";
+      return;
+    }
+
+    ui.communityNotice.textContent =
+      communityState.activeFilter === "all"
+        ? "Discuss the latest devotion, promise, and Bible reading posts with the ministry community."
+        : `Showing ${communityState.activeFilter} discussions.`;
+    ui.communityNotice.className = "resource-notice";
+    ui.communityThreads.innerHTML = visibleThreads.map(renderCommunityThread).join("");
+
+    visibleThreads.forEach((thread) => {
+      const listElement = document.getElementById(
+        `community-comments-list-${thread.kind}-${thread.id}`,
+      );
+      if (listElement) {
+        loadCommentsForPost(thread.kind, thread.id, listElement);
+      }
+    });
+
+    bindCommunityCommentForms();
+    setupRevealAnimations();
+    focusCommunityThread();
+  }
+
+  async function loadCommunityThreads() {
+    if (!ui.communityThreads || !ui.communityNotice) return;
+
+    ui.communityNotice.textContent = "Loading community discussions...";
+    ui.communityNotice.className = "resource-notice";
+
+    const [devotionData, promiseData] = await Promise.all([
+      fetch(`${API_BASE}/devotion-posts?limit=12`)
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null),
+      fetch(`${API_BASE}/daily-promises?limit=12`)
+        .then((response) => (response.ok ? response.json() : null))
+        .catch(() => null),
+    ]);
+
+    const devotionThreads = Array.isArray(devotionData?.posts)
+      ? devotionData.posts.map((post) => ({
+          id: Number(post.id),
+          kind: "devotion",
+          author: post.author || "Pst. Wisdom C. Adiele",
+          title: post.title || "Daily Devotion",
+          summary: post.devotion_text || "",
+          href: "devotion.html",
+          created_at: post.created_at || post.updated_at || new Date().toISOString(),
+          iconClass: "fa-fire-flame-curved",
+          label: "Devotion",
+          ctaLabel: "Open Devotion Page",
+        }))
+      : [];
+
+    const promiseThreads = Array.isArray(promiseData?.promises)
+      ? promiseData.promises.map((post) => ({
+          id: Number(post.id),
+          kind: "promise",
+          author: post.author || "Scripture",
+          title: post.title || "Daily Promise",
+          summary: post.promise_text || "",
+          href: "daily-promise.html",
+          created_at: post.created_at || post.updated_at || new Date().toISOString(),
+          iconClass: "fa-star",
+          label: "Daily Promise",
+          ctaLabel: "Open Promise Page",
+        }))
+      : [];
+
+    communityState.threads = sortCommunityThreads([
+      getCommunityReadingThread(),
+      ...devotionThreads.filter((thread) => Number.isFinite(thread.id)),
+      ...promiseThreads.filter((thread) => Number.isFinite(thread.id)),
+    ]);
+
+    renderCommunityThreads();
+  }
+
+  function setupCommunityPage() {
+    if (!ui.communityThreads || !ui.communityNotice) return;
+
+    const params = new URLSearchParams(window.location.search);
+    const requestedFilter = params.get("filter") || params.get("postType") || "all";
+    const requestedPostType = params.get("postType") || "";
+    const requestedPostId = Number(params.get("postId"));
+
+    communityState.activeFilter = normalizeCommunityFilter(requestedFilter);
+    communityState.focusType = normalizeCommunityFilter(requestedPostType);
+    communityState.focusId =
+      Number.isFinite(requestedPostId) && requestedPostId > 0
+        ? String(requestedPostId)
+        : "";
+
+    ui.communityFilterButtons.forEach((button) => {
+      if (button.dataset.bound === "true") return;
+      button.dataset.bound = "true";
+
+      button.addEventListener("click", () => {
+        communityState.activeFilter = normalizeCommunityFilter(
+          button.dataset.communityFilter,
+        );
+        renderCommunityThreads();
+      });
+    });
+
+    syncCommunityFilterButtons();
+    loadCommunityThreads().catch(() => {
+      ui.communityNotice.textContent =
+        "Unable to load the community right now. Please try again soon.";
+      ui.communityNotice.className = "resource-notice is-warning";
+      ui.communityThreads.innerHTML = "";
+    });
+  }
+
   function renderDevotionPost(post) {
     const title = sanitize(post?.title || "Daily Devotion");
     const author = sanitize(post?.author || "Pst. Wisdom C. Adiele");
@@ -1937,6 +2757,13 @@ const App = (() => {
         </div>
         <h3>${title}</h3>
         <p>${formattedText}</p>
+        <div class="feed-post-actions">
+          <a
+            href="${buildCommunityUrl({ postType: "devotion", postId: post?.id, filter: "devotion" })}"
+            class="feed-action-btn">
+            <i class="fa-solid fa-users"></i> Open Community
+          </a>
+        </div>
         <div class="feed-comments-box">
           <div class="feed-comments-list" id="devotion-comments-list-${post.id}">
             <p style="color: var(--ink-soft); font-size: 0.85rem;">Loading comments...</p>
@@ -2088,7 +2915,17 @@ const App = (() => {
       );
       meta.textContent = `${author} - ${date}`;
 
-      item.append(text, meta);
+      const actions = document.createElement("div");
+      actions.className = "feed-post-actions";
+      actions.innerHTML = `
+        <a
+          href="${buildCommunityUrl({ postType: "promise", postId: promise?.id, filter: "promise" })}"
+          class="feed-action-btn">
+          <i class="fa-solid fa-users"></i> Open Community
+        </a>
+      `;
+
+      item.append(text, meta, actions);
 
       if (promise?.id) {
         const commentsBox = document.createElement("div");
@@ -2262,10 +3099,20 @@ const App = (() => {
     const postId = promise?.id;
     if (!postId) {
       clearDailyPromiseComments();
+      if (ui.dailyPromiseCommunityLink) {
+        ui.dailyPromiseCommunityLink.href = buildCommunityUrl({ filter: "promise" });
+      }
       return;
     }
 
     ui.dailyPromiseCommentForm.dataset.postId = String(postId);
+    if (ui.dailyPromiseCommunityLink) {
+      ui.dailyPromiseCommunityLink.href = buildCommunityUrl({
+        postType: "promise",
+        postId,
+        filter: "promise",
+      });
+    }
     loadCommentsForPost("promise", postId, ui.dailyPromiseCommentsList);
 
     if (ui.dailyPromiseCommentForm.dataset.bound === "true") {

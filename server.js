@@ -981,6 +981,72 @@ const UPSERT_SETTING_SQL = IS_POSTGRES
         setting_type = VALUES(setting_type)
     `;
 
+const INSERT_DEFAULT_SETTING_SQL = IS_POSTGRES
+  ? `
+      INSERT INTO settings (setting_key, setting_value, setting_type)
+      VALUES (?, ?, ?)
+      ON CONFLICT (setting_key) DO NOTHING
+    `
+  : `
+      INSERT INTO settings (setting_key, setting_value, setting_type)
+      VALUES (?, ?, ?)
+      ON DUPLICATE KEY UPDATE
+        setting_key = setting_key
+    `;
+
+const DEFAULT_SETTINGS = [
+  ["site_title", "Spiritual Center", "string"],
+  [
+    "site_description",
+    "Center of Knowledge and Spiritual Enrichment",
+    "string",
+  ],
+  ["contact_email", "admin@spiritualcenter.com", "string"],
+  ["contact_phone", "+234 907 256 0420", "string"],
+  ["whatsapp_number", "+2349072560420", "string"],
+  ["support_heading", "Support the Ministry", "string"],
+  [
+    "support_intro",
+    "Your support helps sustain biblical teaching, prayer care, counseling, outreach, and ministry media.",
+    "string",
+  ],
+  ["support_currency", "NGN", "string"],
+  ["support_bank_name", "OPay", "string"],
+  ["support_account_name", "", "string"],
+  ["support_account_number", "8069383370", "string"],
+  [
+    "support_payment_note",
+    "After sending your support, reach the ministry through WhatsApp or email with your transfer details so it can be confirmed quickly.",
+    "string",
+  ],
+  ["support_payment_link", "", "string"],
+  ["support_email", "admin@spiritualcenter.com", "string"],
+  ["support_whatsapp", "+2349072560420", "string"],
+  ["max_upload_size", "104857600", "number"],
+  [
+    "allowed_file_types",
+    '["pdf","doc","docx","jpg","jpeg","png","gif","mp4","avi","mov","mp3","wav"]',
+    "json",
+  ],
+];
+
+const PUBLIC_SUPPORT_SETTING_KEYS = [
+  "site_title",
+  "contact_email",
+  "contact_phone",
+  "whatsapp_number",
+  "support_heading",
+  "support_intro",
+  "support_currency",
+  "support_bank_name",
+  "support_account_name",
+  "support_account_number",
+  "support_payment_note",
+  "support_payment_link",
+  "support_email",
+  "support_whatsapp",
+];
+
 const postgresSchemaStatements = [
   `
     CREATE TABLE IF NOT EXISTS users (
@@ -1153,6 +1219,116 @@ const ensureUserAuthColumns = async (connection) => {
   }
 };
 
+const ensureDonationColumns = async (connection) => {
+  if (IS_POSTGRES) {
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS donor_phone VARCHAR(50)",
+    );
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS support_type VARCHAR(80)",
+    );
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS frequency VARCHAR(30) DEFAULT 'one_time'",
+    );
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN DEFAULT FALSE",
+    );
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS admin_note TEXT",
+    );
+    await connection.execute(
+      "ALTER TABLE donations ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+    );
+    return;
+  }
+
+  const alterStatements = [
+    "ALTER TABLE donations ADD COLUMN donor_phone VARCHAR(50) NULL",
+    "ALTER TABLE donations ADD COLUMN support_type VARCHAR(80) NULL",
+    "ALTER TABLE donations ADD COLUMN frequency VARCHAR(30) NOT NULL DEFAULT 'one_time'",
+    "ALTER TABLE donations ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE",
+    "ALTER TABLE donations ADD COLUMN admin_note TEXT NULL",
+    "ALTER TABLE donations ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+  ];
+
+  for (const statement of alterStatements) {
+    try {
+      await connection.execute(statement);
+    } catch (error) {
+      if (error?.code !== "ER_DUP_FIELDNAME") {
+        throw error;
+      }
+    }
+  }
+};
+
+const formatSettingsRows = (settings = []) => {
+  const formattedSettings = {};
+
+  settings.forEach((setting) => {
+    let value = setting.setting_value;
+
+    if (setting.setting_type === "json") {
+      try {
+        value = JSON.parse(value);
+      } catch (error) {
+        value = setting.setting_value;
+      }
+    } else if (setting.setting_type === "number") {
+      value = Number(value);
+    } else if (setting.setting_type === "boolean") {
+      value = value === "true";
+    }
+
+    formattedSettings[setting.setting_key] = value;
+  });
+
+  return formattedSettings;
+};
+
+const getSettingsMap = async (keys = []) => {
+  let query =
+    "SELECT setting_key, setting_value, setting_type FROM settings";
+  const params = [];
+
+  if (Array.isArray(keys) && keys.length > 0) {
+    query += ` WHERE setting_key IN (${keys.map(() => "?").join(", ")})`;
+    params.push(...keys);
+  }
+
+  query += " ORDER BY setting_key";
+
+  const [settings] = await pool.execute(query, params);
+  return formatSettingsRows(settings);
+};
+
+const buildPublicSupportConfig = (settings = {}) => ({
+  site_title: settings.site_title || "Spiritual Center",
+  contact_email: settings.contact_email || "admin@spiritualcenter.com",
+  contact_phone: settings.contact_phone || "+234 907 256 0420",
+  whatsapp_number: settings.whatsapp_number || "+2349072560420",
+  heading: settings.support_heading || "Support the Ministry",
+  intro:
+    settings.support_intro ||
+    "Your support helps sustain biblical teaching, prayer care, counseling, outreach, and ministry media.",
+  currency: settings.support_currency || "NGN",
+  bank_name: settings.support_bank_name || "",
+  account_name: settings.support_account_name || "",
+  account_number: settings.support_account_number || "",
+  payment_note:
+    settings.support_payment_note ||
+    "After sending your support, reach the ministry through WhatsApp or email with your transfer details so it can be confirmed quickly.",
+  payment_link: settings.support_payment_link || "",
+  support_email:
+    settings.support_email ||
+    settings.contact_email ||
+    "admin@spiritualcenter.com",
+  support_whatsapp:
+    settings.support_whatsapp ||
+    settings.whatsapp_number ||
+    "+2349072560420",
+});
+
 const ensureDefaultAdminUser = async (connection) => {
   const upsertAdminUser = async ({ email, username, password }) => {
     const normalizedEmail = String(email).trim().toLowerCase();
@@ -1316,29 +1492,12 @@ const initializePostgresDatabase = async () => {
     }
 
     await ensureUserAuthColumns(connection);
+    await ensureDonationColumns(connection);
 
     await ensureDefaultAdminUser(connection);
 
-    const defaultSettings = [
-      ["site_title", "Spiritual Center", "string"],
-      [
-        "site_description",
-        "Center of Knowledge and Spiritual Enrichment",
-        "string",
-      ],
-      ["contact_email", "admin@spiritualcenter.com", "string"],
-      ["contact_phone", "+234 907 256 0420", "string"],
-      ["whatsapp_number", "+2349072560420", "string"],
-      ["max_upload_size", "104857600", "number"],
-      [
-        "allowed_file_types",
-        '["pdf","doc","docx","jpg","jpeg","png","gif","mp4","avi","mov","mp3","wav"]',
-        "json",
-      ],
-    ];
-
-    for (const [key, value, type] of defaultSettings) {
-      await connection.execute(UPSERT_SETTING_SQL, [key, value, type]);
+    for (const [key, value, type] of DEFAULT_SETTINGS) {
+      await connection.execute(INSERT_DEFAULT_SETTING_SQL, [key, value, type]);
     }
 
     await connection.execute("COMMIT");
@@ -1505,6 +1664,8 @@ const initializeDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await ensureDonationColumns(connection);
+
     // Analytics table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS analytics (
@@ -1536,27 +1697,9 @@ const initializeDatabase = async () => {
     // Create default admin user
     await ensureDefaultAdminUser(connection);
 
-    // Insert default settings
-    const defaultSettings = [
-      ["site_title", "Spiritual Center", "string"],
-      [
-        "site_description",
-        "Center of Knowledge and Spiritual Enrichment",
-        "string",
-      ],
-      ["contact_email", "admin@spiritualcenter.com", "string"],
-      ["contact_phone", "+234 907 256 0420", "string"],
-      ["whatsapp_number", "+2349072560420", "string"],
-      ["max_upload_size", "104857600", "number"], // 100MB in bytes
-      [
-        "allowed_file_types",
-        '["pdf","doc","docx","jpg","jpeg","png","gif","mp4","avi","mov","mp3","wav"]',
-        "json",
-      ],
-    ];
-
-    for (const [key, value, type] of defaultSettings) {
-      await connection.execute(UPSERT_SETTING_SQL, [key, value, type]);
+    // Insert default settings without overwriting admin changes
+    for (const [key, value, type] of DEFAULT_SETTINGS) {
+      await connection.execute(INSERT_DEFAULT_SETTING_SQL, [key, value, type]);
     }
 
     connection.release();
@@ -1844,6 +1987,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
     const parsedPage = Math.max(parseInt(page, 10) || 1, 1);
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const offset = (parsedPage - 1) * parsedLimit;
+    const paginationClause = `LIMIT ${parsedLimit} OFFSET ${offset}`;
     const isAdminRequest = req.user?.role === "admin";
 
     const whereParts = [];
@@ -1895,7 +2039,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
         LEFT JOIN users u ON m.uploader_id = u.id
         ${whereClause}
         ORDER BY m.created_at DESC
-        LIMIT ? OFFSET ?
+        ${paginationClause}
       `
       : `
         SELECT
@@ -1918,14 +2062,10 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
         LEFT JOIN users u ON m.uploader_id = u.id
         ${whereClause}
         ORDER BY m.created_at DESC
-        LIMIT ? OFFSET ?
+        ${paginationClause}
       `;
 
-    const [materials] = await pool.execute(selectQuery, [
-      ...filterParams,
-      parsedLimit,
-      offset,
-    ]);
+    const [materials] = await pool.execute(selectQuery, filterParams);
 
     const normalizedMaterials = (materials || []).map((material) => {
       const isPublicValue =
@@ -2343,26 +2483,9 @@ app.get("/api/settings", authenticateToken, async (req, res) => {
       "SELECT setting_key, setting_value, setting_type FROM settings ORDER BY setting_key",
     );
 
-    const formattedSettings = {};
-    settings.forEach((setting) => {
-      let value = setting.setting_value;
-      if (setting.setting_type === "json") {
-        try {
-          value = JSON.parse(value);
-        } catch (e) {
-          value = value;
-        }
-      } else if (setting.setting_type === "number") {
-        value = Number(value);
-      } else if (setting.setting_type === "boolean") {
-        value = value === "true";
-      }
-      formattedSettings[setting.setting_key] = value;
-    });
-
     res.json({
       success: true,
-      settings: formattedSettings,
+      settings: formatSettingsRows(settings),
     });
   } catch (error) {
     console.error("Get settings error:", error);
@@ -2978,7 +3101,12 @@ app.get("/api/users", authenticateToken, async (req, res) => {
       page = 1,
       limit = 20,
     } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+    const parsedLimit = Math.min(
+      Math.max(Number.parseInt(limit, 10) || 20, 1),
+      200,
+    );
+    const offset = (parsedPage - 1) * parsedLimit;
 
     let query = `
       SELECT 
@@ -3006,8 +3134,7 @@ app.get("/api/users", authenticateToken, async (req, res) => {
       query += ` AND is_approved = FALSE`;
     }
 
-    query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    query += ` ORDER BY created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
 
     const [users] = await pool.execute(query, params);
 
@@ -3019,7 +3146,7 @@ app.get("/api/users", authenticateToken, async (req, res) => {
           "SELECT id, username, email, role, is_approved, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at",
           "SELECT COUNT(*) as total",
         ),
-      params.slice(0, -2),
+      params,
     );
     const total = countResult[0]?.total || 0;
 
@@ -3027,10 +3154,10 @@ app.get("/api/users", authenticateToken, async (req, res) => {
       success: true,
       users,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parsedPage,
+        limit: parsedLimit,
         total,
-        pages: Math.ceil(total / parseInt(limit)),
+        pages: Math.ceil(total / parsedLimit),
       },
     });
   } catch (error) {
@@ -3341,7 +3468,12 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
     }
 
     const { status = "", search = "", page = 1, limit = 20 } = req.query;
-    const offset = (parseInt(page) - 1) * parseInt(limit);
+    const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+    const parsedLimit = Math.min(
+      Math.max(Number.parseInt(limit, 10) || 20, 1),
+      200,
+    );
+    const offset = (parsedPage - 1) * parsedLimit;
 
     let query = `
       SELECT 
@@ -3365,8 +3497,7 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    query += ` ORDER BY pr.created_at DESC LIMIT ? OFFSET ?`;
-    params.push(parseInt(limit), offset);
+    query += ` ORDER BY pr.created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
 
     const [prayers] = await pool.execute(query, params);
 
@@ -3389,8 +3520,8 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
       prayer_requests: prayers,
       counts: statusCounts,
       pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
+        page: parsedPage,
+        limit: parsedLimit,
         total: prayers.length,
       },
     });
@@ -3484,8 +3615,7 @@ app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
       params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
-    query += ` ORDER BY cr.created_at DESC LIMIT ? OFFSET ?`;
-    params.push(parsedLimit, offset);
+    query += ` ORDER BY cr.created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
 
     const [requests] = await pool.execute(query, params);
 
@@ -3517,6 +3647,26 @@ app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
     res.status(500).json({
       success: false,
       error: "Failed to fetch counseling requests",
+      details: error.message,
+    });
+  }
+});
+
+// ==================== SUPPORT ENDPOINTS ====================
+
+app.get("/api/support/config", async (req, res) => {
+  try {
+    const settings = await getSettingsMap(PUBLIC_SUPPORT_SETTING_KEYS);
+
+    res.json({
+      success: true,
+      support: buildPublicSupportConfig(settings),
+    });
+  } catch (error) {
+    console.error("Get support config error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to load support configuration",
       details: error.message,
     });
   }
@@ -3596,8 +3746,7 @@ app.get("/api/daily-promises", async (req, res) => {
     const clampedLimit = Math.min(Math.max(safeLimit, 1), 100);
 
     const [rows] = await pool.execute(
-      "SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT ?",
-      [clampedLimit],
+      `SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT ${clampedLimit}`,
     );
 
     if (rows.length === 0) {
@@ -3672,8 +3821,7 @@ app.get("/api/devotion-posts", async (req, res) => {
     const clampedLimit = Math.min(Math.max(safeLimit, 1), 50);
 
     const [rows] = await pool.execute(
-      "SELECT * FROM devotion_posts ORDER BY created_at DESC LIMIT ?",
-      [clampedLimit],
+      `SELECT * FROM devotion_posts ORDER BY created_at DESC LIMIT ${clampedLimit}`,
     );
 
     if (rows.length === 0) {
@@ -3706,7 +3854,7 @@ app.post("/api/comments", authenticateToken, async (req, res) => {
     const postType = String(req.body.post_type || "").trim().toLowerCase();
     const postId = Number(req.body.post_id);
     const commentText = String(req.body.comment_text || "").trim();
-    const allowedTypes = new Set(["devotion", "promise"]);
+    const allowedTypes = new Set(["devotion", "promise", "reading"]);
 
     if (!allowedTypes.has(postType)) {
       return res.status(400).json({
@@ -3758,7 +3906,7 @@ app.get("/api/comments", async (req, res) => {
 
     const postType = String(req.query.post_type || "").trim().toLowerCase();
     const postId = Number(req.query.post_id);
-    const allowedTypes = new Set(["devotion", "promise"]);
+    const allowedTypes = new Set(["devotion", "promise", "reading"]);
 
     if (!allowedTypes.has(postType)) {
       return res.status(400).json({

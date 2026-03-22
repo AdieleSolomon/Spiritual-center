@@ -139,6 +139,9 @@
               <a href="#services" class="dropdown-link"
                 ><i class="fa-solid fa-hands-praying"></i> What We Do</a
               >
+              <a href="#support" class="dropdown-link"
+                ><i class="fa-solid fa-hand-holding-heart"></i> Support Ministry</a
+              >
               <a href="#content" class="dropdown-link"
                 ><i class="fa-solid fa-book-bible"></i> Resources</a
               >
@@ -177,6 +180,9 @@
               </a>
               <a href="#contact" class="mobile-nav-link">
                 <i class="fa-solid fa-handshake"></i> Request Counsel
+              </a>
+              <a href="#support" class="mobile-nav-link">
+                <i class="fa-solid fa-hand-holding-heart"></i> Support Ministry
               </a>
               <a
                 href="https://www.youtube.com/@Adiele.Solomon.C"
@@ -255,6 +261,9 @@
               <a href="#services" class="btn btn-solid"
                 ><i class="fa-solid fa-compass"></i> Discover Ministry</a
               >
+              <a href="#support" class="btn btn-outline"
+                ><i class="fa-solid fa-hand-holding-heart"></i> Support Ministry</a
+              >
               <a href="#contact" class="btn btn-outline">Request Counsel</a>
               <a
                 href="https://www.youtube.com/@Adiele.Solomon.C"
@@ -262,17 +271,6 @@
                 rel="noopener noreferrer"
                 class="btn btn-youtube"
                 ><i class="fa-brands fa-youtube"></i> YouTube</a
-              >
-            </div>
-            <div class="hero-pro-pages">
-              <a href="bible-reading.html" class="pro-page-chip"
-                ><i class="fa-solid fa-book-open"></i> Bible Reading</a
-              >
-              <a href="devotion.html" class="pro-page-chip"
-                ><i class="fa-solid fa-fire-flame-curved"></i> Devotion</a
-              >
-              <a href="daily-promise.html" class="pro-page-chip"
-                ><i class="fa-solid fa-star"></i> Daily Promise</a
               >
             </div>
           </div>
@@ -318,7 +316,9 @@
               <div class="qa-icon"><i class="fa-solid fa-book-open"></i></div>
               <div class="qa-info">
                 <h3>Bible Reading</h3>
-                <p>Today: 2 Kings 17</p>
+                <p data-daily-bible-reference data-daily-bible-prefix="Today: ">
+                  Today: 2 Kings 17
+                </p>
               </div>
               <i class="fa-solid fa-arrow-right qa-arrow"></i>
             </a>
@@ -365,7 +365,8 @@
                 <i class="fa-solid fa-newspaper"></i> Community Feed
               </h2>
               <p class="feed-sub">
-                Read ministry posts and share encouragement in the comments
+                Preview the latest ministry posts, then open the main community
+                to talk through them together.
               </p>
             </div>
             <p id="feedNotice" class="resource-notice">
@@ -374,52 +375,6 @@
             <div id="feedPosts" class="feed-posts-list"></div>
           </div>
           <aside class="feed-aside">
-            <div class="aside-card ministry-links-card" data-reveal>
-              <h3 class="aside-title">
-                <i class="fa-solid fa-church"></i> Ministry Links
-              </h3>
-              <ul class="aside-links">
-                <li>
-                  <a href="bible-reading.html"
-                    ><i class="fa-solid fa-book-open"></i> Bible Reading Plan</a
-                  >
-                </li>
-                <li>
-                  <a href="devotion.html"
-                    ><i class="fa-solid fa-fire-flame-curved"></i> Daily
-                    Devotion</a
-                  >
-                </li>
-                <li>
-                  <a href="daily-promise.html"
-                    ><i class="fa-solid fa-star"></i> Daily Promise</a
-                  >
-                </li>
-                <li>
-                  <a href="prayer.html" data-protected-section
-                    ><i class="fa-solid fa-hands-praying"></i> Prayer Section</a
-                  >
-                </li>
-                <li>
-                  <a href="counseling.html" data-protected-section
-                    ><i class="fa-solid fa-user-doctor"></i> Counseling</a
-                  >
-                </li>
-                <li>
-                  <a href="all-materials.html"
-                    ><i class="fa-solid fa-file-alt"></i> All Materials</a
-                  >
-                </li>
-                <li>
-                  <a
-                    href="https://www.youtube.com/@Adiele.Solomon.C"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    ><i class="fa-brands fa-youtube"></i> YouTube Channel</a
-                  >
-                </li>
-              </ul>
-            </div>
             <div class="aside-card aside-scripture" data-reveal>
               <p class="aside-scripture-label">
                 <i class="fa-solid fa-quote-left"></i> Scripture
@@ -440,14 +395,23 @@
                   font-size: 0.9rem;
                   margin-bottom: 12px;
                 ">
-                Sign in to access prayer, counseling, and exclusive content.
+                Open the main community to discuss devotions, daily promises,
+                and Bible reading with other members.
               </p>
-              <button
-                class="btn btn-solid"
-                style="width: 100%; justify-content: center"
-                data-open-auth>
-                <i class="fa-solid fa-right-to-bracket"></i> Member Sign-In
-              </button>
+              <div style="display: grid; gap: 10px">
+                <a
+                  href="community.html#community-discussions"
+                  class="btn btn-solid"
+                  style="width: 100%; justify-content: center">
+                  <i class="fa-solid fa-users"></i> Open Main Community
+                </a>
+                <button
+                  class="btn btn-outline"
+                  style="width: 100%; justify-content: center"
+                  data-open-auth>
+                  <i class="fa-solid fa-right-to-bracket"></i> Member Sign-In
+                </button>
+              </div>
             </div>
           </aside>
         </div>
@@ -620,6 +584,121 @@
               Section</a
             >
           </article>
+          <article>
+            <h3>Support the Ministry</h3>
+            <p>
+              Give toward outreach, teaching, prayer care, and ministry
+              projects that strengthen lives.
+            </p>
+            <a href="#support" class="btn btn-solid"
+              ><i class="fa-solid fa-hand-holding-heart"></i> Open Support
+              Desk</a
+            >
+          </article>
+        </div>
+      </section>
+
+      <!-- SUPPORT -->
+      <section id="support" class="support section-space">
+        <div class="container">
+          <div class="support-grid">
+            <article class="support-copy" data-reveal>
+              <p class="eyebrow">Support</p>
+              <h2 id="supportHeading">Support the Ministry</h2>
+              <p id="supportIntro">
+                Your support helps sustain biblical teaching, prayer care,
+                counseling, outreach, and ministry media.
+              </p>
+
+              <div class="support-highlights">
+                <div class="support-highlight-card">
+                  <h3>Give with Purpose</h3>
+                  <p>
+                    Support teachings, prayer initiatives, counseling, and
+                    ministry assignments with a one-time or recurring gift.
+                  </p>
+                </div>
+                <div class="support-highlight-card">
+                  <h3>Stay Connected</h3>
+                  <p>
+                    Share your giving details so the ministry can confirm your
+                    support and stay in touch with gratitude and prayer.
+                  </p>
+                </div>
+                <div class="support-highlight-card">
+                  <h3>Flexible Channels</h3>
+                  <p>
+                    Use bank transfer, a payment link, cash support, or another
+                    agreed method that works for you.
+                  </p>
+                </div>
+              </div>
+
+              <div class="support-bank-card support-bank-card--light panel">
+                <div class="support-bank-header">
+                  <div>
+                    <p class="support-bank-label">Giving Details</p>
+                    <h3>Bank and Contact Information</h3>
+                  </div>
+                  <span class="support-currency-badge" id="supportCurrencyBadge"
+                    >NGN</span
+                  >
+                </div>
+                <div class="support-bank-grid">
+                  <div>
+                    <span class="support-bank-key">Bank Name</span>
+                    <strong id="supportBankName"
+                      >Add your bank name from the admin panel</strong
+                    >
+                  </div>
+                  <div>
+                    <span class="support-bank-key">Account Name</span>
+                    <strong id="supportAccountName"
+                      >Add your account name from the admin panel</strong
+                    >
+                  </div>
+                  <div>
+                    <span class="support-bank-key">Account Number</span>
+                    <strong id="supportAccountNumber"
+                      >Add your account number from the admin panel</strong
+                    >
+                  </div>
+                  <div>
+                    <span class="support-bank-key">Support Email</span>
+                    <strong
+                      ><a href="mailto:admin@spiritualcenter.com" id="supportEmailLink"
+                        >admin@spiritualcenter.com</a
+                      ></strong
+                    >
+                  </div>
+                </div>
+                <p class="support-payment-note" id="supportPaymentNote">
+                  After sending your support, reach the ministry through
+                  WhatsApp or email with your transfer details so it can be
+                  confirmed quickly.
+                </p>
+                <div class="support-links">
+                  <a
+                    href="https://wa.me/2349072560420"
+                    id="supportWhatsappLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-outline">
+                    <i class="fa-brands fa-whatsapp"></i> WhatsApp Ministry
+                  </a>
+                  <a
+                    href="#"
+                    id="supportPaymentLink"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    class="btn btn-solid"
+                    hidden>
+                    <i class="fa-solid fa-credit-card"></i> Open Payment Link
+                  </a>
+                </div>
+              </div>
+            </article>
+          </div>
         </div>
       </section>
 
@@ -721,6 +800,7 @@
         <div class="footer-links">
           <a href="#about">About</a>
           <a href="#services">Services</a>
+          <a href="#support">Support</a>
           <a href="#content">Resources</a>
           <a href="bible-reading.html">Bible Reading</a>
           <a href="devotion.html">Devotion</a>
@@ -1043,6 +1123,7 @@
             kind === "devotion" ? "devotion.html" : "daily-promise.html";
           const author = post.author || "Pst. Wisdom C. Adiele";
           const snippet = text.length > 220 ? text.slice(0, 220) + "..." : text;
+          const communityHref = `community.html?postType=${encodeURIComponent(kind)}&postId=${encodeURIComponent(post.id)}#community-discussions`;
 
           return `
             <article class="feed-post-card">
@@ -1058,7 +1139,8 @@
               <p class="feed-post-body">${sanitize(snippet)}</p>
               <div class="feed-post-actions">
                 <a href="${href}" class="feed-action-btn"><i class="fa-solid fa-book-open"></i> Read More</a>
-                <button class="feed-action-btn toggle-comments" data-id="${post.id}" data-kind="${kind}"><i class="fa-regular fa-comment"></i> Comments</button>
+                <a href="${communityHref}" class="feed-action-btn"><i class="fa-solid fa-users"></i> Open Community</a>
+                <button class="feed-action-btn toggle-comments" data-id="${post.id}" data-kind="${kind}"><i class="fa-regular fa-comment"></i> Quick Comments</button>
               </div>
               <div class="feed-comments-box" id="comments-${kind}-${post.id}" hidden>
                 <div class="feed-comments-list" id="comments-list-${kind}-${post.id}">

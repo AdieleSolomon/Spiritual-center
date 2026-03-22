@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Support Payment | Center of Knowledge and Spiritual Enrichment</title>
+    <meta
+      name="description"
+      content="Support the ministry with the official payment details and confirmation contacts." />
+    <link
+      rel="icon"
+      type="image/png"
+      href="./587-5875144_sda-church-logo-png-seventh-day-adventist-church.png" />
+    <meta name="api-base-url" content="" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap"
+      rel="stylesheet" />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="./app-config.js"></script>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header class="site-header" id="siteHeader">
+      <div class="container header-inner">
+        <a href="index.html#home" class="brand">
+          <span class="brand-mark">
+            <img
+              src="./587-5875144_sda-church-logo-png-seventh-day-adventist-church.png"
+              alt="SDA logo"
+              class="brand-logo" />
+          </span>
+          <span class="brand-text">
+            <strong>Center of Knowledge</strong>
+            <em>And Spiritual Enrichment</em>
+          </span>
+        </a>
+        <div class="header-actions">
+          <a href="index.html#support" class="btn btn-outline">Back to Support</a>
+          <a href="index.html#contact" class="btn btn-solid">Contact Ministry</a>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <section class="page-hero">
+        <div class="container page-hero-grid">
+          <div class="page-hero-copy" data-reveal>
+            <span class="page-hero-label">Payment Page</span>
+            <h1 id="supportHeading">Support the Ministry</h1>
+            <p id="supportIntro">
+              Use the official ministry payment details below, then send your
+              transfer confirmation through WhatsApp or email.
+            </p>
+            <div class="page-hero-actions payment-hero-actions">
+              <a href="index.html#support" class="btn btn-outline">
+                <i class="fa-solid fa-arrow-left"></i> Back
+              </a>
+              <a
+                href="https://wa.me/2349072560420"
+                id="supportWhatsappLink"
+                class="btn btn-solid"
+                target="_blank"
+                rel="noopener noreferrer">
+                <i class="fa-brands fa-whatsapp"></i> Confirm on WhatsApp
+              </a>
+              <a
+                href="#"
+                id="supportPaymentLink"
+                class="btn btn-outline"
+                target="_blank"
+                rel="noopener noreferrer"
+                hidden>
+                <i class="fa-solid fa-up-right-from-square"></i> Open External Checkout
+              </a>
+            </div>
+          </div>
+
+          <article class="page-hero-card support-bank-card support-bank-card--light" data-reveal>
+            <div class="support-bank-header">
+              <div>
+                <p class="support-bank-label">Official Payment Details</p>
+                <h2 style="margin: 0">Transfer Information</h2>
+              </div>
+              <span class="support-currency-badge" id="supportCurrencyBadge"
+                >NGN</span
+              >
+            </div>
+            <div class="support-bank-grid">
+              <div>
+                <span class="support-bank-key">Bank Name</span>
+                <strong id="supportBankName">OPay</strong>
+              </div>
+              <div>
+                <span class="support-bank-key">Account Name</span>
+                <strong id="supportAccountName">Add account name in admin panel</strong>
+              </div>
+              <div>
+                <span class="support-bank-key">Account Number</span>
+                <strong id="supportAccountNumber">8069383370</strong>
+              </div>
+              <div>
+                <span class="support-bank-key">Support Email</span>
+                <strong>
+                  <a href="mailto:admin@spiritualcenter.com" id="supportEmailLink"
+                    >admin@spiritualcenter.com</a
+                  >
+                </strong>
+              </div>
+            </div>
+            <div class="payment-copy-actions">
+              <button
+                type="button"
+                class="btn btn-outline"
+                data-copy-target="supportAccountNumber">
+                Copy Account Number
+              </button>
+              <button
+                type="button"
+                class="btn btn-outline"
+                data-copy-target="supportAccountName">
+                Copy Account Name
+              </button>
+            </div>
+            <p class="support-payment-note" id="supportPaymentNote">
+              After sending your support, reach the ministry through WhatsApp or
+              email with your transfer details so it can be confirmed quickly.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-space">
+        <div class="container">
+          <div class="support-highlights">
+            <article class="support-highlight-card" data-reveal>
+              <h3>1. Open Your Payment App</h3>
+              <p>
+                Open OPay or any trusted banking app and choose bank transfer.
+              </p>
+            </article>
+            <article class="support-highlight-card" data-reveal>
+              <h3>2. Send to the Ministry Account</h3>
+              <p>
+                Use the bank name, account name, and account number shown above
+                exactly as displayed.
+              </p>
+            </article>
+            <article class="support-highlight-card" data-reveal>
+              <h3>3. Send Confirmation</h3>
+              <p>
+                After payment, send your name and transfer proof to the ministry
+                through WhatsApp or email for confirmation.
+              </p>
+            </article>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <div class="container footer-bottom">
+        <small
+          >&copy; <span id="year"></span> Center of Knowledge and Spiritual
+          Enrichment.</small
+        >
+      </div>
+    </footer>
+
+    <script src="./script.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        document
+          .querySelectorAll("[data-copy-target]")
+          .forEach((button) => {
+            button.addEventListener("click", async () => {
+              const targetId = button.getAttribute("data-copy-target");
+              const target = document.getElementById(targetId || "");
+              const text = target?.textContent?.trim();
+              if (!text) return;
+
+              try {
+                await navigator.clipboard.writeText(text);
+                button.textContent = "Copied";
+                setTimeout(() => {
+                  button.textContent = targetId === "supportAccountNumber"
+                    ? "Copy Account Number"
+                    : "Copy Account Name";
+                }, 1400);
+              } catch (error) {
+                window.prompt("Copy this value:", text);
+              }
+            });
+          });
+      });
+    </script>
+  </body>
+</html>

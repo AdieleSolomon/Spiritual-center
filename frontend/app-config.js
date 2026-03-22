@@ -1,7 +1,7 @@
 // Frontend runtime configuration.
-// Replace the Railway domain below after Railway assigns your backend URL.
+// Set API_BASE to your deployed backend URL when available.
 window.APP_CONFIG = window.APP_CONFIG || {
-  API_BASE: "https://your-railway-backend.up.railway.app/api",
+  API_BASE: "",
   GOOGLE_ANALYTICS_ID: "",
   GOOGLE_MAPS_EMBED_URL:
     "https://www.google.com/maps?q=Seventh-day+Adventist+church+near+me&output=embed",
