@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="robots" content="noindex, nofollow, noarchive" />
     <meta name="api-base-url" content="" />
-    <title>Admin Dashboard - Spiritual Center</title>
+    <title>
+      Admin Dashboard - Center of Knowledge and Spiritual Enrichment
+    </title>
     <link
       rel="icon"
       type="image/png"
@@ -50,10 +52,7 @@
       }
 
       body {
-        font-family:
-          "Poppins",
-          "Segoe UI",
-          sans-serif;
+        font-family: "Poppins", "Segoe UI", sans-serif;
         background-color: #0f172a;
         color: #e2e8f0;
         line-height: 1.5;
@@ -1790,7 +1789,7 @@
             <div class="logo-icon">
               <i class="fas fa-crown"></i>
             </div>
-            <span>Spiritual Admin</span>
+            <span>Admin Panel</span>
           </div>
         </div>
 
@@ -2188,6 +2187,27 @@
               </div>
 
               <div class="form-group full-width">
+                <label for="materialYouTubeUrl" class="form-label"
+                  >YouTube Video Link</label
+                >
+                <input
+                  type="url"
+                  id="materialYouTubeUrl"
+                  class="form-input"
+                  placeholder="https://youtu.be/your-video-link" />
+                <div
+                  style="
+                    margin-top: 0.45rem;
+                    color: rgba(255, 255, 255, 0.72);
+                    font-size: 0.78rem;
+                  ">
+                  Optional. If you add it, members will also see a
+                  <strong style="color: #fff">See Video</strong> button for this
+                  material.
+                </div>
+              </div>
+
+              <div class="form-group full-width">
                 <label class="form-label"
                   >Upload File <span class="required">*</span></label
                 >
@@ -2507,6 +2527,7 @@
                     <tr>
                       <th>Name</th>
                       <th>Email</th>
+                      <th>WhatsApp</th>
                       <th>Request</th>
                       <th>Status</th>
                       <th>Submitted</th>
@@ -2514,7 +2535,7 @@
                   </thead>
                   <tbody id="prayerRequestsBody">
                     <tr>
-                      <td colspan="5" style="text-align: center; padding: 2rem">
+                      <td colspan="6" style="text-align: center; padding: 2rem">
                         Loading prayer requests...
                       </td>
                     </tr>
@@ -2545,6 +2566,7 @@
                   <thead>
                     <tr>
                       <th>Type</th>
+                      <th>WhatsApp</th>
                       <th>Description</th>
                       <th>Availability</th>
                       <th>Status</th>
@@ -2554,7 +2576,7 @@
                   </thead>
                   <tbody id="counselingRequestsBody">
                     <tr>
-                      <td colspan="6" style="text-align: center; padding: 2rem">
+                      <td colspan="7" style="text-align: center; padding: 2rem">
                         Loading counseling requests...
                       </td>
                     </tr>
@@ -2618,7 +2640,9 @@
               <div class="stat-content">
                 <div class="stat-info">
                   <h3>Account Number</h3>
-                  <div class="stat-value" id="supportPreviewAccountNumber">-</div>
+                  <div class="stat-value" id="supportPreviewAccountNumber">
+                    -
+                  </div>
                 </div>
                 <div class="stat-icon">
                   <i class="fas fa-hashtag"></i>
@@ -2629,7 +2653,9 @@
               <div class="stat-content">
                 <div class="stat-info">
                   <h3>Payment Button Target</h3>
-                  <div class="stat-value" id="supportPreviewPaymentMode">Built-in Page</div>
+                  <div class="stat-value" id="supportPreviewPaymentMode">
+                    Built-in Page
+                  </div>
                 </div>
                 <div class="stat-icon">
                   <i class="fas fa-link"></i>
@@ -2974,7 +3000,9 @@
                   placeholder="Enter site title" />
               </div>
               <div class="form-group">
-                <label for="contactEmail" class="form-label">Contact Email</label>
+                <label for="contactEmail" class="form-label"
+                  >Contact Email</label
+                >
                 <input
                   type="email"
                   id="contactEmail"
@@ -2982,7 +3010,9 @@
                   placeholder="Enter contact email" />
               </div>
               <div class="form-group">
-                <label for="contactPhone" class="form-label">Contact Phone</label>
+                <label for="contactPhone" class="form-label"
+                  >Contact Phone</label
+                >
                 <input
                   type="text"
                   id="contactPhone"
@@ -3024,7 +3054,11 @@
       // Configuration
       const isLocalHost = (() => {
         const host = window.location.hostname;
-        if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") {
+        if (
+          host === "localhost" ||
+          host === "127.0.0.1" ||
+          host === "0.0.0.0"
+        ) {
           return true;
         }
         if (/^10\./.test(host) || /^192\.168\./.test(host)) {
@@ -3288,9 +3322,13 @@
           devotionForm.addEventListener("submit", handleDevotionSubmit);
         }
 
-        const refreshDevotionBtn = document.getElementById("refreshDevotionBtn");
+        const refreshDevotionBtn =
+          document.getElementById("refreshDevotionBtn");
         if (refreshDevotionBtn) {
-          refreshDevotionBtn.addEventListener("click", loadLatestDevotionPreview);
+          refreshDevotionBtn.addEventListener(
+            "click",
+            loadLatestDevotionPreview,
+          );
         }
       }
 
@@ -3458,7 +3496,8 @@
           stats.active_users || 0;
         document.getElementById("storageUsed").textContent =
           stats.storage_used || "0 GB";
-        const pendingRequestsElement = document.getElementById("pendingRequests");
+        const pendingRequestsElement =
+          document.getElementById("pendingRequests");
         if (pendingRequestsElement) {
           const pendingRequests =
             stats.pending_requests ??
@@ -3598,6 +3637,7 @@
         )?.value;
         const category = document.getElementById("materialCategory")?.value;
         const type = document.getElementById("materialType")?.value;
+        const youtubeUrl = document.getElementById("materialYouTubeUrl")?.value;
         const fileInput = document.getElementById("fileInput");
         const file = fileInput?.files[0];
 
@@ -3617,6 +3657,7 @@
         formData.append("description", description);
         formData.append("category", category);
         formData.append("type", type);
+        formData.append("youtube_url", (youtubeUrl || "").trim());
         formData.append(
           "is_public",
           document.getElementById("materialVisibility")?.value === "public",
@@ -3793,21 +3834,39 @@
               material.created_at || material.formatted_date,
             ).toLocaleDateString();
             const isPublic = material.is_public !== false;
+            const descriptionPreviewRaw = String(
+              material.description || "",
+            ).trim();
+            const descriptionPreview = descriptionPreviewRaw
+              ? descriptionPreviewRaw.length > 50
+                ? `${descriptionPreviewRaw.substring(0, 50)}...`
+                : descriptionPreviewRaw
+              : "No description provided.";
+            const youtubeUrl = String(material.youtube_url || "").trim();
 
             return `
             <tr>
                 <td>
-                    <div class="material-title">${material.title || "Untitled"}</div>
+                    <div class="material-title">${escapeRequestHtml(material.title || "Untitled")}</div>
                     <div style="font-size: 0.75rem; color: var(--gray); margin-top: 0.25rem;">
-                        ${(material.description || "").substring(0, 50)}...
+                        ${escapeRequestHtml(descriptionPreview)}
                     </div>
+                    ${
+                      youtubeUrl
+                        ? `
+                        <div style="font-size: 0.72rem; color: #fca5a5; margin-top: 0.35rem;">
+                            <i class="fab fa-youtube"></i> YouTube video linked
+                        </div>
+                      `
+                        : ""
+                    }
                 </td>
                 <td>
-                    <span class="material-category">${material.category || "Uncategorized"}</span>
+                    <span class="material-category">${escapeRequestHtml(material.category || "Uncategorized")}</span>
                 </td>
                 <td>
                     <div class="material-type">
-                        <span class="type-badge ${material.type}">${material.type}</span>
+                        <span class="type-badge ${material.type}">${escapeRequestHtml(material.type || "unknown")}</span>
                     </div>
                 </td>
                 <td>
@@ -3824,6 +3883,15 @@
                             <button class="action-btn-small" onclick="downloadMaterial('${material.file_url}')" title="Download">
                                 <i class="fas fa-download"></i>
                             </button>
+                        `
+                            : ""
+                        }
+                        ${
+                          youtubeUrl
+                            ? `
+                            <a class="action-btn-small" href="${escapeRequestHtml(youtubeUrl)}" target="_blank" rel="noopener noreferrer" title="Open YouTube Video">
+                                <i class="fab fa-youtube"></i>
+                            </a>
                         `
                             : ""
                         }
@@ -3859,6 +3927,8 @@
                 material.description.toLowerCase().includes(searchTerm)) ||
               (material.category &&
                 material.category.toLowerCase().includes(searchTerm)) ||
+              (material.youtube_url &&
+                material.youtube_url.toLowerCase().includes(searchTerm)) ||
               (material.type &&
                 material.type.toLowerCase().includes(searchTerm)),
           );
@@ -3916,6 +3986,11 @@
               material.type || "document";
             document.getElementById("materialVisibility").value =
               material.is_public ? "public" : "private";
+            const materialYouTubeUrl =
+              document.getElementById("materialYouTubeUrl");
+            if (materialYouTubeUrl) {
+              materialYouTubeUrl.value = material.youtube_url || "";
+            }
 
             // Show edit modal (you'll need to implement this)
             showEditModal(material);
@@ -4283,7 +4358,9 @@
       }
 
       function updateRequestTotals() {
-        const prayerTotalElement = document.getElementById("requestsPrayerTotal");
+        const prayerTotalElement = document.getElementById(
+          "requestsPrayerTotal",
+        );
         const counselingTotalElement = document.getElementById(
           "requestsCounselingTotal",
         );
@@ -4292,7 +4369,9 @@
           prayerTotalElement.textContent = String(prayerRequests.length);
         }
         if (counselingTotalElement) {
-          counselingTotalElement.textContent = String(counselingRequests.length);
+          counselingTotalElement.textContent = String(
+            counselingRequests.length,
+          );
         }
       }
 
@@ -4302,12 +4381,13 @@
           showLoading("requests");
 
           const [prayerResult, counselingResult] = await Promise.all([
-            fetch(`${API_BASE}/prayer-requests?limit=200`, getFetchOptions()).then(
-              async (response) => ({
-                response,
-                data: await response.json().catch(() => ({})),
-              }),
-            ),
+            fetch(
+              `${API_BASE}/prayer-requests?limit=200`,
+              getFetchOptions(),
+            ).then(async (response) => ({
+              response,
+              data: await response.json().catch(() => ({})),
+            })),
             fetch(
               `${API_BASE}/counseling-requests?limit=200`,
               getFetchOptions(),
@@ -4340,7 +4420,8 @@
             counselingResult.data &&
             counselingResult.data.success
           ) {
-            counselingRequests = counselingResult.data.counseling_requests || [];
+            counselingRequests =
+              counselingResult.data.counseling_requests || [];
             filteredCounselingRequests = [...counselingRequests];
           } else {
             counselingRequests = [];
@@ -4374,7 +4455,7 @@
         if (!filteredPrayerRequests.length) {
           body.innerHTML = `
             <tr>
-              <td colspan="5" style="text-align: center; color: var(--gray); padding: 2rem;">
+              <td colspan="6" style="text-align: center; color: var(--gray); padding: 2rem;">
                 No prayer requests found.
               </td>
             </tr>
@@ -4394,6 +4475,7 @@
             const email = isAnonymous
               ? "Private"
               : request.email || request.user_email || "-";
+            const whatsappNumber = request.whatsapp_number || "-";
             const status = String(request.status || "pending").toLowerCase();
             const statusColorMap = {
               pending: "var(--warning)",
@@ -4408,6 +4490,7 @@
               <tr>
                 <td>${escapeRequestHtml(name)}</td>
                 <td>${escapeRequestHtml(email)}</td>
+                <td>${escapeRequestHtml(whatsappNumber)}</td>
                 <td title="${escapeRequestHtml(requestFullText)}">${escapeRequestHtml(requestText)}</td>
                 <td><span style="color: ${statusColor}; text-transform: capitalize;">${escapeRequestHtml(status)}</span></td>
                 <td>${escapeRequestHtml(formatRequestDate(request.created_at))}</td>
@@ -4424,7 +4507,7 @@
         if (!filteredCounselingRequests.length) {
           body.innerHTML = `
             <tr>
-              <td colspan="6" style="text-align: center; color: var(--gray); padding: 2rem;">
+              <td colspan="7" style="text-align: center; color: var(--gray); padding: 2rem;">
                 No counseling requests found.
               </td>
             </tr>
@@ -4444,6 +4527,7 @@
             const statusColor = statusColorMap[status] || "var(--gray)";
             const fullDescription = String(request.description || "").trim();
             const description = truncateRequestText(fullDescription, 150);
+            const whatsappNumber = request.whatsapp_number || "-";
             const submittedBy =
               request.user_name ||
               request.user_email ||
@@ -4452,6 +4536,7 @@
             return `
               <tr>
                 <td style="text-transform: capitalize;">${escapeRequestHtml(request.counseling_type || "-")}</td>
+                <td>${escapeRequestHtml(whatsappNumber)}</td>
                 <td title="${escapeRequestHtml(fullDescription)}">${escapeRequestHtml(description)}</td>
                 <td>${escapeRequestHtml(request.preferred_availability || "-")}</td>
                 <td><span style="color: ${statusColor}; text-transform: capitalize;">${escapeRequestHtml(status)}</span></td>
@@ -4478,6 +4563,7 @@
           const searchableText = [
             request.name,
             request.email,
+            request.whatsapp_number,
             request.request,
             request.status,
             request.user_name,
@@ -4507,6 +4593,7 @@
         filteredCounselingRequests = counselingRequests.filter((request) => {
           const searchableText = [
             request.counseling_type,
+            request.whatsapp_number,
             request.description,
             request.preferred_availability,
             request.status,
@@ -4527,7 +4614,9 @@
         const paymentLink = String(settings.support_payment_link || "").trim();
         const paymentMode = paymentLink ? "External Link" : "Built-in Page";
         const paymentTarget = paymentLink || "support-payment.html";
-        const previewBankName = document.getElementById("supportPreviewBankName");
+        const previewBankName = document.getElementById(
+          "supportPreviewBankName",
+        );
         const previewAccountName = document.getElementById(
           "supportPreviewAccountName",
         );
@@ -4540,7 +4629,9 @@
         const previewPaymentTarget = document.getElementById(
           "supportPreviewPaymentTarget",
         );
-        const previewContacts = document.getElementById("supportPreviewContacts");
+        const previewContacts = document.getElementById(
+          "supportPreviewContacts",
+        );
         const previewNote = document.getElementById("supportPreviewNote");
 
         if (previewBankName) {
@@ -4561,8 +4652,12 @@
         }
         if (previewContacts) {
           previewContacts.textContent = [
-            settings.support_email || settings.contact_email || "admin@spiritualcenter.com",
-            settings.support_whatsapp || settings.whatsapp_number || "+2349072560420",
+            settings.support_email ||
+              settings.contact_email ||
+              "admin@spiritualcenter.com",
+            settings.support_whatsapp ||
+              settings.whatsapp_number ||
+              "+2349072560420",
           ]
             .filter(Boolean)
             .join(" | ");
@@ -4578,7 +4673,10 @@
         try {
           showLoading("support");
 
-          const response = await fetch(`${API_BASE}/settings`, getFetchOptions());
+          const response = await fetch(
+            `${API_BASE}/settings`,
+            getFetchOptions(),
+          );
           const data = await response
             .json()
             .catch(() => ({ error: "Unexpected response format" }));
@@ -4779,7 +4877,10 @@
       async function loadSettings() {
         try {
           showLoading("settings");
-          const response = await fetch(`${API_BASE}/settings`, getFetchOptions());
+          const response = await fetch(
+            `${API_BASE}/settings`,
+            getFetchOptions(),
+          );
 
           if (!response.ok) throw new Error("Failed to load settings");
 
@@ -4902,23 +5003,31 @@
 
         try {
           const settingsToSave = {
-            support_heading: document.getElementById("supportSettingsHeading").value,
-            support_intro: document.getElementById("supportSettingsIntro").value,
+            support_heading: document.getElementById("supportSettingsHeading")
+              .value,
+            support_intro: document.getElementById("supportSettingsIntro")
+              .value,
             support_currency:
               document.getElementById("supportSettingsCurrency").value || "NGN",
-            support_bank_name:
-              document.getElementById("supportSettingsBankName").value,
-            support_account_name:
-              document.getElementById("supportSettingsAccountName").value,
-            support_account_number:
-              document.getElementById("supportSettingsAccountNumber").value,
-            support_payment_note:
-              document.getElementById("supportSettingsPaymentNote").value,
-            support_payment_link:
-              document.getElementById("supportSettingsPaymentLink").value,
-            support_email: document.getElementById("supportSettingsEmail").value,
-            support_whatsapp:
-              document.getElementById("supportSettingsWhatsapp").value,
+            support_bank_name: document.getElementById(
+              "supportSettingsBankName",
+            ).value,
+            support_account_name: document.getElementById(
+              "supportSettingsAccountName",
+            ).value,
+            support_account_number: document.getElementById(
+              "supportSettingsAccountNumber",
+            ).value,
+            support_payment_note: document.getElementById(
+              "supportSettingsPaymentNote",
+            ).value,
+            support_payment_link: document.getElementById(
+              "supportSettingsPaymentLink",
+            ).value,
+            support_email: document.getElementById("supportSettingsEmail")
+              .value,
+            support_whatsapp: document.getElementById("supportSettingsWhatsapp")
+              .value,
           };
 
           await persistSettings(
@@ -5021,7 +5130,8 @@
             .catch(() => ({ error: "Unexpected response format" }));
 
           if (response.status === 404) {
-            stateElement.textContent = "No devotion posts have been published yet.";
+            stateElement.textContent =
+              "No devotion posts have been published yet.";
             return;
           }
 
@@ -5470,6 +5580,10 @@
                         <option value="prayer" ${material.category === "prayer" ? "selected" : ""}>Prayer</option>
                     </select>
                 </div>
+                <div class="form-group" style="margin-bottom: 1rem;">
+                    <label style="display: block; margin-bottom: 0.5rem; font-weight: 500;">YouTube Video Link</label>
+                    <input type="url" id="editYouTubeUrl" value="${material.youtube_url || ""}" class="form-control" placeholder="https://youtu.be/your-video-link" style="width: 100%; padding: 0.75rem; background: rgba(30,41,59,0.5); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; color: white;">
+                </div>
                 <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
                     <button type="submit" class="btn btn-primary" style="flex: 1;">Save Changes</button>
                     <button type="button" onclick="closeEditModal()" class="btn btn-secondary" style="flex: 1;">Cancel</button>
@@ -5490,6 +5604,7 @@
               title: document.getElementById("editTitle").value,
               description: document.getElementById("editDescription").value,
               category: document.getElementById("editCategory").value,
+              youtube_url: document.getElementById("editYouTubeUrl").value,
               is_public: material.is_public ? "true" : "false",
               type: material.type,
             };

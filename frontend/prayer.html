@@ -132,13 +132,25 @@
                     <input type="email" id="prayerEmail" placeholder="you@example.com" required />
                   </div>
                   <div class="field">
+                    <label for="prayerWhatsapp">WhatsApp Number</label>
+                    <input
+                      type="tel"
+                      id="prayerWhatsapp"
+                      placeholder="e.g. +2348012345678"
+                      inputmode="tel"
+                      autocomplete="tel"
+                      required />
+                  </div>
+                  <div class="field">
                     <label for="prayerRequest">Prayer Request</label>
                     <textarea id="prayerRequest" rows="6" placeholder="Share the details you want us to pray about" required></textarea>
                   </div>
                   <label class="checkline">
                     <input type="checkbox" id="prayerAnonymous" /> Keep my name private
                   </label>
-                  <p class="field-hint">Your request will never be published publicly.</p>
+                  <p class="field-hint">
+                    Your request will never be published publicly. Your WhatsApp number is only for pastoral follow-up.
+                  </p>
                   <button type="submit" class="btn btn-solid">Submit Prayer Request</button>
                 </form>
               </article>
@@ -156,6 +168,16 @@
                   <div class="field">
                     <label for="prayerBookingEmail">Email Address</label>
                     <input type="email" id="prayerBookingEmail" placeholder="you@example.com" required />
+                  </div>
+                  <div class="field">
+                    <label for="prayerBookingWhatsapp">WhatsApp Number</label>
+                    <input
+                      type="tel"
+                      id="prayerBookingWhatsapp"
+                      placeholder="e.g. +2348012345678"
+                      inputmode="tel"
+                      autocomplete="tel"
+                      required />
                   </div>
                   <div class="field">
                     <label for="prayerBookingAvailability">Preferred Availability</label>

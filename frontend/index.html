@@ -93,6 +93,20 @@
           class="top-link"
           ><i class="fa-brands fa-youtube"></i> YouTube</a
         >
+        <button
+          type="button"
+          class="top-link top-auth-link"
+          data-open-auth
+          data-auth-display="member-label">
+          <i class="fa-solid fa-user"></i> Member Sign-In
+        </button>
+        <button
+          type="button"
+          class="top-link top-logout-link"
+          id="logoutBtn"
+          hidden>
+          <i class="fa-solid fa-right-from-bracket"></i> Logout
+        </button>
         <a href="index-youth.html" class="top-link"
           ><i class="fa-solid fa-right-left"></i> Youth Version</a
         >
@@ -140,7 +154,8 @@
                 ><i class="fa-solid fa-hands-praying"></i> What We Do</a
               >
               <a href="#support" class="dropdown-link"
-                ><i class="fa-solid fa-hand-holding-heart"></i> Support Ministry</a
+                ><i class="fa-solid fa-hand-holding-heart"></i> Support
+                Ministry</a
               >
               <a href="#content" class="dropdown-link"
                 ><i class="fa-solid fa-book-bible"></i> Resources</a
@@ -151,26 +166,33 @@
             </div>
           </div>
           <!-- Page links -->
-          <a href="bible-reading.html" class="nav-page-link desktop-nav-item"
-            ><i class="fa-solid fa-book-open"></i> Bible Reading</a
+          <a
+            href="bible-reading.html"
+            class="nav-page-link nav-page-link-compact desktop-nav-item"
+            aria-label="Daily Bible Reading"
+            title="Daily Bible Reading"
+            ><i class="fa-solid fa-book-open"></i
+            ><span>Daily Bible<br />Reading</span></a
           >
-          <a href="devotion.html" class="nav-page-link desktop-nav-item"
-            ><i class="fa-solid fa-fire-flame-curved"></i> Devotion</a
+          <a href="devotion.html" class="nav-page-link nav-page-link-compact desktop-nav-item"
+            ><i class="fa-solid fa-fire-flame-curved"></i><span>Devotion</span></a
           >
-          <a href="daily-promise.html" class="nav-page-link desktop-nav-item"
-            ><i class="fa-solid fa-star"></i> Daily Promise</a
+          <a
+            href="daily-promise.html"
+            class="nav-page-link nav-page-link-compact desktop-nav-item"
+            ><i class="fa-solid fa-star"></i><span>Daily<br />Promise</span></a
           >
           <a
             href="prayer.html"
-            class="nav-page-link desktop-nav-item"
+            class="nav-page-link nav-page-link-compact desktop-nav-item"
             data-protected-section
-            ><i class="fa-solid fa-hands-praying"></i> Prayer</a
+            ><i class="fa-solid fa-hands-praying"></i><span>Prayer</span></a
           >
           <a
             href="counseling.html"
-            class="nav-page-link desktop-nav-item"
+            class="nav-page-link nav-page-link-compact desktop-nav-item"
             data-protected-section
-            ><i class="fa-solid fa-user-doctor"></i> Counseling</a
+            ><i class="fa-solid fa-user-doctor"></i><span>Counseling</span></a
           >
           <div class="mobile-nav-panel">
             <div class="mobile-nav-group">
@@ -206,7 +228,10 @@
             </div>
             <div class="mobile-nav-group">
               <p class="mobile-nav-title">Care &amp; Support</p>
-              <a href="prayer.html" class="mobile-nav-link" data-protected-section>
+              <a
+                href="prayer.html"
+                class="mobile-nav-link"
+                data-protected-section>
                 <i class="fa-solid fa-hands-praying"></i> Prayer
               </a>
               <a
@@ -231,9 +256,6 @@
           aria-label="Close menu"></button>
 
         <div class="header-actions">
-          <button class="btn btn-outline" id="openAuthBtn" data-open-auth>
-            Member Sign-In
-          </button>
           <a href="admin-login.html" class="btn btn-solid">Admin</a>
         </div>
       </div>
@@ -254,15 +276,16 @@
               ministry team. Join the community feed to encourage one another.
             </p>
             <p class="hero-mobile-hint">
-              Open the menu for devotion, daily promise, prayer, counseling,
-              and ministry shortcuts.
+              Open the menu for devotion, daily promise, prayer, counseling, and
+              ministry shortcuts.
             </p>
             <div class="hero-pro-actions">
               <a href="#services" class="btn btn-solid"
                 ><i class="fa-solid fa-compass"></i> Discover Ministry</a
               >
               <a href="#support" class="btn btn-outline"
-                ><i class="fa-solid fa-hand-holding-heart"></i> Support Ministry</a
+                ><i class="fa-solid fa-hand-holding-heart"></i> Support
+                Ministry</a
               >
               <a href="#contact" class="btn btn-outline">Request Counsel</a>
               <a
@@ -587,8 +610,8 @@
           <article>
             <h3>Support the Ministry</h3>
             <p>
-              Give toward outreach, teaching, prayer care, and ministry
-              projects that strengthen lives.
+              Give toward outreach, teaching, prayer care, and ministry projects
+              that strengthen lives.
             </p>
             <a href="#support" class="btn btn-solid"
               ><i class="fa-solid fa-hand-holding-heart"></i> Open Support
@@ -666,7 +689,9 @@
                   <div>
                     <span class="support-bank-key">Support Email</span>
                     <strong
-                      ><a href="mailto:admin@spiritualcenter.com" id="supportEmailLink"
+                      ><a
+                        href="mailto:admin@spiritualcenter.com"
+                        id="supportEmailLink"
                         >admin@spiritualcenter.com</a
                       ></strong
                     >

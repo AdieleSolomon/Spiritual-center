@@ -102,9 +102,58 @@ const ALLOW_PLAINTEXT_RESET_TOKEN = parseBoolean(
 
 const normalizeEmail = (value = "") => String(value).trim().toLowerCase();
 const normalizeUsername = (value = "") => String(value).trim();
+const normalizeOptionalUrl = (value = "") => {
+  const normalized = String(value || "").trim();
+  return normalized || null;
+};
 const isValidEmail = (value = "") =>
   /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value).trim());
 const isStrongPassword = (value = "") => String(value).length >= 8;
+const isValidYouTubeUrl = (value = "") => {
+  const normalized = normalizeOptionalUrl(value);
+  if (!normalized) return true;
+
+  try {
+    const parsed = new URL(normalized);
+    const protocol = parsed.protocol.toLowerCase();
+    const hostname = parsed.hostname.toLowerCase();
+
+    if (!["http:", "https:"].includes(protocol)) {
+      return false;
+    }
+
+    return (
+      hostname === "youtu.be" ||
+      hostname.endsWith(".youtu.be") ||
+      hostname === "youtube.com" ||
+      hostname.endsWith(".youtube.com") ||
+      hostname === "youtube-nocookie.com" ||
+      hostname.endsWith(".youtube-nocookie.com")
+    );
+  } catch (error) {
+    return false;
+  }
+};
+
+const DEFAULT_MATERIAL_YOUTUBE_OVERRIDES = new Map([
+  [
+    "worship songs|worship|audio",
+    "https://youtu.be/2I47CEc264w?si=7uJ53KkO_98kQ3Ch",
+  ],
+]);
+
+const resolveMaterialYouTubeUrl = (material = {}) => {
+  const explicitUrl = normalizeOptionalUrl(material.youtube_url);
+  if (explicitUrl) {
+    return explicitUrl;
+  }
+
+  const fallbackKey = [material.title, material.category, material.type]
+    .map((value) => String(value || "").trim().toLowerCase())
+    .join("|");
+
+  return DEFAULT_MATERIAL_YOUTUBE_OVERRIDES.get(fallbackKey) || null;
+};
 
 const hashRecoveryToken = (rawToken) =>
   crypto.createHash("sha256").update(String(rawToken)).digest("hex");
@@ -1072,6 +1121,7 @@ const postgresSchemaStatements = [
       category VARCHAR(100),
       type VARCHAR(20) NOT NULL CHECK (type IN ('document', 'image', 'video', 'audio', 'writeup')),
       file_url VARCHAR(1000),
+      youtube_url VARCHAR(1000),
       file_name VARCHAR(255),
       file_size INTEGER,
       is_public BOOLEAN DEFAULT TRUE,
@@ -1091,6 +1141,7 @@ const postgresSchemaStatements = [
       id SERIAL PRIMARY KEY,
       name VARCHAR(255) NOT NULL,
       email VARCHAR(255),
+      whatsapp_number VARCHAR(50),
       request TEXT NOT NULL,
       is_anonymous BOOLEAN DEFAULT FALSE,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'read', 'responded')),
@@ -1105,6 +1156,7 @@ const postgresSchemaStatements = [
       id SERIAL PRIMARY KEY,
       user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       counseling_type VARCHAR(100) NOT NULL,
+      whatsapp_number VARCHAR(50),
       description TEXT NOT NULL,
       preferred_availability VARCHAR(255),
       status VARCHAR(50) DEFAULT 'pending' CHECK (status IN ('pending', 'scheduled', 'completed', 'cancelled')),
@@ -1249,6 +1301,52 @@ const ensureDonationColumns = async (connection) => {
     "ALTER TABLE donations ADD COLUMN is_anonymous BOOLEAN DEFAULT FALSE",
     "ALTER TABLE donations ADD COLUMN admin_note TEXT NULL",
     "ALTER TABLE donations ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+  ];
+
+  for (const statement of alterStatements) {
+    try {
+      await connection.execute(statement);
+    } catch (error) {
+      if (error?.code !== "ER_DUP_FIELDNAME") {
+        throw error;
+      }
+    }
+  }
+};
+
+const ensureMaterialColumns = async (connection) => {
+  if (IS_POSTGRES) {
+    await connection.execute(
+      "ALTER TABLE materials ADD COLUMN IF NOT EXISTS youtube_url VARCHAR(1000)",
+    );
+    return;
+  }
+
+  try {
+    await connection.execute(
+      "ALTER TABLE materials ADD COLUMN youtube_url VARCHAR(1000) NULL",
+    );
+  } catch (error) {
+    if (error?.code !== "ER_DUP_FIELDNAME") {
+      throw error;
+    }
+  }
+};
+
+const ensureMemberRequestColumns = async (connection) => {
+  if (IS_POSTGRES) {
+    await connection.execute(
+      "ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)",
+    );
+    await connection.execute(
+      "ALTER TABLE counseling_requests ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)",
+    );
+    return;
+  }
+
+  const alterStatements = [
+    "ALTER TABLE prayer_requests ADD COLUMN whatsapp_number VARCHAR(50) NULL",
+    "ALTER TABLE counseling_requests ADD COLUMN whatsapp_number VARCHAR(50) NULL",
   ];
 
   for (const statement of alterStatements) {
@@ -1492,7 +1590,9 @@ const initializePostgresDatabase = async () => {
     }
 
     await ensureUserAuthColumns(connection);
+    await ensureMaterialColumns(connection);
     await ensureDonationColumns(connection);
+    await ensureMemberRequestColumns(connection);
 
     await ensureDefaultAdminUser(connection);
 
@@ -1558,6 +1658,7 @@ const initializeDatabase = async () => {
         category VARCHAR(100),
         type ENUM('document', 'image', 'video', 'audio', 'writeup') NOT NULL,
         file_url VARCHAR(1000),
+        youtube_url VARCHAR(1000),
         file_name VARCHAR(255),
         file_size INT,
         is_public BOOLEAN DEFAULT TRUE,
@@ -1574,12 +1675,15 @@ const initializeDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
+    await ensureMaterialColumns(connection);
+
     // Prayer requests table
     await connection.execute(`
       CREATE TABLE IF NOT EXISTS prayer_requests (
         id INT AUTO_INCREMENT PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         email VARCHAR(255),
+        whatsapp_number VARCHAR(50),
         request TEXT NOT NULL,
         is_anonymous BOOLEAN DEFAULT FALSE,
         status ENUM('pending', 'read', 'responded') DEFAULT 'pending',
@@ -1597,6 +1701,7 @@ const initializeDatabase = async () => {
         id INT AUTO_INCREMENT PRIMARY KEY,
         user_id INT NOT NULL,
         counseling_type VARCHAR(100) NOT NULL,
+        whatsapp_number VARCHAR(50),
         description TEXT NOT NULL,
         preferred_availability VARCHAR(255),
         status ENUM('pending', 'scheduled', 'completed', 'cancelled') DEFAULT 'pending',
@@ -1665,6 +1770,7 @@ const initializeDatabase = async () => {
     `);
 
     await ensureDonationColumns(connection);
+    await ensureMemberRequestColumns(connection);
 
     // Analytics table
     await connection.execute(`
@@ -1851,8 +1957,10 @@ app.post(
         category,
         type,
         is_public = "true",
+        youtube_url = "",
       } = req.body;
       const userId = req.user.userId;
+      const normalizedYoutubeUrl = normalizeOptionalUrl(youtube_url);
 
       // Validation
       if (!title || !description || !category || !type) {
@@ -1869,6 +1977,16 @@ app.post(
         return res.status(400).json({
           success: false,
           error: "File is required for this material type",
+        });
+      }
+
+      if (!isValidYouTubeUrl(normalizedYoutubeUrl)) {
+        if (req.file) {
+          safeUnlink(req.file.path);
+        }
+        return res.status(400).json({
+          success: false,
+          error: "Please provide a valid YouTube link",
         });
       }
 
@@ -1911,8 +2029,8 @@ app.post(
       const [result] = await pool.execute(
         `
       INSERT INTO materials 
-        (title, description, category, type, file_url, file_name, file_size, is_public, uploader_id)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        (title, description, category, type, file_url, youtube_url, file_name, file_size, is_public, uploader_id)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `,
         [
           title,
@@ -1920,6 +2038,7 @@ app.post(
           category,
           type,
           fileUrl,
+          normalizedYoutubeUrl,
           fileName,
           fileSize,
           is_public === "true",
@@ -1946,6 +2065,12 @@ app.post(
           category,
           type,
           file_url: fileUrl,
+          youtube_url: resolveMaterialYouTubeUrl({
+            title,
+            category,
+            type,
+            youtube_url: normalizedYoutubeUrl,
+          }),
           created_at: new Date().toISOString(),
         },
       });
@@ -2025,6 +2150,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
           m.category,
           m.type,
           m.file_url,
+          m.youtube_url,
           m.file_name,
           m.file_size,
           m.views,
@@ -2049,6 +2175,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
           m.category,
           m.type,
           m.file_url,
+          m.youtube_url,
           m.file_name,
           m.file_size,
           m.views,
@@ -2081,6 +2208,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
         category: material.category || "uncategorized",
         type: material.type || "document",
         file_url: material.file_url || null,
+        youtube_url: resolveMaterialYouTubeUrl(material),
         file_name: material.file_name || null,
         file_size: Number(material.file_size || 0),
         views: Number(material.views || 0),
@@ -2131,6 +2259,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         m.category,
         m.type,
         m.file_url,
+        m.youtube_url,
         m.file_name,
         m.file_size,
         m.views,
@@ -2153,6 +2282,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         m.category,
         m.type,
         m.file_url,
+        m.youtube_url,
         m.file_name,
         m.file_size,
         m.views,
@@ -2197,6 +2327,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
         category: material.category || "uncategorized",
         type: material.type || "document",
         file_url: material.file_url || null,
+        youtube_url: resolveMaterialYouTubeUrl(material),
         file_name: material.file_name || null,
         file_size: Number(material.file_size || 0),
         views: Number(material.views || 0),
@@ -2229,7 +2360,16 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
     }
 
     const materialId = req.params.id;
-    const { title, description, category, type, is_public } = req.body;
+    const { title, description, category, type, is_public, youtube_url } =
+      req.body;
+    const normalizedYoutubeUrl = normalizeOptionalUrl(youtube_url);
+
+    if (!isValidYouTubeUrl(normalizedYoutubeUrl)) {
+      return res.status(400).json({
+        success: false,
+        error: "Please provide a valid YouTube link",
+      });
+    }
 
     // Check if material exists
     const [existing] = await pool.execute(
@@ -2248,10 +2388,18 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
     await pool.execute(
       `
       UPDATE materials 
-      SET title = ?, description = ?, category = ?, type = ?, is_public = ?, updated_at = CURRENT_TIMESTAMP
+      SET title = ?, description = ?, category = ?, type = ?, is_public = ?, youtube_url = ?, updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `,
-      [title, description, category, type, is_public === "true", materialId],
+      [
+        title,
+        description,
+        category,
+        type,
+        is_public === "true",
+        normalizedYoutubeUrl,
+        materialId,
+      ],
     );
 
     // Log analytics
@@ -3428,22 +3576,30 @@ app.delete("/api/users/:id", authenticateToken, async (req, res) => {
 
 app.post("/api/prayer-requests", authenticateToken, async (req, res) => {
   try {
-    const { name, email, request, is_anonymous } = req.body;
+    const { name, email, whatsapp_number, request, is_anonymous } = req.body;
     const userId = req.user.userId;
+    const normalizedWhatsappNumber = String(whatsapp_number || "").trim();
 
-    if (!request) {
+    if (!request || !normalizedWhatsappNumber) {
       return res.status(400).json({
         success: false,
-        error: "Prayer request text is required",
+        error: "Prayer request text and WhatsApp number are required",
       });
     }
 
     const [result] = await pool.execute(
       `
-      INSERT INTO prayer_requests (name, email, request, is_anonymous, user_id)
-      VALUES (?, ?, ?, ?, ?)
+      INSERT INTO prayer_requests (name, email, whatsapp_number, request, is_anonymous, user_id)
+      VALUES (?, ?, ?, ?, ?, ?)
     `,
-      [name, email, request, is_anonymous === "true", userId],
+      [
+        name,
+        email,
+        normalizedWhatsappNumber,
+        request,
+        is_anonymous === true || is_anonymous === "true",
+        userId,
+      ],
     );
 
     res.status(201).json({
@@ -3493,8 +3649,15 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
     }
 
     if (search) {
-      query += ` AND (pr.name LIKE ? OR pr.request LIKE ? OR pr.email LIKE ?)`;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`);
+      query += `
+        AND (
+          pr.name LIKE ?
+          OR pr.request LIKE ?
+          OR pr.email LIKE ?
+          OR COALESCE(pr.whatsapp_number, '') LIKE ?
+        )
+      `;
+      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
     }
 
     query += ` ORDER BY pr.created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
@@ -3539,22 +3702,40 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
 
 app.post("/api/counseling-requests", authenticateToken, async (req, res) => {
   try {
-    const { counseling_type, description, preferred_availability } = req.body;
+    const {
+      counseling_type,
+      whatsapp_number,
+      description,
+      preferred_availability,
+    } = req.body;
     const userId = req.user.userId;
+    const normalizedWhatsappNumber = String(whatsapp_number || "").trim();
 
-    if (!counseling_type || !description) {
+    if (!counseling_type || !description || !normalizedWhatsappNumber) {
       return res.status(400).json({
         success: false,
-        error: "Counseling type and description are required",
+        error: "Counseling type, description, and WhatsApp number are required",
       });
     }
 
     const [result] = await pool.execute(
       `
-      INSERT INTO counseling_requests (user_id, counseling_type, description, preferred_availability)
-      VALUES (?, ?, ?, ?)
+      INSERT INTO counseling_requests (
+        user_id,
+        counseling_type,
+        whatsapp_number,
+        description,
+        preferred_availability
+      )
+      VALUES (?, ?, ?, ?, ?)
     `,
-      [userId, counseling_type, description, preferred_availability],
+      [
+        userId,
+        counseling_type,
+        normalizedWhatsappNumber,
+        description,
+        preferred_availability,
+      ],
     );
 
     res.status(201).json({
@@ -3608,11 +3789,18 @@ app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
         AND (
           cr.description LIKE ?
           OR cr.counseling_type LIKE ?
+          OR COALESCE(cr.whatsapp_number, '') LIKE ?
           OR COALESCE(u.username, '') LIKE ?
           OR COALESCE(u.email, '') LIKE ?
         )
       `;
-      params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+      params.push(
+        `%${search}%`,
+        `%${search}%`,
+        `%${search}%`,
+        `%${search}%`,
+        `%${search}%`,
+      );
     }
 
     query += ` ORDER BY cr.created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;

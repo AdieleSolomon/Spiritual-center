@@ -36,6 +36,14 @@ html.has-auth-session #resourceLoginBtn {
   display: none !important;
 }
 
+html.has-auth-session .guest-only {
+  display: none !important;
+}
+
+html.has-auth-session [data-open-auth]:not([data-auth-display="member-label"]) {
+  display: none !important;
+}
+
 .auth-user-button {
   border-color: rgba(46, 182, 159, 0.34);
   background: rgba(13, 36, 45, 0.82);
@@ -54,8 +62,16 @@ body {
   font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
   color: var(--ink);
   background:
-    radial-gradient(circle at 12% 12%, rgba(30, 182, 158, 0.14), transparent 24%),
-    radial-gradient(circle at 84% 8%, rgba(215, 169, 94, 0.12), transparent 22%),
+    radial-gradient(
+      circle at 12% 12%,
+      rgba(30, 182, 158, 0.14),
+      transparent 24%
+    ),
+    radial-gradient(
+      circle at 84% 8%,
+      rgba(215, 169, 94, 0.12),
+      transparent 22%
+    ),
     linear-gradient(165deg, #050d18 0%, #081727 42%, #0a2032 100%);
   line-height: 1.6;
   overflow-x: hidden;
@@ -177,6 +193,39 @@ h3 {
   gap: 8px;
   color: #dfe9f0;
   transition: var(--transition);
+}
+
+.top-auth-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: #000000;
+}
+
+.top-auth-link:hover {
+  color: #000000;
+}
+
+.top-auth-link.auth-user-button,
+.top-auth-link.auth-user-button:hover {
+  border: 0;
+  background: transparent;
+  color: #000000;
+}
+
+.top-logout-link {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  color: #000000;
+}
+
+.top-logout-link:hover {
+  color: #000000;
 }
 
 .top-link:hover {
@@ -405,9 +454,21 @@ body.nav-open {
   position: absolute;
   inset: -20%;
   background:
-    radial-gradient(circle at 18% 22%, rgba(46, 182, 159, 0.35), transparent 32%),
-    radial-gradient(circle at 84% 16%, rgba(215, 169, 94, 0.3), transparent 33%),
-    radial-gradient(circle at 66% 78%, rgba(65, 143, 229, 0.24), transparent 36%);
+    radial-gradient(
+      circle at 18% 22%,
+      rgba(46, 182, 159, 0.35),
+      transparent 32%
+    ),
+    radial-gradient(
+      circle at 84% 16%,
+      rgba(215, 169, 94, 0.3),
+      transparent 33%
+    ),
+    radial-gradient(
+      circle at 66% 78%,
+      rgba(65, 143, 229, 0.24),
+      transparent 36%
+    );
   filter: blur(10px);
   animation: heroPulse 16s ease-in-out infinite alternate;
   z-index: 1;
@@ -436,7 +497,11 @@ body.nav-open {
 .hero-decor-1 {
   width: 340px;
   height: 340px;
-  background: radial-gradient(circle, rgba(46, 182, 159, 0.28), transparent 70%);
+  background: radial-gradient(
+    circle,
+    rgba(46, 182, 159, 0.28),
+    transparent 70%
+  );
   top: -120px;
   right: -70px;
   animation: floatOrb 11s ease-in-out infinite;
@@ -445,7 +510,11 @@ body.nav-open {
 .hero-decor-2 {
   width: 280px;
   height: 280px;
-  background: radial-gradient(circle, rgba(215, 169, 94, 0.24), transparent 72%);
+  background: radial-gradient(
+    circle,
+    rgba(215, 169, 94, 0.24),
+    transparent 72%
+  );
   bottom: -120px;
   left: -90px;
   animation: floatOrb 12s ease-in-out infinite reverse;
@@ -551,7 +620,11 @@ body.nav-open {
 }
 
 .about {
-  background: linear-gradient(180deg, rgba(8, 24, 39, 0.5), rgba(7, 20, 33, 0.42));
+  background: linear-gradient(
+    180deg,
+    rgba(8, 24, 39, 0.5),
+    rgba(7, 20, 33, 0.42)
+  );
 }
 
 .about-grid {
@@ -595,7 +668,11 @@ body.nav-open {
 }
 
 .services {
-  background: linear-gradient(180deg, rgba(6, 18, 30, 0.55), rgba(9, 24, 37, 0.64));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 18, 30, 0.55),
+    rgba(9, 24, 37, 0.64)
+  );
 }
 
 .section-head {
@@ -675,9 +752,22 @@ body.nav-open {
   overflow: hidden;
   padding: 96px 0 64px;
   background:
-    radial-gradient(circle at 12% 18%, rgba(46, 182, 159, 0.22), transparent 38%),
-    radial-gradient(circle at 86% 12%, rgba(215, 169, 94, 0.2), transparent 35%),
-    linear-gradient(135deg, rgba(6, 18, 30, 0.96) 0%, rgba(9, 28, 44, 0.95) 60%, rgba(7, 22, 36, 0.98) 100%);
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(46, 182, 159, 0.22),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 86% 12%,
+      rgba(215, 169, 94, 0.2),
+      transparent 35%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(6, 18, 30, 0.96) 0%,
+      rgba(9, 28, 44, 0.95) 60%,
+      rgba(7, 22, 36, 0.98) 100%
+    );
 }
 
 .prayer-hero::after,
@@ -801,7 +891,11 @@ body.nav-open {
 
 .prayer-section,
 .counseling-section {
-  background: linear-gradient(180deg, rgba(6, 18, 30, 0.7), rgba(7, 20, 34, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 18, 30, 0.7),
+    rgba(7, 20, 34, 0.92)
+  );
 }
 
 .prayer-login,
@@ -895,7 +989,11 @@ body.nav-open {
 }
 
 .daily-update {
-  background: linear-gradient(180deg, rgba(5, 15, 25, 0.65), rgba(7, 18, 30, 0.9));
+  background: linear-gradient(
+    180deg,
+    rgba(5, 15, 25, 0.65),
+    rgba(7, 18, 30, 0.9)
+  );
 }
 
 .daily-update-card {
@@ -999,7 +1097,11 @@ body.nav-open {
 }
 
 .resources {
-  background: linear-gradient(180deg, rgba(7, 20, 34, 0.56), rgba(6, 18, 30, 0.64));
+  background: linear-gradient(
+    180deg,
+    rgba(7, 20, 34, 0.56),
+    rgba(6, 18, 30, 0.64)
+  );
 }
 
 .resource-toolbar {
@@ -1167,7 +1269,11 @@ body.nav-open {
   gap: 10px;
   text-align: center;
   color: #dbe6f2;
-  background: linear-gradient(180deg, rgba(8, 22, 35, 0.85), rgba(10, 28, 44, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(8, 22, 35, 0.85),
+    rgba(10, 28, 44, 0.92)
+  );
 }
 
 .resource-preview-icon {
@@ -1189,14 +1295,42 @@ body.nav-open {
   font-weight: 600;
 }
 
+.resource-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.resource-link-youtube {
+  color: #d62839;
+}
+
+.resource-link-youtube:hover {
+  color: #b91c1c;
+}
+
 .materials-hero {
   position: relative;
   overflow: hidden;
   padding: 92px 0 64px;
   background:
-    radial-gradient(circle at 12% 18%, rgba(46, 182, 159, 0.22), transparent 38%),
-    radial-gradient(circle at 86% 14%, rgba(215, 169, 94, 0.22), transparent 36%),
-    linear-gradient(135deg, rgba(6, 18, 30, 0.96) 0%, rgba(9, 28, 44, 0.95) 60%, rgba(7, 22, 36, 0.98) 100%);
+    radial-gradient(
+      circle at 12% 18%,
+      rgba(46, 182, 159, 0.22),
+      transparent 38%
+    ),
+    radial-gradient(
+      circle at 86% 14%,
+      rgba(215, 169, 94, 0.22),
+      transparent 36%
+    ),
+    linear-gradient(
+      135deg,
+      rgba(6, 18, 30, 0.96) 0%,
+      rgba(9, 28, 44, 0.95) 60%,
+      rgba(7, 22, 36, 0.98) 100%
+    );
 }
 
 .materials-hero::after {
@@ -1292,7 +1426,11 @@ body.nav-open {
 }
 
 .materials-section {
-  background: linear-gradient(180deg, rgba(6, 18, 30, 0.7), rgba(7, 20, 34, 0.92));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 18, 30, 0.7),
+    rgba(7, 20, 34, 0.92)
+  );
 }
 
 .materials-filters {
@@ -1359,7 +1497,11 @@ body.nav-open {
 }
 
 .engage {
-  background: linear-gradient(180deg, rgba(6, 19, 31, 0.68), rgba(8, 22, 36, 0.74));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 19, 31, 0.68),
+    rgba(8, 22, 36, 0.74)
+  );
 }
 
 .engage-grid {
@@ -1466,8 +1608,16 @@ body.nav-open {
 
 .support {
   background:
-    radial-gradient(circle at top right, rgba(10, 102, 194, 0.12), transparent 34%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(239, 247, 250, 0.98));
+    radial-gradient(
+      circle at top right,
+      rgba(10, 102, 194, 0.12),
+      transparent 34%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.98),
+      rgba(239, 247, 250, 0.98)
+    );
   border-top: 1px solid var(--line);
   border-bottom: 1px solid var(--line);
 }
@@ -1632,7 +1782,11 @@ body.nav-open {
 }
 
 .contact {
-  background: linear-gradient(180deg, rgba(6, 19, 31, 0.64), rgba(4, 14, 24, 0.82));
+  background: linear-gradient(
+    180deg,
+    rgba(6, 19, 31, 0.64),
+    rgba(4, 14, 24, 0.82)
+  );
 }
 
 .contact-grid {
@@ -1957,7 +2111,9 @@ body.nav-open {
 .js [data-reveal] {
   opacity: 0;
   transform: translateY(26px);
-  transition: opacity 500ms ease, transform 500ms ease;
+  transition:
+    opacity 500ms ease,
+    transform 500ms ease;
 }
 
 .js [data-reveal].revealed {
@@ -1980,7 +2136,9 @@ body.nav-open {
   z-index: 80;
   opacity: 0;
   transform: translateY(14px);
-  transition: opacity 220ms ease, transform 220ms ease;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
 }
 
 .toast.show {
@@ -2014,10 +2172,14 @@ body.nav-open {
 
 @keyframes heroGridMove {
   from {
-    background-position: 0 0, 0 0;
+    background-position:
+      0 0,
+      0 0;
   }
   to {
-    background-position: 0 62px, 62px 0;
+    background-position:
+      0 62px,
+      62px 0;
   }
 }
 
@@ -2069,10 +2231,16 @@ body {
   color: var(--ink);
   background-color: var(--bg);
   background-image:
-    linear-gradient(180deg, rgba(245, 250, 247, 0.45), rgba(217, 238, 224, 0.5)),
+    linear-gradient(
+      180deg,
+      rgba(245, 250, 247, 0.45),
+      rgba(217, 238, 224, 0.5)
+    ),
     var(--bg-pattern);
   background-repeat: repeat;
-  background-size: auto, 160px 160px;
+  background-size:
+    auto,
+    160px 160px;
 }
 
 h1,
@@ -2155,6 +2323,12 @@ h3 {
   color: #b8e8c7;
 }
 
+@media (min-width: 901px) {
+  .landing-home .brand {
+    margin-left: -6px;
+  }
+}
+
 .main-nav {
   gap: 14px;
 }
@@ -2180,6 +2354,31 @@ h3 {
   background: rgba(255, 255, 255, 0.18);
   border: 1px solid rgba(255, 255, 255, 0.3);
   color: #ffffff;
+}
+
+.nav-page-link-compact {
+  display: inline-grid;
+  grid-template-columns: 16px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 8px;
+  inline-size: 124px;
+  min-block-size: 50px;
+  box-sizing: border-box;
+  flex: 0 0 124px;
+  font-size: 0.88rem;
+  line-height: 1.1;
+  white-space: normal;
+  text-align: left;
+}
+
+.nav-page-link-compact i {
+  width: 16px;
+  text-align: center;
+}
+
+.nav-page-link-compact span {
+  display: block;
+  min-width: 0;
 }
 
 .nav-page-link:hover {
@@ -2381,7 +2580,11 @@ h3 {
 
 .pro-profile-banner {
   height: 92px;
-  background: linear-gradient(135deg, rgba(10, 102, 194, 0.9), rgba(0, 65, 130, 0.9));
+  background: linear-gradient(
+    135deg,
+    rgba(10, 102, 194, 0.9),
+    rgba(0, 65, 130, 0.9)
+  );
 }
 
 .pro-profile-body {
@@ -2463,7 +2666,9 @@ h3 {
   border: 1px solid var(--line);
   background: #ffffff;
   box-shadow: var(--shadow-soft);
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 .qa-card:hover {
@@ -2774,7 +2979,11 @@ h3 {
 }
 
 .aside-scripture {
-  background: linear-gradient(135deg, rgba(10, 102, 194, 0.08), rgba(240, 178, 61, 0.08));
+  background: linear-gradient(
+    135deg,
+    rgba(10, 102, 194, 0.08),
+    rgba(240, 178, 61, 0.08)
+  );
 }
 
 .aside-scripture blockquote {
@@ -3508,7 +3717,9 @@ h3 {
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    transition: opacity var(--transition), visibility var(--transition);
+    transition:
+      opacity var(--transition),
+      visibility var(--transition);
     z-index: 29;
   }
 

@@ -331,18 +331,21 @@ const App = (() => {
     prayerPageForm: document.getElementById("prayerForm"),
     prayerPageName: document.getElementById("prayerName"),
     prayerPageEmail: document.getElementById("prayerEmail"),
+    prayerPageWhatsapp: document.getElementById("prayerWhatsapp"),
     prayerPageRequest: document.getElementById("prayerRequest"),
     prayerPageAnonymous: document.getElementById("prayerAnonymous"),
     prayerFormContainer: document.getElementById("prayer-form-container"),
     prayerBookingForm: document.getElementById("prayerBookingForm"),
     prayerBookingName: document.getElementById("prayerBookingName"),
     prayerBookingEmail: document.getElementById("prayerBookingEmail"),
+    prayerBookingWhatsapp: document.getElementById("prayerBookingWhatsapp"),
     prayerBookingAvailability: document.getElementById("prayerBookingAvailability"),
     prayerBookingFocus: document.getElementById("prayerBookingFocus"),
     // Counseling Page
     counselingPageForm: document.getElementById("counselingForm"),
     counselingIntent: document.getElementById("counselingIntent"),
     counselingType: document.getElementById("counselingType"),
+    counselingWhatsapp: document.getElementById("counselingWhatsapp"),
     counselingDescription: document.getElementById("counselingDescription"),
     counselingAvailability: document.getElementById("counselingAvailability"),
     counselingFormContainer: document.getElementById("counseling-form-container"),
@@ -437,8 +440,18 @@ const App = (() => {
 
   function renderOpenAuthButton(button, label, isSignedIn) {
     if (!button) return;
+    const shouldStayVisibleWhenSignedIn =
+      button.dataset.authDisplay === "member-label";
 
     if (isSignedIn) {
+      if (!shouldStayVisibleWhenSignedIn) {
+        button.hidden = true;
+        button.classList.remove("auth-user-button");
+        button.dataset.authState = "hidden";
+        button.removeAttribute("title");
+        return;
+      }
+
       button.hidden = false;
       button.textContent = label;
       button.classList.add("auth-user-button");
@@ -457,6 +470,34 @@ const App = (() => {
       button.dataset.authDefaultLabel || button.textContent.trim() || "Member Sign-In";
     button.setAttribute("aria-label", defaultLabel);
     button.removeAttribute("title");
+  }
+
+  function logoutCurrentSession(showMessage = true) {
+    clearSession();
+    updateAuthUI();
+    ui.authModal?.closeModal?.();
+
+    if (ui.prayerFormContainer && ui.loginWall) {
+      ui.prayerFormContainer.style.display = "none";
+      ui.loginWall.style.display = "block";
+    }
+
+    if (ui.counselingFormContainer && ui.loginWall) {
+      ui.counselingFormContainer.style.display = "none";
+      ui.loginWall.style.display = "block";
+    }
+
+    if (ui.formMessage) {
+      ui.formMessage.textContent = "";
+      ui.formMessage.className = "auth-message";
+    }
+
+    loadResources();
+    loadAllMaterials();
+
+    if (showMessage) {
+      notify("You have been logged out.", "success");
+    }
   }
 
   function parseIsoDateParts(value) {
@@ -767,7 +808,7 @@ const App = (() => {
 
     ui.openAuthBtns.forEach((button) => {
       button.addEventListener("click", () => {
-        if (document.documentElement.classList.contains("has-auth-session")) {
+        if (button.dataset.authState === "member") {
           return;
         }
         open(button.dataset.openAuthMode || "login");
@@ -796,10 +837,7 @@ const App = (() => {
     });
 
     ui.logoutBtn?.addEventListener("click", () => {
-      clearSession();
-      updateAuthUI();
-      loadResources();
-      notify("You have been logged out.", "success");
+      logoutCurrentSession();
     });
 
     ui.authModal.closeModal = close;
@@ -1369,11 +1407,12 @@ const App = (() => {
       event.preventDefault();
       const name = ui.prayerPageName?.value.trim();
       const email = ui.prayerPageEmail?.value.trim();
+      const whatsapp_number = ui.prayerPageWhatsapp?.value.trim();
       const request = ui.prayerPageRequest?.value.trim();
       const is_anonymous = ui.prayerPageAnonymous?.checked;
 
-      if (!request) {
-        notify("Please enter your prayer request.", "error");
+      if (!request || !whatsapp_number) {
+        notify("Please enter your prayer request and WhatsApp number.", "error");
         return;
       }
 
@@ -1384,7 +1423,13 @@ const App = (() => {
             "Content-Type": "application/json",
             Authorization: `Bearer ${state.token}`,
           },
-          body: JSON.stringify({ name, email, request, is_anonymous }),
+          body: JSON.stringify({
+            name,
+            email,
+            whatsapp_number,
+            request,
+            is_anonymous,
+          }),
         });
 
         const data = await response.json();
@@ -1408,11 +1453,12 @@ const App = (() => {
 
       const name = ui.prayerBookingName?.value.trim();
       const email = ui.prayerBookingEmail?.value.trim();
+      const whatsapp_number = ui.prayerBookingWhatsapp?.value.trim();
       const availability = ui.prayerBookingAvailability?.value.trim();
       const focus = ui.prayerBookingFocus?.value.trim();
 
-      if (!availability || !focus) {
-        notify("Please complete booking availability and focus.", "error");
+      if (!availability || !focus || !whatsapp_number) {
+        notify("Please complete booking availability, focus, and WhatsApp number.", "error");
         return;
       }
 
@@ -1432,6 +1478,7 @@ const App = (() => {
           body: JSON.stringify({
             name,
             email,
+            whatsapp_number,
             request,
             is_anonymous: false,
           }),
@@ -1488,11 +1535,12 @@ const App = (() => {
       event.preventDefault();
       const intent = ui.counselingIntent?.value || "";
       const counseling_type = ui.counselingType?.value;
+      const whatsapp_number = ui.counselingWhatsapp?.value.trim();
       const description = ui.counselingDescription?.value.trim();
       const preferred_availability = ui.counselingAvailability?.value.trim();
 
-      if (!intent || !counseling_type || !description) {
-        notify("Please select request option, type, and description.", "error");
+      if (!intent || !counseling_type || !description || !whatsapp_number) {
+        notify("Please select request option, type, description, and WhatsApp number.", "error");
         return;
       }
 
@@ -1511,6 +1559,7 @@ const App = (() => {
           },
           body: JSON.stringify({
             counseling_type,
+            whatsapp_number,
             description: descriptionPayload,
             preferred_availability,
           }),
@@ -1771,6 +1820,7 @@ const App = (() => {
       type: item.type || "file",
       link: resolveFileUrl(item.file_url),
       fileUrl: item.file_url || "",
+      youtubeUrl: item.youtube_url || item.youtubeUrl || "",
     }));
   }
 
@@ -2219,6 +2269,11 @@ const App = (() => {
     return fromApi ? "Open Material" : "Preview";
   }
 
+  function resolveYoutubeUrl(value = "") {
+    const normalized = String(value || "").trim();
+    return /^https?:\/\//i.test(normalized) ? normalized : "";
+  }
+
   function renderResources(resources, fromApi, gridElement = ui.resourceGrid) {
     if (!gridElement) return;
 
@@ -2232,6 +2287,8 @@ const App = (() => {
         const mediaKind = getMediaKind(item);
         const hasMediaSource = href !== "#contact";
         const mediaPreview = renderMediaPreview(mediaKind, href, title);
+        const youtubeUrl = sanitize(resolveYoutubeUrl(item.youtubeUrl || ""));
+        const hasYoutubeUrl = Boolean(youtubeUrl);
 
         const isExternal = href.startsWith("http");
         const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : "";
@@ -2246,10 +2303,33 @@ const App = (() => {
             <h3>${title}</h3>
             <p>${description}</p>
             ${mediaPreview}
-            <a class="resource-link" href="${href}" data-resource-title="${title}" ${targetAttr}>
-              ${linkLabel}
-              <i class="fa-solid fa-arrow-right"></i>
-            </a>
+            <div class="resource-card-actions">
+              <a
+                class="resource-link"
+                href="${href}"
+                data-resource-title="${title}"
+                data-resource-action="material"
+                ${targetAttr}>
+                ${linkLabel}
+                <i class="fa-solid fa-arrow-right"></i>
+              </a>
+              ${
+                hasYoutubeUrl
+                  ? `
+                    <a
+                      class="resource-link resource-link-youtube"
+                      href="${youtubeUrl}"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      data-resource-title="${title}"
+                      data-resource-action="youtube">
+                      See Video
+                      <i class="fa-brands fa-youtube"></i>
+                    </a>
+                  `
+                  : ""
+              }
+            </div>
           </article>
         `;
       })
@@ -2261,6 +2341,7 @@ const App = (() => {
         trackEvent("resource_open", {
           title: link.dataset.resourceTitle || "resource",
           source: fromApi ? "api" : "fallback",
+          action: link.dataset.resourceAction || "open",
         });
       });
     });
@@ -2493,7 +2574,7 @@ const App = (() => {
           </a>
         </div>
         <div class="feed-comments-box">
-          <p class="community-thread-hint">
+          <p class="community-thread-hint guest-only">
             Sign in to add your encouragement, questions, and prayer responses.
           </p>
           <div
