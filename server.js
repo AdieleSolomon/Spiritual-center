@@ -1122,6 +1122,15 @@ const PUBLIC_SUPPORT_SETTING_KEYS = [
 
 const postgresSchemaStatements = [
   `
+    CREATE OR REPLACE FUNCTION update_updated_at_column()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.updated_at = CURRENT_TIMESTAMP;
+        RETURN NEW;
+    END;
+    $$ language 'plpgsql';
+  `,
+  `
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       username VARCHAR(100) NOT NULL UNIQUE,
@@ -1135,6 +1144,8 @@ const postgresSchemaStatements = [
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  "DROP TRIGGER IF EXISTS update_users_updated_at ON users",
+  "CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
   "CREATE INDEX IF NOT EXISTS idx_users_email ON users (email)",
   "CREATE INDEX IF NOT EXISTS idx_users_role ON users (role)",
   `
@@ -1156,6 +1167,8 @@ const postgresSchemaStatements = [
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  "DROP TRIGGER IF EXISTS update_materials_updated_at ON materials",
+  "CREATE TRIGGER update_materials_updated_at BEFORE UPDATE ON materials FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
   "CREATE INDEX IF NOT EXISTS idx_materials_category ON materials (category)",
   "CREATE INDEX IF NOT EXISTS idx_materials_type ON materials (type)",
   "CREATE INDEX IF NOT EXISTS idx_materials_public ON materials (is_public)",
@@ -1188,6 +1201,8 @@ const postgresSchemaStatements = [
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  "DROP TRIGGER IF EXISTS update_counseling_requests_updated_at ON counseling_requests",
+  "CREATE TRIGGER update_counseling_requests_updated_at BEFORE UPDATE ON counseling_requests FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
   "CREATE INDEX IF NOT EXISTS idx_counseling_status ON counseling_requests (status)",
   "CREATE INDEX IF NOT EXISTS idx_counseling_user_id ON counseling_requests (user_id)",
   `
@@ -1232,9 +1247,12 @@ const postgresSchemaStatements = [
       payment_method VARCHAR(50) NOT NULL,
       transaction_id VARCHAR(100) UNIQUE,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'completed', 'failed')),
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  "DROP TRIGGER IF EXISTS update_donations_updated_at ON donations",
+  "CREATE TRIGGER update_donations_updated_at BEFORE UPDATE ON donations FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
   "CREATE INDEX IF NOT EXISTS idx_donations_status ON donations (status)",
   "CREATE INDEX IF NOT EXISTS idx_donations_email ON donations (donor_email)",
   `
@@ -1260,6 +1278,8 @@ const postgresSchemaStatements = [
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
+  "DROP TRIGGER IF EXISTS update_settings_updated_at ON settings",
+  "CREATE TRIGGER update_settings_updated_at BEFORE UPDATE ON settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
   "CREATE INDEX IF NOT EXISTS idx_settings_key ON settings (setting_key)",
 ];
 
