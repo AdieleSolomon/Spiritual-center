@@ -414,7 +414,7 @@ const resolveSupabaseUrl = () => {
 const SUPABASE_URL = resolveSupabaseUrl();
 const SUPABASE_STORAGE_ENABLED = parseBoolean(
   process.env.SUPABASE_STORAGE_ENABLED,
-  true,
+  false,
 );
 const SUPABASE_SERVICE_ROLE_KEY = String(
   process.env.SUPABASE_SERVICE_ROLE_KEY || "",
@@ -440,7 +440,7 @@ const SUPABASE_STORAGE_BUCKET_PUBLIC = parseBoolean(
 );
 const REQUIRE_PERSISTENT_STORAGE = parseBoolean(
   process.env.REQUIRE_PERSISTENT_STORAGE,
-  IS_POSTGRES,
+  false,
 );
 const SUPABASE_STORAGE_API_KEY =
   SUPABASE_SERVICE_ROLE_KEY ||
@@ -449,15 +449,9 @@ const SUPABASE_REQUEST_API_KEY = SUPABASE_ANON_KEY || SUPABASE_STORAGE_API_KEY;
 let supabaseBucketVerified = false;
 
 if (SUPABASE_STORAGE_ENABLED && (!SUPABASE_URL || !SUPABASE_STORAGE_API_KEY)) {
-  if (REQUIRE_PERSISTENT_STORAGE) {
-    console.warn(
-      "Supabase Storage is not fully configured. Uploads will be blocked until storage credentials are set or REQUIRE_PERSISTENT_STORAGE is disabled.",
-    );
-  } else {
-    console.warn(
-      "Supabase Storage is not fully configured. Uploads will fall back to local /uploads storage.",
-    );
-  }
+  console.warn(
+    "Supabase Storage is enabled but not fully configured. Uploads will fall back to local /uploads storage unless credentials are provided.",
+  );
 }
 
 const toPostgresPlaceholders = (sql) => {
