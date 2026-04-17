@@ -31,7 +31,7 @@ const POSTGRES_PROVIDER_ALIASES = new Set([
 const MYSQL_PROVIDER_ALIASES = new Set(["mysql", "laragon"]);
 
 const resolveDbProvider = () => {
-  const rawProvider = (process.env.DB_PROVIDER || "mysql").toLowerCase().trim();
+  const rawProvider = (process.env.DB_PROVIDER || "").toLowerCase().trim();
 
   if (POSTGRES_PROVIDER_ALIASES.has(rawProvider)) {
     return "postgres";
@@ -41,9 +41,29 @@ const resolveDbProvider = () => {
     return "mysql";
   }
 
-  console.warn(
-    `Unknown DB_PROVIDER "${rawProvider}". Falling back to mysql (Laragon).`,
-  );
+  // Auto-detect based on connection string if provider is not explicitly set
+  const connectionString = (
+    process.env.DATABASE_URL ||
+    process.env.DATABASE_PUBLIC_URL ||
+    ""
+  ).toLowerCase();
+
+  if (
+    connectionString.startsWith("postgres://") ||
+    connectionString.startsWith("postgresql://")
+  ) {
+    return "postgres";
+  }
+
+  if (connectionString.startsWith("mysql://")) {
+    return "mysql";
+  }
+
+  if (rawProvider) {
+    console.warn(
+      `Unknown DB_PROVIDER "${rawProvider}". Falling back to mysql (Laragon).`,
+    );
+  }
   return "mysql";
 };
 
@@ -149,7 +169,11 @@ const resolveMaterialYouTubeUrl = (material = {}) => {
   }
 
   const fallbackKey = [material.title, material.category, material.type]
-    .map((value) => String(value || "").trim().toLowerCase())
+    .map((value) =>
+      String(value || "")
+        .trim()
+        .toLowerCase(),
+    )
     .join("|");
 
   return DEFAULT_MATERIAL_YOUTUBE_OVERRIDES.get(fallbackKey) || null;
@@ -1385,8 +1409,7 @@ const formatSettingsRows = (settings = []) => {
 };
 
 const getSettingsMap = async (keys = []) => {
-  let query =
-    "SELECT setting_key, setting_value, setting_type FROM settings";
+  let query = "SELECT setting_key, setting_value, setting_type FROM settings";
   const params = [];
 
   if (Array.isArray(keys) && keys.length > 0) {
@@ -1422,9 +1445,7 @@ const buildPublicSupportConfig = (settings = {}) => ({
     settings.contact_email ||
     "admin@spiritualcenter.com",
   support_whatsapp:
-    settings.support_whatsapp ||
-    settings.whatsapp_number ||
-    "+2349072560420",
+    settings.support_whatsapp || settings.whatsapp_number || "+2349072560420",
 });
 
 const ensureDefaultAdminUser = async (connection) => {
@@ -4039,7 +4060,9 @@ app.post("/api/comments", authenticateToken, async (req, res) => {
   try {
     await ensureDevotionTables();
 
-    const postType = String(req.body.post_type || "").trim().toLowerCase();
+    const postType = String(req.body.post_type || "")
+      .trim()
+      .toLowerCase();
     const postId = Number(req.body.post_id);
     const commentText = String(req.body.comment_text || "").trim();
     const allowedTypes = new Set(["devotion", "promise", "reading"]);
@@ -4092,7 +4115,9 @@ app.get("/api/comments", async (req, res) => {
   try {
     await ensureDevotionTables();
 
-    const postType = String(req.query.post_type || "").trim().toLowerCase();
+    const postType = String(req.query.post_type || "")
+      .trim()
+      .toLowerCase();
     const postId = Number(req.query.post_id);
     const allowedTypes = new Set(["devotion", "promise", "reading"]);
 
@@ -4178,6 +4203,7 @@ app.get("/api/health", async (req, res) => {
       system: systemInfo,
     });
   } catch (error) {
+    console.error("❤️ Healthcheck failed:", error.message);
     res.status(500).json({
       status: "unhealthy",
       error: error.message,
@@ -4278,7 +4304,9 @@ process.on("unhandledRejection", (reason, promise) => {
     if (dbInitialized) {
       console.log("✅ Database initialization complete");
     } else {
-      console.log("⚠️  Database initialization had issues");
+      console.warn(
+        "⚠️  Database initialization had issues. The server will start but some features may fail.",
+      );
     }
 
     // Create uploads directory if it doesn't exist
