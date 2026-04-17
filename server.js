@@ -502,23 +502,35 @@ const executePostgresQuery = async (target, sql, params = []) => {
     ? appendReturningId(transformedSql)
     : transformedSql;
 
-  const result = await target.query(transformedSql, params);
+  try {
+    const result = await target.query(transformedSql, params);
 
-  if (isInsert) {
-    return [
-      {
-        insertId: result.rows[0]?.id ?? null,
-        affectedRows: result.rowCount,
-      },
-    ];
+    if (isInsert) {
+      return [
+        {
+          insertId: result.rows[0]?.id ?? null,
+          affectedRows: result.rowCount,
+        },
+      ];
+    }
+
+    return [result.rows];
+  } catch (error) {
+    console.error("❌ PostgreSQL Query Error:");
+    console.error("SQL:", transformedSql);
+    console.error("Params:", JSON.stringify(params));
+    console.error("Message:", error.message);
+    throw error;
   }
-
-  return [result.rows];
 };
 
 const createDatabasePool = () => {
   if (IS_POSTGRES) {
     const postgresPool = new PostgresPool(postgresConfig);
+
+    postgresPool.on("error", (err) => {
+      console.error("💥 Unexpected error on idle PostgreSQL client", err);
+    });
 
     return {
       execute: (sql, params = []) =>
@@ -535,7 +547,13 @@ const createDatabasePool = () => {
     };
   }
 
-  return createMySqlPool(mysqlConfig);
+  const mysqlPool = createMySqlPool(mysqlConfig);
+
+  mysqlPool.on("error", (err) => {
+    console.error("💥 Unexpected error on idle MySQL client", err);
+  });
+
+  return mysqlPool;
 };
 
 const pool = createDatabasePool();
