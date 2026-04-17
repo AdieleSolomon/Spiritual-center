@@ -3171,10 +3171,29 @@
           }
 
           const data = await response.json();
-          if (data.user.role !== "admin") {
+          const user = data.user;
+
+          if (
+            user.role !== "admin" &&
+            user.role !== "super_admin" &&
+            user.email !== "admin@spiritualcenter.com"
+          ) {
             alert("Admin access required");
             window.location.href = "index.html";
+            return;
           }
+
+          // Store user info for UI
+          localStorage.setItem("adminRole", user.role);
+          localStorage.setItem("adminEmail", user.email);
+          localStorage.setItem("adminUsername", user.username);
+          localStorage.setItem(
+            "isSuperAdmin",
+            user.email === "admin@spiritualcenter.com" ||
+              user.role === "super_admin",
+          );
+
+          applyRoleRestrictions();
         } catch (error) {
           console.error("Auth check failed:", error);
           localStorage.removeItem("adminToken");
@@ -3183,11 +3202,47 @@
         }
       }
 
+      // Apply role-based UI restrictions
+      function applyRoleRestrictions() {
+        const isSuperAdmin = localStorage.getItem("isSuperAdmin") === "true";
+
+        if (!isSuperAdmin) {
+          // Hide restricted navigation items
+          const restrictedSections = [
+            "materials",
+            "analytics",
+            "support",
+            "upload",
+            "settings",
+          ];
+          restrictedSections.forEach((section) => {
+            const navLink = document.querySelector(
+              `.nav-link[data-section="${section}"]`,
+            );
+            if (navLink) {
+              navLink.style.display = "none";
+            }
+          });
+
+          // Redirect if currently on a restricted section
+          if (restrictedSections.includes(currentSection)) {
+            navigateTo("dashboard");
+          }
+        }
+      }
+
       // Update user info
       function updateUserInfo() {
         const email = localStorage.getItem("adminEmail") || "Admin";
-        document.getElementById("userName").textContent = email;
-        document.getElementById("userAvatar").textContent = email
+        const role =
+          localStorage.getItem("isSuperAdmin") === "true"
+            ? "Super Admin"
+            : "Admin";
+        const username = localStorage.getItem("adminUsername") || "Pastor";
+
+        document.getElementById("userName").textContent = username;
+        document.getElementById("userRole").textContent = role;
+        document.getElementById("userAvatar").textContent = username
           .charAt(0)
           .toUpperCase();
       }
@@ -3206,6 +3261,21 @@
 
         // Logout button
         document.getElementById("logoutBtn").addEventListener("click", logout);
+
+        // Notification button
+        const notificationBtn = document.getElementById("notificationBtn");
+        if (notificationBtn) {
+          notificationBtn.addEventListener("click", (e) => {
+            e.stopPropagation();
+            handleNotifications(true);
+          });
+        }
+
+        // Close dropdown on click outside
+        document.addEventListener("click", () => {
+          const dropdown = document.getElementById("notificationDropdown");
+          if (dropdown) dropdown.remove();
+        });
 
         // Mobile menu
         mobileMenuBtn.addEventListener("click", toggleMobileSidebar);
@@ -3293,12 +3363,148 @@
           supportSettingsForm.addEventListener("submit", saveSupportSettings);
         }
 
-        // Notification button
-        const notificationBtn = document.getElementById("notificationBtn");
-        if (notificationBtn) {
-          notificationBtn.addEventListener("click", () => {
-            handleNotifications(true);
-          });
+        // Handle WhatsApp Feedback
+        function handleWhatsAppFeedback(requestId, type, phone, name) {
+          if (!phone || phone === "-") {
+            alert("No WhatsApp number provided for this request.");
+            return;
+          }
+
+          const pastorName =
+            localStorage.getItem("adminUsername") ||
+            "a Pastor from Spiritual Center";
+          const cleanPhone = phone.replace(/\D/g, "");
+          const message = encodeURIComponent(
+            `Hello ${name}, this is ${pastorName}. I am reaching out regarding your ${type} request on the Spiritual Center platform. How can I assist you today?`,
+          );
+
+          window.open(`https://wa.me/${cleanPhone}?text=${message}`, "_blank");
+
+          // Automatically update status to 'responded' or 'scheduled'
+          const nextStatus = type === "prayer" ? "responded" : "scheduled";
+          updateRequestStatus(requestId, type, nextStatus);
+        }
+
+        // Update Request Status
+        async function updateRequestStatus(requestId, type, status) {
+          try {
+            const endpoint =
+              type === "prayer" ? "prayer-requests" : "counseling-requests";
+            const response = await fetch(
+              `${API_BASE}/${endpoint}/${requestId}/status`,
+              {
+                method: "PUT",
+                headers: {
+                  "Content-Type": "application/json",
+                  Authorization: `Bearer ${getAuthToken()}`,
+                },
+                body: JSON.stringify({ status }),
+              },
+            );
+
+            if (!response.ok) {
+              const data = await response.json();
+              throw new Error(data.error || "Failed to update status");
+            }
+
+            // Reload data
+            await loadRequests();
+            showMessage(`Status updated to ${status}`, "success");
+          } catch (error) {
+            console.error("Status update error:", error);
+            showMessage("Failed to update status: " + error.message, "error");
+          }
+        }
+
+        // Improved handleNotifications to navigate to sections
+        async function handleNotifications(showList = false) {
+          try {
+            const response = await fetch(
+              `${API_BASE}/notifications?unread=true`,
+              getFetchOptions(),
+            );
+            if (!response.ok) throw new Error("Failed to load notifications");
+
+            const data = await response.json();
+            notifications = data.notifications || [];
+            updateNotificationsBadge(data.unread_count || 0);
+
+            if (showList && notifications.length > 0) {
+              const listHtml = notifications
+                .map((n) => {
+                  let targetSection = "dashboard";
+                  if (
+                    n.type === "prayer_request" ||
+                    n.type === "counseling_request"
+                  )
+                    targetSection = "requests";
+                  if (n.type === "new_user") targetSection = "users";
+                  if (n.type === "new_donation") targetSection = "support";
+
+                  return `
+                <div class="notification-item" onclick="navigateTo('${targetSection}'); markNotificationRead('${n.id}')" style="cursor: pointer; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1);">
+                  <div style="font-weight: 600; font-size: 0.9rem;">${n.title || "New Notification"}</div>
+                  <div style="font-size: 0.8rem; color: var(--gray);">${n.message}</div>
+                </div>
+              `;
+                })
+                .join("");
+
+              // This is a simple implementation, you might want a proper dropdown/modal
+              const dropdown = document.createElement("div");
+              dropdown.id = "notificationDropdown";
+              dropdown.style.cssText =
+                "position: fixed; top: 70px; right: 20px; width: 300px; max-height: 400px; background: var(--dark-light); border: 1px solid rgba(255,255,255,0.1); border-radius: 8px; z-index: 1001; overflow-y: auto; box-shadow: var(--shadow);";
+              dropdown.innerHTML = `
+              <div style="padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 700;">Notifications</span>
+                <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; color: white; cursor: pointer;"><i class="fas fa-times"></i></button>
+              </div>
+              ${listHtml}
+              <div onclick="clearAllNotifications(); this.parentElement.remove()" style="padding: 10px; text-align: center; color: var(--primary); cursor: pointer; font-size: 0.85rem; font-weight: 600;">Clear All</div>
+            `;
+
+              // Remove existing if any
+              const existing = document.getElementById("notificationDropdown");
+              if (existing) existing.remove();
+
+              document.body.appendChild(dropdown);
+            } else if (showList) {
+              showMessage("No new notifications", "info");
+            }
+          } catch (error) {
+            console.error("Error handling notifications:", error);
+          }
+        }
+
+        async function markNotificationRead(notificationId) {
+          try {
+            await fetch(`${API_BASE}/notifications/${notificationId}/read`, {
+              method: "PUT",
+              headers: {
+                Authorization: `Bearer ${getAuthToken()}`,
+              },
+            });
+            handleNotifications();
+            const dropdown = document.getElementById("notificationDropdown");
+            if (dropdown) dropdown.remove();
+          } catch (error) {
+            console.error("Error marking notification as read:", error);
+          }
+        }
+
+        async function clearAllNotifications() {
+          try {
+            await fetch(`${API_BASE}/notifications`, {
+              method: "DELETE",
+              headers: {
+                Authorization: `Bearer ${getAuthToken()}`,
+              },
+            });
+            handleNotifications();
+          } catch (error) {
+            console.error("Error clearing notifications:", error);
+          }
         }
 
         // Daily Promise form
@@ -4494,6 +4700,22 @@
                 <td title="${escapeRequestHtml(requestFullText)}">${escapeRequestHtml(requestText)}</td>
                 <td><span style="color: ${statusColor}; text-transform: capitalize;">${escapeRequestHtml(status)}</span></td>
                 <td>${escapeRequestHtml(formatRequestDate(request.created_at))}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="action-btn-sm success" onclick="handleWhatsAppFeedback('${request.id}', 'prayer', '${whatsappNumber}', '${name}')" title="Send WhatsApp Feedback">
+                      <i class="fab fa-whatsapp"></i>
+                    </button>
+                    ${
+                      status === "pending"
+                        ? `
+                    <button class="action-btn-sm primary" onclick="updateRequestStatus('${request.id}', 'prayer', 'read')" title="Mark as Read">
+                      <i class="fas fa-check"></i>
+                    </button>
+                    `
+                        : ""
+                    }
+                  </div>
+                </td>
               </tr>
             `;
           })
@@ -4542,6 +4764,22 @@
                 <td><span style="color: ${statusColor}; text-transform: capitalize;">${escapeRequestHtml(status)}</span></td>
                 <td>${escapeRequestHtml(submittedBy)}</td>
                 <td>${escapeRequestHtml(formatRequestDate(request.created_at))}</td>
+                <td>
+                  <div class="table-actions">
+                    <button class="action-btn-sm success" onclick="handleWhatsAppFeedback('${request.id}', 'counseling', '${whatsappNumber}', '${request.user_name || "Member"}')" title="Send WhatsApp Feedback">
+                      <i class="fab fa-whatsapp"></i>
+                    </button>
+                    ${
+                      status === "pending"
+                        ? `
+                    <button class="action-btn-sm primary" onclick="updateRequestStatus('${request.id}', 'counseling', 'scheduled')" title="Schedule">
+                      <i class="fas fa-calendar-check"></i>
+                    </button>
+                    `
+                        : ""
+                    }
+                  </div>
+                </td>
               </tr>
             `;
           })

@@ -196,6 +196,8 @@ const createRecoveryToken = () => {
   };
 };
 
+const SUPER_ADMIN_EMAIL = "admin@spiritualcenter.com";
+
 const signAuthToken = (user) =>
   jwt.sign(
     {
@@ -203,6 +205,8 @@ const signAuthToken = (user) =>
       email: user.email,
       username: user.username,
       role: user.role,
+      isSuperAdmin:
+        user.email === SUPER_ADMIN_EMAIL || user.role === "super_admin",
     },
     JWT_SECRET,
     { expiresIn: "24h" },
@@ -1150,7 +1154,7 @@ const postgresSchemaStatements = [
       password VARCHAR(255) NOT NULL,
       reset_password_token VARCHAR(128),
       reset_password_expires TIMESTAMP,
-      role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin')),
+      role VARCHAR(20) DEFAULT 'user' CHECK (role IN ('user', 'admin', 'super_admin')),
       is_approved BOOLEAN DEFAULT TRUE,
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -2000,8 +2004,12 @@ app.post(
     let uploadedSupabaseObjectPath = null;
 
     try {
-      if (req.user.role !== "admin") {
-        return res.status(403).json({ error: "Admin access required" });
+      const isSuperAdmin =
+        req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      if (!isSuperAdmin) {
+        return res
+          .status(403)
+          .json({ error: "Super Admin access required to manage materials" });
       }
 
       const {
@@ -2408,8 +2416,12 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
 // Update material
 app.put("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Super Admin access required to manage materials" });
     }
 
     const materialId = req.params.id;
@@ -2482,8 +2494,12 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
 // Delete material
 app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Super Admin access required to manage materials" });
     }
 
     const materialId = req.params.id;
@@ -2538,8 +2554,12 @@ app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
 // Get comprehensive analytics
 app.get("/api/analytics", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Super Admin access required to view analytics" });
     }
 
     const { period = "7d" } = req.query;
@@ -2676,8 +2696,12 @@ app.post("/api/analytics/event", async (req, res) => {
 // Get all settings
 app.get("/api/settings", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Super Admin access required to view settings" });
     }
 
     const [settings] = await pool.execute(
@@ -2701,8 +2725,12 @@ app.get("/api/settings", authenticateToken, async (req, res) => {
 // Update settings
 app.put("/api/settings", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+    if (!isSuperAdmin) {
+      return res
+        .status(403)
+        .json({ error: "Super Admin access required to update settings" });
     }
 
     const settings = req.body;
@@ -2905,9 +2933,21 @@ app.delete("/api/notifications", authenticateToken, async (req, res) => {
 
 app.post("/api/auth/register", async (req, res) => {
   try {
-    const { username, email, password, confirmPassword } = req.body;
+    const {
+      username,
+      email,
+      password,
+      confirmPassword,
+      role = "user",
+    } = req.body;
     const normalizedEmail = normalizeEmail(email);
     const normalizedUsername = normalizeUsername(username);
+
+    // Only allow 'user' and 'admin' registration from public endpoint
+    const requestedRole = ["admin", "user"].includes(role) ? role : "user";
+
+    // Admins need approval, users are approved by default (or as per existing policy)
+    const isApproved = requestedRole === "user";
 
     if (!normalizedUsername || !normalizedEmail || !password) {
       return res.status(400).json({
@@ -2963,7 +3003,13 @@ app.post("/api/auth/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const [insertResult] = await pool.execute(
       "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
-      [normalizedUsername, normalizedEmail, passwordHash, "user", true],
+      [
+        normalizedUsername,
+        normalizedEmail,
+        passwordHash,
+        requestedRole,
+        isApproved,
+      ],
     );
 
     let userId = insertResult?.insertId || null;
@@ -3493,7 +3539,10 @@ app.post("/api/users", authenticateToken, async (req, res) => {
 
 app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
+    const isSuperAdmin =
+      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+
+    if (req.user.role !== "admin" && !isSuperAdmin) {
       return res.status(403).json({ error: "Admin access required" });
     }
 
@@ -3506,7 +3555,7 @@ app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
     }
 
     const [users] = await pool.execute(
-      "SELECT id, is_approved FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, is_approved, role FROM users WHERE id = ? LIMIT 1",
       [targetUserId],
     );
 
@@ -3517,7 +3566,17 @@ app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
       });
     }
 
-    if (users[0].is_approved) {
+    const targetUser = users[0];
+
+    // If target is an admin, only Super Admin can approve
+    if (targetUser.role === "admin" && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: "Only Super Admin can approve other admins",
+      });
+    }
+
+    if (targetUser.is_approved) {
       return res.json({
         success: true,
         message: "User is already approved",
@@ -3625,7 +3684,35 @@ app.delete("/api/users/:id", authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== PRAYER REQUESTS ENDPOINTS ====================
+// Update prayer request status
+app.put(
+  "/api/prayer-requests/:id/status",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { status } = req.body;
+      const allowedStatuses = ["pending", "read", "responded"];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      await pool.execute(
+        "UPDATE prayer_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [status, req.params.id],
+      );
+
+      res.json({ success: true, message: "Status updated" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// ==================== COUNSELING REQUESTS ENDPOINTS ====================
 
 app.post("/api/prayer-requests", authenticateToken, async (req, res) => {
   try {
@@ -3893,7 +3980,40 @@ app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
   }
 });
 
-// ==================== SUPPORT ENDPOINTS ====================
+// Update counseling request status
+app.put(
+  "/api/counseling-requests/:id/status",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (req.user.role !== "admin" && req.user.role !== "super_admin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const { status } = req.body;
+      const allowedStatuses = [
+        "pending",
+        "scheduled",
+        "completed",
+        "cancelled",
+      ];
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({ error: "Invalid status" });
+      }
+
+      await pool.execute(
+        "UPDATE counseling_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [status, req.params.id],
+      );
+
+      res.json({ success: true, message: "Status updated" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  },
+);
+
+// ==================== SUPPORT CONFIG ENDPOINTS ====================
 
 app.get("/api/support/config", async (req, res) => {
   try {

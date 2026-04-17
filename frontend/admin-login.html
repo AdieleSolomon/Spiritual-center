@@ -29,8 +29,16 @@
       body {
         font-family: "Plus Jakarta Sans", "Segoe UI", sans-serif;
         background:
-          radial-gradient(circle at 12% 18%, rgba(46, 182, 159, 0.18), transparent 38%),
-          radial-gradient(circle at 86% 12%, rgba(215, 169, 94, 0.16), transparent 35%),
+          radial-gradient(
+            circle at 12% 18%,
+            rgba(46, 182, 159, 0.18),
+            transparent 38%
+          ),
+          radial-gradient(
+            circle at 86% 12%,
+            rgba(215, 169, 94, 0.16),
+            transparent 35%
+          ),
           linear-gradient(135deg, #050d18 0%, #081727 45%, #0a2032 100%);
         min-height: 100vh;
         display: flex;
@@ -278,16 +286,28 @@
         <div class="login-icon">
           <i class="fas fa-lock"></i>
         </div>
-        <h1>Admin Login</h1>
-        <p>Spiritual Center Management</p>
+        <h1>Admin Portal</h1>
+        <p id="headerSubtext">Spiritual Center Management</p>
       </div>
 
       <div class="error-message" id="errorMessage"></div>
       <div class="success-message" id="successMessage"></div>
 
       <form id="loginForm">
+        <div id="registrationFields" style="display: none">
+          <div class="form-group">
+            <label for="regUsername">Username</label>
+            <input
+              type="text"
+              id="regUsername"
+              name="username"
+              placeholder="Enter username"
+              autocomplete="username" />
+          </div>
+        </div>
+
         <div class="form-group">
-          <label for="email">Email or Username</label>
+          <label for="email" id="emailLabel">Email or Username</label>
           <input
             type="text"
             id="email"
@@ -308,11 +328,21 @@
             autocomplete="current-password" />
         </div>
 
-        <div class="remember-forgot">
+        <div id="confirmPasswordField" style="display: none" class="form-group">
+          <label for="confirmPassword">Confirm Password</label>
+          <input
+            type="password"
+            id="confirmPassword"
+            name="confirmPassword"
+            placeholder="Confirm your password"
+            autocomplete="new-password" />
+        </div>
+
+        <div class="remember-forgot" id="rememberForgot">
           <label> <input type="checkbox" name="remember" /> Remember me </label>
         </div>
 
-        <button type="submit" class="login-btn">
+        <button type="submit" class="login-btn" id="submitBtn">
           <span>
             <div class="loading-spinner" id="spinner"></div>
             <span id="btnText">Login</span>
@@ -321,6 +351,12 @@
       </form>
 
       <div class="back-link">
+        <p
+          id="toggleText"
+          style="margin-bottom: 10px; font-size: 14px; color: #b7c7d8">
+          Don't have an admin account?
+          <a href="#" id="toggleMode">Register here</a>
+        </p>
         <a href="index.html">&larr; Back to Home</a>
       </div>
     </div>
@@ -358,84 +394,198 @@
       const successMessage = document.getElementById("successMessage");
       const spinner = document.getElementById("spinner");
       const btnText = document.getElementById("btnText");
-      const loginBtn = document.querySelector(".login-btn");
+      const loginBtn = document.getElementById("submitBtn");
+
+      const toggleMode = document.getElementById("toggleMode");
+      const registrationFields = document.getElementById("registrationFields");
+      const confirmPasswordField = document.getElementById(
+        "confirmPasswordField",
+      );
+      const emailLabel = document.getElementById("emailLabel");
+      const headerSubtext = document.getElementById("headerSubtext");
+      const rememberForgot = document.getElementById("rememberForgot");
+      const toggleText = document.getElementById("toggleText");
+
+      let isRegistrationMode = false;
+
+      toggleMode.addEventListener("click", (e) => {
+        e.preventDefault();
+        isRegistrationMode = !isRegistrationMode;
+
+        if (isRegistrationMode) {
+          headerSubtext.textContent = "Create an Admin Account";
+          btnText.textContent = "Register Admin";
+          emailLabel.textContent = "Email Address";
+          registrationFields.style.display = "block";
+          confirmPasswordField.style.display = "block";
+          rememberForgot.style.display = "none";
+          toggleText.innerHTML =
+            'Already have an account? <a href="#" id="toggleMode">Login here</a>';
+          document.getElementById("email").type = "email";
+          document.getElementById("regUsername").required = true;
+          document.getElementById("confirmPassword").required = true;
+        } else {
+          headerSubtext.textContent = "Spiritual Center Management";
+          btnText.textContent = "Login";
+          emailLabel.textContent = "Email or Username";
+          registrationFields.style.display = "none";
+          confirmPasswordField.style.display = "none";
+          rememberForgot.style.display = "flex";
+          toggleText.innerHTML =
+            'Don\'t have an admin account? <a href="#" id="toggleMode">Register here</a>';
+          document.getElementById("email").type = "text";
+          document.getElementById("regUsername").required = false;
+          document.getElementById("confirmPassword").required = false;
+        }
+
+        // Re-attach listener because we replaced innerHTML
+        document.getElementById("toggleMode").addEventListener("click", (e) => {
+          e.preventDefault();
+          toggleMode.click();
+        });
+      });
 
       loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
 
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
-        const remember = document.querySelector(
-          'input[name="remember"]',
-        ).checked;
 
-        // Validation
-        if (!email || !password) {
-          showError("Please fill in all fields");
-          return;
-        }
+        if (isRegistrationMode) {
+          const username = document.getElementById("regUsername").value.trim();
+          const confirmPassword =
+            document.getElementById("confirmPassword").value;
 
-        // Show loading state
-        spinner.style.display = "inline-block";
-        btnText.textContent = "Logging in...";
-        loginBtn.disabled = true;
+          if (!username || !email || !password || !confirmPassword) {
+            showError("Please fill in all fields");
+            return;
+          }
 
-        try {
-          const response = await fetch(`${API_BASE}/auth/login`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ email, password }),
-          });
+          if (password !== confirmPassword) {
+            showError("Passwords do not match");
+            return;
+          }
 
-          let data;
+          // Show loading state
+          spinner.style.display = "inline-block";
+          btnText.textContent = "Registering...";
+          loginBtn.disabled = true;
+
           try {
-            data = await response.json();
-          } catch (jsonError) {
-            // Response is not valid JSON
-            const text = await response.text();
-            throw new Error(
-              `Server error (invalid response): ${text.substring(0, 100)}`,
+            const response = await fetch(`${API_BASE}/auth/register`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                username,
+                email,
+                password,
+                confirmPassword,
+                role: "admin",
+              }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || "Registration failed");
+            }
+
+            showSuccess(
+              "Registration submitted! A Super Admin must approve your account before you can login.",
             );
-          }
 
-          if (!response.ok) {
-            throw new Error(data.error || "Login failed");
-          }
-
-          // Check if user is admin (data.user.role from API response)
-          const userRole = data.user?.role || data.role;
-          if (userRole !== "admin") {
-            throw new Error("You do not have admin access");
-          }
-
-          // Store token
-          localStorage.setItem("adminToken", data.token);
-          localStorage.setItem("adminEmail", email);
-
-          if (remember) {
-            localStorage.setItem("rememberEmail", email);
-          }
-
-          showSuccess("Login successful! Redirecting...");
-
-          // Redirect to admin panel
-          setTimeout(() => {
-            window.location.href = "admin-dashboard.html";
-          }, 1500);
-        } catch (error) {
-          if (error?.name === "TypeError") {
-            showError(
-              `Unable to reach the backend at ${API_BASE}. Start the backend on http://localhost:5501 or set frontend/app-config.js API_BASE to your deployed backend URL.`,
-            );
-          } else {
+            // Switch back to login mode
+            setTimeout(() => {
+              toggleMode.click();
+              successMessage.classList.remove("show");
+            }, 5000);
+          } catch (error) {
             showError(error.message || "An error occurred. Please try again.");
+          } finally {
+            spinner.style.display = "none";
+            btnText.textContent = "Register Admin";
+            loginBtn.disabled = false;
           }
-        } finally {
-          spinner.style.display = "none";
-          btnText.textContent = "Login";
-          loginBtn.disabled = false;
+        } else {
+          // LOGIN MODE
+          const remember = document.querySelector(
+            'input[name="remember"]',
+          ).checked;
+
+          if (!email || !password) {
+            showError("Please fill in all fields");
+            return;
+          }
+
+          // Show loading state
+          spinner.style.display = "inline-block";
+          btnText.textContent = "Logging in...";
+          loginBtn.disabled = true;
+
+          try {
+            const response = await fetch(`${API_BASE}/auth/login`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({ email, password }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+              throw new Error(data.error || "Login failed");
+            }
+
+            // Check if user is admin or super_admin
+            const user = data.user;
+            const isSuperAdmin =
+              user.email === "admin@spiritualcenter.com" ||
+              user.role === "super_admin";
+
+            if (user.role !== "admin" && !isSuperAdmin) {
+              throw new Error("You do not have admin access");
+            }
+
+            if (!user.is_approved && !isSuperAdmin) {
+              throw new Error(
+                "Your admin account is pending approval by a Super Admin.",
+              );
+            }
+
+            // Store token and user info
+            localStorage.setItem("adminToken", data.token);
+            localStorage.setItem("authToken", data.token);
+            localStorage.setItem("adminEmail", user.email);
+            localStorage.setItem("adminUsername", user.username);
+            localStorage.setItem("adminRole", user.role);
+            localStorage.setItem("isSuperAdmin", isSuperAdmin);
+
+            if (remember) {
+              localStorage.setItem("rememberEmail", email);
+            }
+
+            showSuccess("Login successful! Redirecting...");
+
+            // Redirect to admin panel
+            setTimeout(() => {
+              window.location.href = "admin-dashboard.html";
+            }, 1500);
+          } catch (error) {
+            if (error?.name === "TypeError") {
+              showError(`Unable to reach the backend at ${API_BASE}.`);
+            } else {
+              showError(
+                error.message || "An error occurred. Please try again.",
+              );
+            }
+          } finally {
+            spinner.style.display = "none";
+            btnText.textContent = "Login";
+            loginBtn.disabled = false;
+          }
         }
       });
 
