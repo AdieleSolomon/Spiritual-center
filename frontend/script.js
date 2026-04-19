@@ -4,7 +4,10 @@ try {
   const hasInitialSession =
     Boolean(localStorage.getItem("authToken")) ||
     Boolean(localStorage.getItem("adminToken"));
-  document.documentElement.classList.toggle("has-auth-session", hasInitialSession);
+  document.documentElement.classList.toggle(
+    "has-auth-session",
+    hasInitialSession,
+  );
 } catch (error) {
   document.documentElement.classList.remove("has-auth-session");
 }
@@ -22,7 +25,9 @@ const App = (() => {
 
   const GOOGLE_ANALYTICS_ID = getConfigString("GOOGLE_ANALYTICS_ID");
   const GOOGLE_MAPS_EMBED_URL = getConfigString("GOOGLE_MAPS_EMBED_URL");
-  const GOOGLE_MAPS_DIRECTIONS_URL = getConfigString("GOOGLE_MAPS_DIRECTIONS_URL");
+  const GOOGLE_MAPS_DIRECTIONS_URL = getConfigString(
+    "GOOGLE_MAPS_DIRECTIONS_URL",
+  );
 
   const isLocalHost = (() => {
     const host = window.location.hostname;
@@ -76,11 +81,13 @@ const App = (() => {
   const SUPPORT_PAYMENT_PAGE = "support-payment.html";
   const MINISTRY_TIME_ZONE = "Africa/Lagos";
   const currentPathName = window.location.pathname.toLowerCase();
-  const onSupportPaymentPage = currentPathName.endsWith(`/${SUPPORT_PAYMENT_PAGE}`) ||
+  const onSupportPaymentPage =
+    currentPathName.endsWith(`/${SUPPORT_PAYMENT_PAGE}`) ||
     currentPathName.endsWith(SUPPORT_PAYMENT_PAGE);
 
   const state = {
-    token: localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
+    token:
+      localStorage.getItem("authToken") || localStorage.getItem("adminToken"),
     user: null,
     authMode: "login",
   };
@@ -228,19 +235,25 @@ const App = (() => {
     ["Jude", 1],
     ["Revelation", 22],
   ]);
-  const DAILY_BIBLE_CHAPTERS = DAILY_BIBLE_BOOKS.reduce((chapters, [book, count]) => {
-    for (let chapter = 1; chapter <= count; chapter += 1) {
-      chapters.push({
-        book,
-        chapter,
-        reference: `${book} ${chapter}`,
-      });
-    }
+  const DAILY_BIBLE_CHAPTERS = DAILY_BIBLE_BOOKS.reduce(
+    (chapters, [book, count]) => {
+      for (let chapter = 1; chapter <= count; chapter += 1) {
+        chapters.push({
+          book,
+          chapter,
+          reference: `${book} ${chapter}`,
+        });
+      }
 
-    return chapters;
-  }, []);
+      return chapters;
+    },
+    [],
+  );
   const DAILY_BIBLE_CHAPTER_INDEX = new Map(
-    DAILY_BIBLE_CHAPTERS.map((entry, index) => [entry.reference.toLowerCase(), index]),
+    DAILY_BIBLE_CHAPTERS.map((entry, index) => [
+      entry.reference.toLowerCase(),
+      index,
+    ]),
   );
 
   const ui = {
@@ -250,15 +263,17 @@ const App = (() => {
     navOverlay: document.getElementById("navOverlay"),
     navDropdownTrigger: document.getElementById("exploreDropdownBtn"),
     navDropdownMenu: document.getElementById("exploreDropdownMenu"),
-    openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")).map((button) => {
-      if (!button.dataset.authDefaultHtml) {
-        button.dataset.authDefaultHtml = button.innerHTML;
-      }
-      if (!button.dataset.authDefaultLabel) {
-        button.dataset.authDefaultLabel = button.textContent.trim();
-      }
-      return button;
-    }),
+    openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")).map(
+      (button) => {
+        if (!button.dataset.authDefaultHtml) {
+          button.dataset.authDefaultHtml = button.innerHTML;
+        }
+        if (!button.dataset.authDefaultLabel) {
+          button.dataset.authDefaultLabel = button.textContent.trim();
+        }
+        return button;
+      },
+    ),
     resourceLoginBtn: document.getElementById("resourceLoginBtn"),
     logoutBtn: document.getElementById("logoutBtn"),
     userBadge: document.getElementById("userBadge"),
@@ -338,7 +353,9 @@ const App = (() => {
     prayerBookingName: document.getElementById("prayerBookingName"),
     prayerBookingEmail: document.getElementById("prayerBookingEmail"),
     prayerBookingWhatsapp: document.getElementById("prayerBookingWhatsapp"),
-    prayerBookingAvailability: document.getElementById("prayerBookingAvailability"),
+    prayerBookingAvailability: document.getElementById(
+      "prayerBookingAvailability",
+    ),
     prayerBookingFocus: document.getElementById("prayerBookingFocus"),
     // Counseling Page
     counselingPageForm: document.getElementById("counselingForm"),
@@ -347,7 +364,9 @@ const App = (() => {
     counselingWhatsapp: document.getElementById("counselingWhatsapp"),
     counselingDescription: document.getElementById("counselingDescription"),
     counselingAvailability: document.getElementById("counselingAvailability"),
-    counselingFormContainer: document.getElementById("counseling-form-container"),
+    counselingFormContainer: document.getElementById(
+      "counseling-form-container",
+    ),
     // General
     loginWall: document.getElementById("login-wall"),
     loginBtn: document.getElementById("login-btn"),
@@ -355,14 +374,22 @@ const App = (() => {
     // Daily Promise
     dailyUpdatePromiseText: document.getElementById("dailyUpdatePromiseText"),
     dailyUpdateToggleBtn: document.getElementById("dailyUpdateToggleBtn"),
-    dailyUpdatePromiseAuthor: document.getElementById("dailyUpdatePromiseAuthor"),
+    dailyUpdatePromiseAuthor: document.getElementById(
+      "dailyUpdatePromiseAuthor",
+    ),
     dailyUpdatePromiseDate: document.getElementById("dailyUpdatePromiseDate"),
     dailyPromiseHistory: document.getElementById("dailyPromiseHistory"),
     dailyPromiseHistoryList: document.getElementById("dailyPromiseHistoryList"),
-    dailyPromiseCommentsList: document.getElementById("dailyPromiseCommentsList"),
+    dailyPromiseCommentsList: document.getElementById(
+      "dailyPromiseCommentsList",
+    ),
     dailyPromiseCommentForm: document.getElementById("dailyPromiseCommentForm"),
-    dailyPromiseCommentInput: document.getElementById("dailyPromiseCommentInput"),
-    dailyPromiseCommunityLink: document.getElementById("dailyPromiseCommunityLink"),
+    dailyPromiseCommentInput: document.getElementById(
+      "dailyPromiseCommentInput",
+    ),
+    dailyPromiseCommunityLink: document.getElementById(
+      "dailyPromiseCommunityLink",
+    ),
     devotionList: document.getElementById("devotionList"),
     devotionNotice: document.getElementById("devotionNotice"),
     communityNotice: document.getElementById("communityNotice"),
@@ -462,11 +489,15 @@ const App = (() => {
 
     button.hidden = false;
     button.innerHTML =
-      button.dataset.authDefaultHtml || button.dataset.authDefaultLabel || "Member Sign-In";
+      button.dataset.authDefaultHtml ||
+      button.dataset.authDefaultLabel ||
+      "Member Sign-In";
     button.classList.remove("auth-user-button");
     button.dataset.authState = "guest";
     const defaultLabel =
-      button.dataset.authDefaultLabel || button.textContent.trim() || "Member Sign-In";
+      button.dataset.authDefaultLabel ||
+      button.textContent.trim() ||
+      "Member Sign-In";
     button.setAttribute("aria-label", defaultLabel);
     button.removeAttribute("title");
   }
@@ -520,7 +551,11 @@ const App = (() => {
     const values = {};
 
     parts.forEach((part) => {
-      if (part.type === "year" || part.type === "month" || part.type === "day") {
+      if (
+        part.type === "year" ||
+        part.type === "month" ||
+        part.type === "day"
+      ) {
         values[part.type] = Number(part.value);
       }
     });
@@ -534,7 +569,8 @@ const App = (() => {
 
   function getDayNumberFromParts(parts) {
     return Math.floor(
-      Date.UTC(parts.year, parts.month - 1, parts.day) / DAILY_BIBLE_READING_DAY_MS,
+      Date.UTC(parts.year, parts.month - 1, parts.day) /
+        DAILY_BIBLE_READING_DAY_MS,
     );
   }
 
@@ -563,10 +599,11 @@ const App = (() => {
     }
 
     const daysSinceAnchor =
-      getDayNumberFromParts(targetDateParts) - getDayNumberFromParts(anchorDateParts);
+      getDayNumberFromParts(targetDateParts) -
+      getDayNumberFromParts(anchorDateParts);
     const totalChapters = DAILY_BIBLE_CHAPTERS.length;
     const chapterIndex =
-      ((anchorIndex + daysSinceAnchor) % totalChapters + totalChapters) %
+      (((anchorIndex + daysSinceAnchor) % totalChapters) + totalChapters) %
       totalChapters;
     const chapter = DAILY_BIBLE_CHAPTERS[chapterIndex];
     const url =
@@ -589,10 +626,12 @@ const App = (() => {
     const reading = getDailyBibleReading();
     if (!reading) return;
 
-    document.querySelectorAll("[data-daily-bible-reference]").forEach((element) => {
-      const prefix = element.getAttribute("data-daily-bible-prefix") || "";
-      element.textContent = `${prefix}${reading.reference}`;
-    });
+    document
+      .querySelectorAll("[data-daily-bible-reference]")
+      .forEach((element) => {
+        const prefix = element.getAttribute("data-daily-bible-prefix") || "";
+        element.textContent = `${prefix}${reading.reference}`;
+      });
 
     document.querySelectorAll("[data-daily-bible-link]").forEach((element) => {
       element.setAttribute("href", reading.url);
@@ -602,9 +641,11 @@ const App = (() => {
       element.textContent = reading.dateLabel;
     });
 
-    document.querySelectorAll("[data-daily-bible-summary]").forEach((element) => {
-      element.textContent = reading.summary;
-    });
+    document
+      .querySelectorAll("[data-daily-bible-summary]")
+      .forEach((element) => {
+        element.textContent = reading.summary;
+      });
 
     document.querySelectorAll("[data-daily-bible-focus]").forEach((element) => {
       element.textContent = reading.focus;
@@ -652,7 +693,9 @@ const App = (() => {
     ui.mainNav.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
         closeMenu();
-        trackEvent("nav_click", { label: link.textContent?.trim() || "navigation" });
+        trackEvent("nav_click", {
+          label: link.textContent?.trim() || "navigation",
+        });
       });
     });
 
@@ -739,7 +782,9 @@ const App = (() => {
         entries.forEach((entry) => {
           if (!entry.isIntersecting) return;
 
-          const found = sectionMap.find((item) => item.section === entry.target);
+          const found = sectionMap.find(
+            (item) => item.section === entry.target,
+          );
           if (!found) return;
 
           navLinks.forEach((link) => link.classList.remove("active"));
@@ -966,12 +1011,7 @@ const App = (() => {
         return;
       }
 
-      const body = [
-        `Name: ${name}`,
-        `Email: ${email}`,
-        "",
-        message,
-      ].join("\n");
+      const body = [`Name: ${name}`, `Email: ${email}`, "", message].join("\n");
 
       const mailtoUrl = `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
       window.location.href = mailtoUrl;
@@ -986,7 +1026,9 @@ const App = (() => {
     const digits = String(phone || "").replace(/[^\d]/g, "");
     if (!digits) return "";
     const text = encodeURIComponent(message || "");
-    return text ? `https://wa.me/${digits}?text=${text}` : `https://wa.me/${digits}`;
+    return text
+      ? `https://wa.me/${digits}?text=${text}`
+      : `https://wa.me/${digits}`;
   }
 
   function getSupportPaymentUrl(config = {}) {
@@ -1027,7 +1069,9 @@ const App = (() => {
     const supportEmail =
       String(resolvedConfig.support_email || "").trim() ||
       "admin@spiritualcenter.com";
-    const currency = String(resolvedConfig.currency || "NGN").trim().toUpperCase();
+    const currency = String(resolvedConfig.currency || "NGN")
+      .trim()
+      .toUpperCase();
 
     if (ui.supportHeading) {
       ui.supportHeading.textContent =
@@ -1080,9 +1124,7 @@ const App = (() => {
         : "#support";
       if (shouldShowPaymentLink) {
         ui.supportPaymentLink.target = paymentLink ? "_blank" : "_self";
-        ui.supportPaymentLink.rel = paymentLink
-          ? "noopener noreferrer"
-          : "";
+        ui.supportPaymentLink.rel = paymentLink ? "noopener noreferrer" : "";
       }
     }
   }
@@ -1256,7 +1298,10 @@ const App = (() => {
     ui.requestRecoveryBtn?.addEventListener("click", async () => {
       const email = ui.recoverEmail?.value.trim();
       if (!email) {
-        setAuthMessage("Enter your account email before requesting a code.", true);
+        setAuthMessage(
+          "Enter your account email before requesting a code.",
+          true,
+        );
         return;
       }
 
@@ -1285,10 +1330,16 @@ const App = (() => {
             false,
           );
         } else {
-          setAuthMessage(data?.message || "Recovery instructions have been sent.", false);
+          setAuthMessage(
+            data?.message || "Recovery instructions have been sent.",
+            false,
+          );
         }
       } catch (error) {
-        setAuthMessage(error.message || "Failed to request recovery code.", true);
+        setAuthMessage(
+          error.message || "Failed to request recovery code.",
+          true,
+        );
       } finally {
         setRecoveryRequestLoading(false);
       }
@@ -1308,7 +1359,10 @@ const App = (() => {
       }
 
       if (newPassword.length < 8) {
-        setAuthMessage("New password must be at least 8 characters long.", true);
+        setAuthMessage(
+          "New password must be at least 8 characters long.",
+          true,
+        );
         return;
       }
 
@@ -1377,7 +1431,8 @@ const App = (() => {
 
     const setAuthorizedView = () => {
       if (ui.loginWall) ui.loginWall.style.display = "none";
-      if (ui.prayerFormContainer) ui.prayerFormContainer.style.display = "block";
+      if (ui.prayerFormContainer)
+        ui.prayerFormContainer.style.display = "block";
       prefillPrayerFormsFromUser();
     };
 
@@ -1411,7 +1466,10 @@ const App = (() => {
       const is_anonymous = ui.prayerPageAnonymous?.checked;
 
       if (!request || !whatsapp_number) {
-        notify("Please enter your prayer request and WhatsApp number.", "error");
+        notify(
+          "Please enter your prayer request and WhatsApp number.",
+          "error",
+        );
         return;
       }
 
@@ -1457,7 +1515,10 @@ const App = (() => {
       const focus = ui.prayerBookingFocus?.value.trim();
 
       if (!availability || !focus || !whatsapp_number) {
-        notify("Please complete booking availability, focus, and WhatsApp number.", "error");
+        notify(
+          "Please complete booking availability, focus, and WhatsApp number.",
+          "error",
+        );
         return;
       }
 
@@ -1491,7 +1552,10 @@ const App = (() => {
         ui.prayerBookingForm.reset();
         prefillPrayerFormsFromUser();
         notify("Prayer session booking submitted successfully.", "success");
-        setSectionMessage("Your prayer session booking has been sent.", "success");
+        setSectionMessage(
+          "Your prayer session booking has been sent.",
+          "success",
+        );
       } catch (error) {
         notify(error.message || "An error occurred.", "error");
         setSectionMessage(error.message || "An error occurred.", "error");
@@ -1506,12 +1570,14 @@ const App = (() => {
 
     const setAuthorizedView = () => {
       if (ui.loginWall) ui.loginWall.style.display = "none";
-      if (ui.counselingFormContainer) ui.counselingFormContainer.style.display = "block";
+      if (ui.counselingFormContainer)
+        ui.counselingFormContainer.style.display = "block";
     };
 
     const setBlockedView = () => {
       if (ui.loginWall) ui.loginWall.style.display = "block";
-      if (ui.counselingFormContainer) ui.counselingFormContainer.style.display = "none";
+      if (ui.counselingFormContainer)
+        ui.counselingFormContainer.style.display = "none";
     };
 
     const initCounselingAccess = async () => {
@@ -1539,7 +1605,10 @@ const App = (() => {
       const preferred_availability = ui.counselingAvailability?.value.trim();
 
       if (!intent || !counseling_type || !description || !whatsapp_number) {
-        notify("Please select request option, type, description, and WhatsApp number.", "error");
+        notify(
+          "Please select request option, type, description, and WhatsApp number.",
+          "error",
+        );
         return;
       }
 
@@ -1567,7 +1636,9 @@ const App = (() => {
         const data = await response.json();
 
         if (!response.ok) {
-          throw new Error(data?.error || "Unable to submit counseling request.");
+          throw new Error(
+            data?.error || "Unable to submit counseling request.",
+          );
         }
 
         ui.counselingPageForm.reset();
@@ -1691,8 +1762,8 @@ const App = (() => {
   function updateAuthUI() {
     const hasStoredSession = Boolean(
       state.token ||
-        localStorage.getItem("authToken") ||
-        localStorage.getItem("adminToken"),
+      localStorage.getItem("authToken") ||
+      localStorage.getItem("adminToken"),
     );
     const loggedIn = Boolean(state.token && state.user);
     const resolvedDisplayName = loggedIn
@@ -1859,9 +1930,22 @@ const App = (() => {
       }
 
       if (!response.ok) {
+        // Log error details for debugging
+        console.error(
+          "[Materials Fetch] API error:",
+          response.status,
+          data,
+          `${API_BASE}/materials`,
+        );
         throw new Error(data?.error || "Failed to load resources.");
       }
       if (!data || data.success !== true) {
+        // Log error details for debugging
+        console.error(
+          "[Materials Fetch] Invalid response:",
+          data,
+          `${API_BASE}/materials`,
+        );
         throw new Error("Invalid response from materials endpoint.");
       }
 
@@ -1898,6 +1982,12 @@ const App = (() => {
         "success",
       );
     } catch (error) {
+      // Log error details for debugging
+      console.error(
+        "[Materials Fetch] Exception:",
+        error,
+        `${API_BASE}/materials`,
+      );
       setResourceNotice(
         "Unable to load uploaded materials at the moment. Showing curated resources.",
         "error",
@@ -1912,8 +2002,14 @@ const App = (() => {
   }
 
   function renderResourceBatch() {
-    const displayed = Math.min(resourceState.displayed, resourceState.items.length);
-    renderResources(resourceState.items.slice(0, displayed), resourceState.fromApi);
+    const displayed = Math.min(
+      resourceState.displayed,
+      resourceState.items.length,
+    );
+    renderResources(
+      resourceState.items.slice(0, displayed),
+      resourceState.fromApi,
+    );
 
     if (ui.resourceCount) {
       if (resourceState.fromApi && resourceState.items.length) {
@@ -2118,7 +2214,9 @@ const App = (() => {
 
       renderResources(normalized, true, ui.allMaterialsGrid);
       setAllMaterialsNotice(
-        allMaterialsState.search || allMaterialsState.category || allMaterialsState.type
+        allMaterialsState.search ||
+          allMaterialsState.category ||
+          allMaterialsState.type
           ? "Showing results based on your filters."
           : "Browse the complete ministry library below.",
         "success",
@@ -2238,7 +2336,10 @@ const App = (() => {
 
     if (mediaKind === "audio") {
       if (!hasMediaSource) {
-        return renderPreviewPlaceholder("fa-solid fa-headphones", "Audio Preview");
+        return renderPreviewPlaceholder(
+          "fa-solid fa-headphones",
+          "Audio Preview",
+        );
       }
 
       return `
@@ -2252,7 +2353,10 @@ const App = (() => {
     }
 
     if (mediaKind === "document") {
-      return renderPreviewPlaceholder("fa-regular fa-file-lines", "Document Preview");
+      return renderPreviewPlaceholder(
+        "fa-regular fa-file-lines",
+        "Document Preview",
+      );
     }
 
     return renderPreviewPlaceholder("fa-regular fa-file", "Material Preview");
@@ -2290,8 +2394,14 @@ const App = (() => {
         const hasYoutubeUrl = Boolean(youtubeUrl);
 
         const isExternal = href.startsWith("http");
-        const targetAttr = isExternal ? 'target="_blank" rel="noopener noreferrer"' : "";
-        const linkLabel = resolveResourceLinkLabel(mediaKind, hasMediaSource, fromApi);
+        const targetAttr = isExternal
+          ? 'target="_blank" rel="noopener noreferrer"'
+          : "";
+        const linkLabel = resolveResourceLinkLabel(
+          mediaKind,
+          hasMediaSource,
+          fromApi,
+        );
 
         return `
           <article class="resource-card" data-reveal>
@@ -2470,7 +2580,9 @@ const App = (() => {
   }
 
   function normalizeCommunityFilter(value = "") {
-    const normalized = String(value || "").trim().toLowerCase();
+    const normalized = String(value || "")
+      .trim()
+      .toLowerCase();
     const allowedFilters = new Set(["all", "devotion", "promise", "reading"]);
     return allowedFilters.has(normalized) ? normalized : "all";
   }
@@ -2529,7 +2641,10 @@ const App = (() => {
     return [...threads].sort((left, right) => {
       if (left.kind === "reading" && right.kind !== "reading") return -1;
       if (right.kind === "reading" && left.kind !== "reading") return 1;
-      return new Date(right.created_at || Date.now()) - new Date(left.created_at || Date.now());
+      return (
+        new Date(right.created_at || Date.now()) -
+        new Date(left.created_at || Date.now())
+      );
     });
   }
 
@@ -2542,13 +2657,18 @@ const App = (() => {
     const href = sanitize(thread?.href || "#");
     const ctaLabel = sanitize(thread?.ctaLabel || "Open Source Page");
     const iconClass = sanitize(thread?.iconClass || "fa-comments");
-    const summarySource = String(thread?.summary || "").replace(/\s+/g, " ").trim();
+    const summarySource = String(thread?.summary || "")
+      .replace(/\s+/g, " ")
+      .trim();
     const summary = sanitize(
-      summarySource.length > 240 ? `${summarySource.slice(0, 240)}...` : summarySource,
+      summarySource.length > 240
+        ? `${summarySource.slice(0, 240)}...`
+        : summarySource,
     );
     const date = formatCommunityDate(thread?.created_at);
     const isFocused =
-      communityState.focusType === postType && communityState.focusId === String(postId);
+      communityState.focusType === postType &&
+      communityState.focusId === String(postId);
 
     return `
       <article
@@ -2604,7 +2724,9 @@ const App = (() => {
 
   function syncCommunityFilterButtons() {
     ui.communityFilterButtons.forEach((button) => {
-      const buttonFilter = normalizeCommunityFilter(button.dataset.communityFilter);
+      const buttonFilter = normalizeCommunityFilter(
+        button.dataset.communityFilter,
+      );
       const isActive = buttonFilter === communityState.activeFilter;
       button.classList.toggle("active", isActive);
       button.setAttribute("aria-pressed", String(isActive));
@@ -2615,7 +2737,10 @@ const App = (() => {
     if (!communityState.focusType || !communityState.focusId) return;
 
     const target = document.getElementById(
-      getCommunityThreadElementId(communityState.focusType, communityState.focusId),
+      getCommunityThreadElementId(
+        communityState.focusType,
+        communityState.focusId,
+      ),
     );
     if (!target) return;
 
@@ -2646,7 +2771,10 @@ const App = (() => {
         }
 
         if (!postId || postType === "all") {
-          notify("Unable to open this discussion right now. Please refresh.", "error");
+          notify(
+            "Unable to open this discussion right now. Please refresh.",
+            "error",
+          );
           return;
         }
 
@@ -2692,13 +2820,16 @@ const App = (() => {
 
     const visibleThreads = communityState.threads.filter((thread) => {
       if (communityState.activeFilter === "all") return true;
-      return normalizeCommunityFilter(thread?.kind) === communityState.activeFilter;
+      return (
+        normalizeCommunityFilter(thread?.kind) === communityState.activeFilter
+      );
     });
 
     syncCommunityFilterButtons();
 
     if (!visibleThreads.length) {
-      ui.communityNotice.textContent = "No discussion threads are available for this view yet.";
+      ui.communityNotice.textContent =
+        "No discussion threads are available for this view yet.";
       ui.communityNotice.className = "resource-notice is-warning";
       ui.communityThreads.innerHTML = "";
       return;
@@ -2709,7 +2840,9 @@ const App = (() => {
         ? "Discuss the latest devotion, promise, and Bible reading posts with the ministry community."
         : `Showing ${communityState.activeFilter} discussions.`;
     ui.communityNotice.className = "resource-notice";
-    ui.communityThreads.innerHTML = visibleThreads.map(renderCommunityThread).join("");
+    ui.communityThreads.innerHTML = visibleThreads
+      .map(renderCommunityThread)
+      .join("");
 
     visibleThreads.forEach((thread) => {
       const listElement = document.getElementById(
@@ -2748,7 +2881,8 @@ const App = (() => {
           title: post.title || "Daily Devotion",
           summary: post.devotion_text || "",
           href: "devotion.html",
-          created_at: post.created_at || post.updated_at || new Date().toISOString(),
+          created_at:
+            post.created_at || post.updated_at || new Date().toISOString(),
           iconClass: "fa-fire-flame-curved",
           label: "Devotion",
           ctaLabel: "Open Devotion Page",
@@ -2763,7 +2897,8 @@ const App = (() => {
           title: post.title || "Daily Promise",
           summary: post.promise_text || "",
           href: "daily-promise.html",
-          created_at: post.created_at || post.updated_at || new Date().toISOString(),
+          created_at:
+            post.created_at || post.updated_at || new Date().toISOString(),
           iconClass: "fa-star",
           label: "Daily Promise",
           ctaLabel: "Open Promise Page",
@@ -2783,7 +2918,8 @@ const App = (() => {
     if (!ui.communityThreads || !ui.communityNotice) return;
 
     const params = new URLSearchParams(window.location.search);
-    const requestedFilter = params.get("filter") || params.get("postType") || "all";
+    const requestedFilter =
+      params.get("filter") || params.get("postType") || "all";
     const requestedPostType = params.get("postType") || "";
     const requestedPostId = Number(params.get("postId"));
 
@@ -2876,7 +3012,10 @@ const App = (() => {
         .catch(() => ({ error: "Unexpected response format." }));
 
       if (response.status === 404) {
-        setDevotionNotice("No devotion posts yet. Please check back soon!", "warning");
+        setDevotionNotice(
+          "No devotion posts yet. Please check back soon!",
+          "warning",
+        );
         ui.devotionList.innerHTML = "";
         return;
       }
@@ -2887,7 +3026,10 @@ const App = (() => {
 
       const posts = Array.isArray(data?.posts) ? data.posts : [];
       if (!posts.length) {
-        setDevotionNotice("No devotion posts yet. Please check back soon!", "warning");
+        setDevotionNotice(
+          "No devotion posts yet. Please check back soon!",
+          "warning",
+        );
         ui.devotionList.innerHTML = "";
         return;
       }
@@ -3122,7 +3264,9 @@ const App = (() => {
     const username = sanitize(comment?.username || "Member");
     const initial = username.charAt(0).toUpperCase();
     const text = sanitize(comment?.comment_text || "");
-    const date = new Date(comment?.created_at || Date.now()).toLocaleDateString();
+    const date = new Date(
+      comment?.created_at || Date.now(),
+    ).toLocaleDateString();
 
     return `
       <div class="feed-comment">
@@ -3180,7 +3324,9 @@ const App = (() => {
     if (!postId) {
       clearDailyPromiseComments();
       if (ui.dailyPromiseCommunityLink) {
-        ui.dailyPromiseCommunityLink.href = buildCommunityUrl({ filter: "promise" });
+        ui.dailyPromiseCommunityLink.href = buildCommunityUrl({
+          filter: "promise",
+        });
       }
       return;
     }
@@ -3205,10 +3351,10 @@ const App = (() => {
       const text = ui.dailyPromiseCommentInput.value.trim();
       if (!text) return;
 
-        const token =
-          state.token ||
-          localStorage.getItem("authToken") ||
-          localStorage.getItem("adminToken");
+      const token =
+        state.token ||
+        localStorage.getItem("authToken") ||
+        localStorage.getItem("adminToken");
       if (!token) {
         notify("Please sign in to comment.", "error");
         return;
@@ -3235,7 +3381,11 @@ const App = (() => {
         });
 
         ui.dailyPromiseCommentInput.value = "";
-        await loadCommentsForPost("promise", formPostId, ui.dailyPromiseCommentsList);
+        await loadCommentsForPost(
+          "promise",
+          formPostId,
+          ui.dailyPromiseCommentsList,
+        );
       } catch (error) {
         notify("Unable to send comment. Please try again.", "error");
       }
@@ -3245,8 +3395,10 @@ const App = (() => {
   function setDailyPromiseText(rawText = "") {
     if (!ui.dailyUpdatePromiseText) return;
 
-    const normalizedText = String(rawText).trim() || "No daily promise has been posted yet.";
-    const shouldCollapse = normalizedText.length > DAILY_PROMISE_COLLAPSE_MIN_CHARS;
+    const normalizedText =
+      String(rawText).trim() || "No daily promise has been posted yet.";
+    const shouldCollapse =
+      normalizedText.length > DAILY_PROMISE_COLLAPSE_MIN_CHARS;
 
     ui.dailyUpdatePromiseText.textContent = normalizedText;
     ui.dailyUpdatePromiseText.classList.toggle("is-collapsed", shouldCollapse);
@@ -3262,11 +3414,14 @@ const App = (() => {
     if (!ui.dailyUpdatePromiseText || !ui.dailyUpdateToggleBtn) return;
     if (ui.dailyUpdateToggleBtn.hidden) return;
 
-    const isExpanded = ui.dailyUpdateToggleBtn.getAttribute("aria-expanded") === "true";
+    const isExpanded =
+      ui.dailyUpdateToggleBtn.getAttribute("aria-expanded") === "true";
     const nextExpanded = !isExpanded;
 
     ui.dailyUpdatePromiseText.classList.toggle("is-collapsed", !nextExpanded);
-    ui.dailyUpdateToggleBtn.textContent = nextExpanded ? "View Less" : "View More";
+    ui.dailyUpdateToggleBtn.textContent = nextExpanded
+      ? "View Less"
+      : "View More";
     ui.dailyUpdateToggleBtn.setAttribute("aria-expanded", String(nextExpanded));
 
     trackEvent("daily_promise_expand_toggle", {
@@ -3295,7 +3450,9 @@ const App = (() => {
     if (!ui.googleMapEmbed && !ui.googleDirectionsLink) return;
 
     const buildMapUrls = (query) => {
-      const encodedQuery = encodeURIComponent(String(query || DEFAULT_MAP_QUERY));
+      const encodedQuery = encodeURIComponent(
+        String(query || DEFAULT_MAP_QUERY),
+      );
       return {
         embedUrl: `https://www.google.com/maps?q=${encodedQuery}&output=embed`,
         directionsUrl: `https://www.google.com/maps/search/?api=1&query=${encodedQuery}`,

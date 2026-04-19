@@ -2440,6 +2440,8 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
       success: false,
       error: "Failed to fetch materials",
       details: error.message,
+      stack: process.env.NODE_ENV !== "production" ? error.stack : undefined,
+      query: req.query,
     });
   }
 });
