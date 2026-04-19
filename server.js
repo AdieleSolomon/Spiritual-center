@@ -722,6 +722,12 @@ const isSupabaseStorageConfigured = () =>
   Boolean(SUPABASE_STORAGE_BUCKET) &&
   Boolean(SUPABASE_STORAGE_API_KEY);
 
+if (REQUIRE_PERSISTENT_STORAGE && !isSupabaseStorageConfigured()) {
+  console.warn(
+    "Persistent uploads are required but Supabase Storage is not fully configured. Set SUPABASE_STORAGE_ENABLED=true, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET, or set REQUIRE_PERSISTENT_STORAGE=false to allow local /uploads storage.",
+  );
+}
+
 const buildSupabaseObjectPath = (file, materialType = "file") => {
   const fileExtension =
     extname(file?.originalname || file?.filename || "").toLowerCase() || "";
@@ -2284,7 +2290,7 @@ app.post(
         return res.status(500).json({
           success: false,
           error:
-            "Persistent storage is not configured. Set SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET, or set REQUIRE_PERSISTENT_STORAGE=false to allow local /uploads storage.",
+            "Persistent storage is not configured. Set SUPABASE_STORAGE_ENABLED=true, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, and SUPABASE_STORAGE_BUCKET, or set REQUIRE_PERSISTENT_STORAGE=false to allow local /uploads storage.",
         });
       }
 
