@@ -1464,6 +1464,54 @@ const ensureUserAuthColumns = async (connection) => {
 
 const ensureUserRoleSupport = async (connection) => {
   if (IS_POSTGRES) {
+    await connection.execute(
+      "ALTER TABLE users ALTER COLUMN role TYPE VARCHAR(20)",
+    );
+    await connection.execute(
+      "ALTER TABLE users ALTER COLUMN role SET DEFAULT 'user'",
+    );
+    await connection.execute(
+      "UPDATE users SET role = 'user' WHERE role IS NULL",
+    );
+
+    const [roleConstraints] = await connection.execute(`
+      SELECT conname, pg_get_constraintdef(oid) AS definition
+      FROM pg_constraint
+      WHERE conrelid = 'users'::regclass
+        AND contype = 'c'
+    `);
+
+    const userRoleConstraints = roleConstraints.filter((constraint) =>
+      /\brole\b/i.test(String(constraint.definition || "")),
+    );
+
+    for (const constraint of userRoleConstraints) {
+      if (/super_admin/i.test(String(constraint.definition || ""))) {
+        continue;
+      }
+
+      const escapedConstraintName = String(constraint.conname || "").replace(
+        /"/g,
+        '""',
+      );
+      await connection.execute(
+        `ALTER TABLE users DROP CONSTRAINT IF EXISTS "${escapedConstraintName}"`,
+      );
+    }
+
+    const hasSupportedRoleConstraint = userRoleConstraints.some((constraint) =>
+      /super_admin/i.test(String(constraint.definition || "")),
+    );
+
+    if (!hasSupportedRoleConstraint) {
+      await connection.execute(`
+        ALTER TABLE users
+        ADD CONSTRAINT users_role_check
+        CHECK (role IN ('user', 'admin', 'super_admin'))
+      `);
+    }
+
+    await connection.execute("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
     return;
   }
 
