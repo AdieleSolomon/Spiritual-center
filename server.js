@@ -41,21 +41,24 @@ const resolveDbProvider = () => {
     return "mysql";
   }
 
-  // Auto-detect based on connection string if provider is not explicitly set
+  // Auto-detect based on connection string or environment variables
   const connectionString = (
     process.env.DATABASE_URL ||
     process.env.DATABASE_PUBLIC_URL ||
+    process.env.POSTGRES_URL ||
     ""
   ).toLowerCase();
 
   if (
     connectionString.startsWith("postgres://") ||
-    connectionString.startsWith("postgresql://")
+    connectionString.startsWith("postgresql://") ||
+    process.env.PGHOST ||
+    process.env.POSTGRES_HOST
   ) {
     return "postgres";
   }
 
-  if (connectionString.startsWith("mysql://")) {
+  if (connectionString.startsWith("mysql://") || process.env.MYSQLHOST) {
     return "mysql";
   }
 
@@ -269,7 +272,7 @@ app.use(
 );
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
-app.use(express.static("public"));
+app.use(express.static("frontend"));
 app.use("/uploads", express.static("uploads"));
 
 // Security middleware
@@ -466,16 +469,22 @@ const toPostgresPlaceholders = (sql) => {
 const normalizePostgresSql = (sql) => {
   let normalized = sql;
 
+  // Handle DATE_SUB
   normalized = normalized.replace(
     /DATE_SUB\(\s*NOW\(\)\s*,\s*INTERVAL\s+(\d+)\s+DAY\s*\)/gi,
     "NOW() - INTERVAL '$1 day'",
   );
 
+  // Handle DATE() function
+  normalized = normalized.replace(/DATE\(\s*([^)]+?)\s*\)/gi, "($1)::date");
+
+  // Handle DATE_FORMAT
   normalized = normalized.replace(
     /DATE_FORMAT\(\s*([^,]+?)\s*,\s*'%Y-%m-%d %H:%i:%s'\s*\)/gi,
     "TO_CHAR($1, 'YYYY-MM-DD HH24:MI:SS')",
   );
 
+  // Handle HOUR()
   normalized = normalized.replace(
     /HOUR\(\s*([^)]+?)\s*\)/gi,
     "EXTRACT(HOUR FROM $1)",
@@ -522,7 +531,7 @@ const executePostgresQuery = async (target, sql, params = []) => {
   }
 };
 
-const createDatabasePool = () => {
+const createDatabasePool = async () => {
   if (IS_POSTGRES) {
     const postgresPool = new PostgresPool(postgresConfig);
 
@@ -545,6 +554,18 @@ const createDatabasePool = () => {
     };
   }
 
+  // For MySQL, try to ensure the database exists first
+  try {
+    const { database, ...configWithoutDb } = mysqlConfig;
+    const connection = await createMySqlPool(configWithoutDb);
+    await connection.execute(`CREATE DATABASE IF NOT EXISTS \`${database}\``);
+    await connection.end();
+    console.log(`✅ Ensured MySQL database "${database}" exists`);
+  } catch (error) {
+    console.warn(`⚠️ Could not verify/create MySQL database: ${error.message}`);
+    // Continue anyway, maybe it already exists or we don't have permissions to create
+  }
+
   const mysqlPool = createMySqlPool(mysqlConfig);
 
   mysqlPool.on("error", (err) => {
@@ -554,7 +575,8 @@ const createDatabasePool = () => {
   return mysqlPool;
 };
 
-const pool = createDatabasePool();
+// Use a placeholder for pool until it's initialized
+let pool;
 
 const normalizePathSlashes = (value = "") => String(value).replace(/\\/g, "/");
 
@@ -4398,12 +4420,17 @@ app.get("/api/connection-test", (req, res) => {
 
 // 404 handler
 app.use((req, res) => {
-  res.status(404).json({
-    success: false,
-    error: "Endpoint not found",
-    path: req.path,
-    method: req.method,
-  });
+  if (req.path.startsWith("/api/")) {
+    return res.status(404).json({
+      success: false,
+      error: "Endpoint not found",
+      path: req.path,
+      method: req.method,
+    });
+  }
+
+  // For frontend routes, serve index.html as fallback
+  res.sendFile(join(__dirname, "frontend", "index.html"));
 });
 
 // Global error handler
@@ -4450,6 +4477,9 @@ process.on("unhandledRejection", (reason, promise) => {
   console.log("🔄 Starting server initialization...");
 
   try {
+    console.log("🔄 Connecting to database...");
+    pool = await createDatabasePool();
+
     console.log("🔄 Initializing database...");
     const dbInitialized = await initializeDatabase();
 

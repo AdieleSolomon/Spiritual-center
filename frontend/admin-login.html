@@ -450,11 +450,10 @@
 
         const email = document.getElementById("email").value.trim();
         const password = document.getElementById("password").value;
-
+        
         if (isRegistrationMode) {
           const username = document.getElementById("regUsername").value.trim();
-          const confirmPassword =
-            document.getElementById("confirmPassword").value;
+          const confirmPassword = document.getElementById("confirmPassword").value;
 
           if (!username || !email || !password || !confirmPassword) {
             showError("Please fill in all fields");
@@ -477,12 +476,12 @@
               headers: {
                 "Content-Type": "application/json",
               },
-              body: JSON.stringify({
-                username,
-                email,
-                password,
+              body: JSON.stringify({ 
+                username, 
+                email, 
+                password, 
                 confirmPassword,
-                role: "admin",
+                role: "admin" 
               }),
             });
 
@@ -492,27 +491,25 @@
               throw new Error(data.error || "Registration failed");
             }
 
-            showSuccess(
-              "Registration submitted! A Super Admin must approve your account before you can login.",
-            );
-
+            showSuccess("Registration submitted! A Super Admin must approve your account before you can login.");
+            
             // Switch back to login mode
             setTimeout(() => {
               toggleMode.click();
               successMessage.classList.remove("show");
             }, 5000);
-          } catch (error) {
+
+          } catch (error) { 
             showError(error.message || "An error occurred. Please try again.");
           } finally {
             spinner.style.display = "none";
             btnText.textContent = "Register Admin";
             loginBtn.disabled = false;
           }
+
         } else {
           // LOGIN MODE
-          const remember = document.querySelector(
-            'input[name="remember"]',
-          ).checked;
+          const remember = document.querySelector('input[name="remember"]').checked;
 
           if (!email || !password) {
             showError("Please fill in all fields");
@@ -541,18 +538,14 @@
 
             // Check if user is admin or super_admin
             const user = data.user;
-            const isSuperAdmin =
-              user.email === "admin@spiritualcenter.com" ||
-              user.role === "super_admin";
-
+            const isSuperAdmin = user.email === "admin@spiritualcenter.com" || user.role === "super_admin";
+            
             if (user.role !== "admin" && !isSuperAdmin) {
               throw new Error("You do not have admin access");
             }
 
             if (!user.is_approved && !isSuperAdmin) {
-              throw new Error(
-                "Your admin account is pending approval by a Super Admin.",
-              );
+              throw new Error("Your admin account is pending approval by a Super Admin.");
             }
 
             // Store token and user info
@@ -577,9 +570,7 @@
             if (error?.name === "TypeError") {
               showError(`Unable to reach the backend at ${API_BASE}.`);
             } else {
-              showError(
-                error.message || "An error occurred. Please try again.",
-              );
+              showError(error.message || "An error occurred. Please try again.");
             }
           } finally {
             spinner.style.display = "none";
