@@ -231,7 +231,7 @@ const SUPER_ADMIN_EMAIL = String(
   .trim()
   .toLowerCase();
 const SUPER_ADMIN_USERNAME = String(
-  process.env.SUPER_ADMIN_USERNAME || "admin",
+  process.env.SUPER_ADMIN_USERNAME || "super_admin",
 ).trim();
 const SUPER_ADMIN_PASSWORD = String(
   process.env.SUPER_ADMIN_PASSWORD || "admin@spiritualcenter123!",
@@ -1675,11 +1675,15 @@ const buildPublicSupportConfig = (settings = {}) => ({
 
 const ensureSuperAdminUser = async (connection) => {
   const normalizedEmail = normalizeEmail(SUPER_ADMIN_EMAIL);
-  const preferredUsername = normalizeUsername(SUPER_ADMIN_USERNAME || "admin");
+  const preferredUsername = normalizeUsername(
+    SUPER_ADMIN_USERNAME || "super_admin",
+  );
   const hashedPassword = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 12);
 
   const resolveUniqueUsername = async (baseUsername) => {
-    const normalizedBaseUsername = normalizeUsername(baseUsername || "admin");
+    const normalizedBaseUsername = normalizeUsername(
+      baseUsername || "super_admin",
+    );
 
     for (let attempt = 0; attempt < 25; attempt += 1) {
       const candidate =
@@ -1687,8 +1691,8 @@ const ensureSuperAdminUser = async (connection) => {
           ? normalizedBaseUsername
           : `${normalizedBaseUsername}${attempt + 1}`;
       const [matches] = await connection.execute(
-        "SELECT id FROM users WHERE LOWER(username) = ? LIMIT 1",
-        [candidate.toLowerCase()],
+        "SELECT id FROM users WHERE LOWER(username) = ? AND LOWER(email) <> ? LIMIT 1",
+        [candidate.toLowerCase(), normalizedEmail],
       );
 
       if (matches.length === 0) {
@@ -1704,9 +1708,7 @@ const ensureSuperAdminUser = async (connection) => {
     [normalizedEmail],
   );
 
-  const superAdminUsername =
-    normalizeUsername(emailMatches[0]?.username || "") ||
-    (await resolveUniqueUsername(preferredUsername));
+  const superAdminUsername = await resolveUniqueUsername(preferredUsername);
 
   if (emailMatches.length > 0) {
     await connection.execute(
@@ -2230,13 +2232,7 @@ app.post(
     let uploadedSupabaseObjectPath = null;
 
     try {
-      if (
-        !requireSuperAdminAccess(
-          req,
-          res,
-          "Super Admin access required to manage materials",
-        )
-      ) {
+      if (!requireAdminAccess(req, res)) {
         return;
       }
 
@@ -2646,13 +2642,7 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
 // Update material
 app.put("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    if (
-      !requireSuperAdminAccess(
-        req,
-        res,
-        "Super Admin access required to manage materials",
-      )
-    ) {
+    if (!requireAdminAccess(req, res)) {
       return;
     }
 
@@ -2726,13 +2716,7 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
 // Delete material
 app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    if (
-      !requireSuperAdminAccess(
-        req,
-        res,
-        "Super Admin access required to manage materials",
-      )
-    ) {
+    if (!requireAdminAccess(req, res)) {
       return;
     }
 
@@ -2788,13 +2772,7 @@ app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
 // Get comprehensive analytics
 app.get("/api/analytics", authenticateToken, async (req, res) => {
   try {
-    if (
-      !requireSuperAdminAccess(
-        req,
-        res,
-        "Super Admin access required to view analytics",
-      )
-    ) {
+    if (!requireAdminAccess(req, res)) {
       return;
     }
 
@@ -2963,13 +2941,7 @@ app.post("/api/analytics/event", async (req, res) => {
 // Get all settings
 app.get("/api/settings", authenticateToken, async (req, res) => {
   try {
-    if (
-      !requireSuperAdminAccess(
-        req,
-        res,
-        "Super Admin access required to view settings",
-      )
-    ) {
+    if (!requireAdminAccess(req, res)) {
       return;
     }
 
@@ -2994,13 +2966,7 @@ app.get("/api/settings", authenticateToken, async (req, res) => {
 // Update settings
 app.put("/api/settings", authenticateToken, async (req, res) => {
   try {
-    if (
-      !requireSuperAdminAccess(
-        req,
-        res,
-        "Super Admin access required to update settings",
-      )
-    ) {
+    if (!requireAdminAccess(req, res)) {
       return;
     }
 
@@ -3221,6 +3187,13 @@ app.post("/api/auth/register", async (req, res) => {
       return res.status(403).json({
         success: false,
         error: "That email address is reserved for the Super Admin account",
+      });
+    }
+
+    if (normalizedUsername === normalizeUsername(SUPER_ADMIN_USERNAME)) {
+      return res.status(403).json({
+        success: false,
+        error: "That username is reserved for the Super Admin account",
       });
     }
 
@@ -3617,7 +3590,13 @@ app.get("/api/auth/validate", authenticateToken, async (req, res) => {
 
 app.get("/api/users", authenticateToken, async (req, res) => {
   try {
-    if (!requireAdminAccess(req, res)) {
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to review users",
+      )
+    ) {
       return;
     }
 
@@ -3698,7 +3677,13 @@ app.get("/api/users", authenticateToken, async (req, res) => {
 
 app.post("/api/users", authenticateToken, async (req, res) => {
   try {
-    if (!requireAdminAccess(req, res)) {
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to review users",
+      )
+    ) {
       return;
     }
     return res.status(403).json({
@@ -3720,7 +3705,13 @@ app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin = isSuperAdminUser(req.user);
 
-    if (!requireAdminAccess(req, res)) {
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to review users",
+      )
+    ) {
       return;
     }
 
@@ -3791,7 +3782,13 @@ app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
 
 app.delete("/api/users/:id", authenticateToken, async (req, res) => {
   try {
-    if (!requireAdminAccess(req, res)) {
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to review users",
+      )
+    ) {
       return;
     }
 

@@ -2115,37 +2115,55 @@
                 <div class="card-title">Quick Actions</div>
               </div>
               <div class="quick-actions">
-                <a class="action-btn" onclick="navigateTo('upload')">
+                <a
+                  class="action-btn"
+                  data-action-section="upload"
+                  onclick="navigateTo('upload')">
                   <div class="action-icon">
                     <i class="fas fa-cloud-upload-alt"></i>
                   </div>
                   <div class="action-text">Upload Material</div>
                 </a>
-                <a class="action-btn" onclick="navigateTo('materials')">
+                <a
+                  class="action-btn"
+                  data-action-section="materials"
+                  onclick="navigateTo('materials')">
                   <div class="action-icon">
                     <i class="fas fa-file-alt"></i>
                   </div>
                   <div class="action-text">Manage Materials</div>
                 </a>
-                <a class="action-btn" onclick="navigateTo('analytics')">
+                <a
+                  class="action-btn"
+                  data-action-section="analytics"
+                  onclick="navigateTo('analytics')">
                   <div class="action-icon">
                     <i class="fas fa-chart-bar"></i>
                   </div>
                   <div class="action-text">View Analytics</div>
                 </a>
-                <a class="action-btn" onclick="navigateTo('requests')">
+                <a
+                  class="action-btn"
+                  data-action-section="requests"
+                  onclick="navigateTo('requests')">
                   <div class="action-icon">
                     <i class="fas fa-hand-holding-heart"></i>
                   </div>
                   <div class="action-text">View Requests</div>
                 </a>
-                <a class="action-btn" onclick="navigateTo('support')">
+                <a
+                  class="action-btn"
+                  data-action-section="support"
+                  onclick="navigateTo('support')">
                   <div class="action-icon">
                     <i class="fas fa-donate"></i>
                   </div>
                   <div class="action-text">Support Desk</div>
                 </a>
-                <a class="action-btn" onclick="navigateTo('users')">
+                <a
+                  class="action-btn"
+                  data-action-section="users"
+                  onclick="navigateTo('users')">
                   <div class="action-icon">
                     <i class="fas fa-user-check"></i>
                   </div>
@@ -3301,30 +3319,39 @@
         }
       }
 
+      const SUPER_ADMIN_ONLY_SECTIONS = [
+        "users",
+        "support",
+      ];
+
+      function isRestrictedForCurrentAdmin(section) {
+        return (
+          localStorage.getItem("isSuperAdmin") !== "true" &&
+          SUPER_ADMIN_ONLY_SECTIONS.includes(section)
+        );
+      }
+
       // Apply role-based UI restrictions
       function applyRoleRestrictions() {
         const isSuperAdmin = localStorage.getItem("isSuperAdmin") === "true";
 
         if (!isSuperAdmin) {
-          // Hide restricted navigation items
-          const restrictedSections = [
-            "materials",
-            "analytics",
-            "support",
-            "upload",
-            "settings",
-          ];
-          restrictedSections.forEach((section) => {
+          SUPER_ADMIN_ONLY_SECTIONS.forEach((section) => {
             const navLink = document.querySelector(
               `.nav-link[data-section="${section}"]`,
             );
             if (navLink) {
               navLink.style.display = "none";
             }
+
+            document
+              .querySelectorAll(`[data-action-section="${section}"]`)
+              .forEach((action) => {
+                action.style.display = "none";
+              });
           });
 
-          // Redirect if currently on a restricted section
-          if (restrictedSections.includes(currentSection)) {
+          if (SUPER_ADMIN_ONLY_SECTIONS.includes(currentSection)) {
             navigateTo("dashboard");
           }
         }
@@ -3677,6 +3704,14 @@
 
       // Navigate to section
       async function navigateTo(sectionId) {
+        if (isRestrictedForCurrentAdmin(sectionId)) {
+          showMessage(
+            "Only the Super Admin can access this section.",
+            "error",
+          );
+          sectionId = "dashboard";
+        }
+
         // Hide all sections
         document.querySelectorAll(".content-section").forEach((section) => {
           section.classList.remove("active");
