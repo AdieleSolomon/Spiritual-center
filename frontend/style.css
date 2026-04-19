@@ -352,6 +352,8 @@ body.nav-open {
   overflow: hidden;
 }
 
+.landing-home .nav-overlay,
+.landing-home .mobile-nav-panel,
 .landing-home .hero-mobile-hint {
   display: none;
 }
