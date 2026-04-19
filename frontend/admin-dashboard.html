@@ -2145,11 +2145,11 @@
                   </div>
                   <div class="action-text">Support Desk</div>
                 </a>
-                <a class="action-btn" onclick="showAddUserModal()">
+                <a class="action-btn" onclick="navigateTo('users')">
                   <div class="action-icon">
-                    <i class="fas fa-user-plus"></i>
+                    <i class="fas fa-user-check"></i>
                   </div>
-                  <div class="action-text">Add User</div>
+                  <div class="action-text">Review Users</div>
                 </a>
               </div>
 
@@ -2484,8 +2484,8 @@
                 <i class="fas fa-users-cog"></i> User Management
               </h2>
               <p class="section-description">
-                Search members, review roles, and manage platform access from
-                one organized table.
+                Search members, review roles, and approve website admin
+                requests from one organized table.
               </p>
             </div>
             <div class="table-actions">
@@ -3268,11 +3268,14 @@
 
           const data = await response.json();
           const user = data.user;
+          const normalizedUserEmail = String(user.email || "")
+            .trim()
+            .toLowerCase();
 
           if (
             user.role !== "admin" &&
             user.role !== "super_admin" &&
-            user.email !== "admin@spiritualcenter.com"
+            normalizedUserEmail !== "admin@spiritualcenter.com"
           ) {
             alert("Admin access required");
             window.location.href = "index.html";
@@ -3285,7 +3288,7 @@
           localStorage.setItem("adminUsername", user.username);
           localStorage.setItem(
             "isSuperAdmin",
-            user.email === "admin@spiritualcenter.com" ||
+            normalizedUserEmail === "admin@spiritualcenter.com" ||
               user.role === "super_admin",
           );
 
@@ -4350,139 +4353,6 @@
         }
       }
 
-      // Add user modal
-      function showAddUserModal() {
-        closeAddUserModal();
-
-        const modal = document.createElement("div");
-        modal.id = "addUserModal";
-        modal.className = "modal-overlay";
-
-        modal.innerHTML = `
-        <div class="modal-content" style="max-width: 560px;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem;">
-            <h2 style="margin: 0; color: white; font-size: 1.25rem;">Add New User</h2>
-            <button type="button" onclick="closeAddUserModal()" style="background: none; border: none; color: var(--gray); font-size: 1.5rem; cursor: pointer;">&times;</button>
-          </div>
-          <form id="addUserForm">
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label for="newUserUsername" class="form-label">Username <span class="required">*</span></label>
-              <input id="newUserUsername" type="text" class="form-input" minlength="3" maxlength="100" required />
-            </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label for="newUserEmail" class="form-label">Email <span class="required">*</span></label>
-              <input id="newUserEmail" type="email" class="form-input" required />
-            </div>
-            <div class="form-group" style="margin-bottom: 1rem;">
-              <label for="newUserPassword" class="form-label">Password <span class="required">*</span></label>
-              <input id="newUserPassword" type="password" class="form-input" minlength="8" required />
-              <div style="margin-top: 0.35rem; font-size: 0.75rem; color: var(--gray);">
-                Minimum 8 characters
-              </div>
-            </div>
-            <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem;">
-              <div class="form-group" style="margin-bottom: 0;">
-                <label for="newUserRole" class="form-label">Role</label>
-                <select id="newUserRole" class="form-select">
-                  <option value="user" selected>User</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-              <div class="form-group" style="margin-bottom: 0; display: flex; align-items: end;">
-                <label for="newUserApproved" style="display: inline-flex; align-items: center; gap: 0.5rem; color: white; font-size: 0.875rem; cursor: pointer;">
-                  <input id="newUserApproved" type="checkbox" checked />
-                  Approve immediately
-                </label>
-              </div>
-            </div>
-            <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.5rem;">
-              <button type="button" class="btn btn-secondary" onclick="closeAddUserModal()">Cancel</button>
-              <button type="submit" class="btn btn-primary" id="addUserSubmitBtn">
-                <i class="fas fa-user-plus"></i>
-                <span>Create User</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      `;
-
-        modal.addEventListener("click", (event) => {
-          if (event.target === modal) {
-            closeAddUserModal();
-          }
-        });
-
-        document.body.appendChild(modal);
-
-        const addUserForm = document.getElementById("addUserForm");
-        if (!addUserForm) {
-          return;
-        }
-
-        addUserForm.addEventListener("submit", async (event) => {
-          event.preventDefault();
-
-          const username = document
-            .getElementById("newUserUsername")
-            .value.trim();
-          const email = document.getElementById("newUserEmail").value.trim();
-          const password = document.getElementById("newUserPassword").value;
-          const role = document.getElementById("newUserRole").value;
-          const isApproved = document.getElementById("newUserApproved").checked;
-          const submitBtn = document.getElementById("addUserSubmitBtn");
-
-          if (!username || !email || !password) {
-            showMessage("Username, email, and password are required", "error");
-            return;
-          }
-
-          const originalButtonHtml = submitBtn ? submitBtn.innerHTML : "";
-          if (submitBtn) {
-            submitBtn.disabled = true;
-            submitBtn.innerHTML =
-              '<i class="fas fa-spinner fa-spin"></i><span>Creating...</span>';
-          }
-
-          try {
-            const response = await fetch(
-              `${API_BASE}/users`,
-              getFetchOptions("POST", {
-                username,
-                email,
-                password,
-                role,
-                is_approved: isApproved,
-              }),
-            );
-            const data = await response.json().catch(() => ({}));
-
-            if (!response.ok || !data.success) {
-              throw new Error(data.error || "Failed to create user");
-            }
-
-            showMessage("User created successfully", "success");
-            closeAddUserModal();
-            await navigateTo("users");
-            loadDashboardData();
-          } catch (error) {
-            console.error("Error creating user:", error);
-            showMessage("Failed to create user: " + error.message, "error");
-          } finally {
-            if (submitBtn) {
-              submitBtn.disabled = false;
-              submitBtn.innerHTML = originalButtonHtml;
-            }
-          }
-        });
-      }
-
-      function closeAddUserModal() {
-        const modal = document.getElementById("addUserModal");
-        if (modal) {
-          modal.remove();
-        }
-      }
-
       // Load users
       async function loadUsers() {
         try {
@@ -4522,28 +4392,59 @@
       function renderUsers() {
         const usersBody = document.getElementById("usersBody");
         if (!usersBody) return;
+        const isSuperAdmin = localStorage.getItem("isSuperAdmin") === "true";
 
         usersBody.innerHTML = filteredUsers
           .map((user) => {
             const date = new Date(user.created_at).toLocaleDateString();
+            const normalizedEmail = String(user.email || "")
+              .trim()
+              .toLowerCase();
+            const isProtectedSuperAdmin =
+              user.role === "super_admin" ||
+              normalizedEmail === "admin@spiritualcenter.com";
+            const isPendingAdmin = user.role === "admin" && !user.is_approved;
+            const roleLabel =
+              user.role === "super_admin"
+                ? "Super Admin"
+                : user.role === "admin"
+                  ? "Admin"
+                  : "User";
             const roleColor =
-              user.role === "admin" ? "var(--warning)" : "var(--accent)";
+              user.role === "super_admin"
+                ? "#fbbf24"
+                : user.role === "admin"
+                  ? "var(--warning)"
+                  : "var(--accent)";
             const statusColor = user.is_approved
               ? "var(--success)"
-              : "var(--danger)";
-            const statusText = user.is_approved ? "Approved" : "Pending";
+              : isPendingAdmin
+                ? "var(--warning)"
+                : "var(--danger)";
+            const statusText = user.is_approved
+              ? "Approved"
+              : isPendingAdmin
+                ? "Pending Super Admin Approval"
+                : "Pending";
+            const canApprove =
+              !user.is_approved &&
+              !isProtectedSuperAdmin &&
+              (user.role !== "admin" || isSuperAdmin);
+            const canDelete =
+              !isProtectedSuperAdmin &&
+              (user.role !== "admin" || isSuperAdmin);
 
             return `
             <tr>
                 <td>${user.username}</td>
                 <td>${user.email}</td>
-                <td><span style="color: ${roleColor}">${user.role}</span></td>
+                <td><span style="color: ${roleColor}">${roleLabel}</span></td>
                 <td><span style="color: ${statusColor}">${statusText}</span></td>
                 <td>${date}</td>
                 <td>
                     <div class="material-actions">
                         ${
-                          !user.is_approved
+                          canApprove
                             ? `
                             <button class="action-btn-small" onclick="approveUser(${user.id})" title="Approve">
                                 <i class="fas fa-check"></i>
@@ -4551,9 +4452,15 @@
                         `
                             : ""
                         }
-                        <button class="action-btn-small delete" onclick="deleteUser(${user.id})" title="Delete">
-                            <i class="fas fa-trash"></i>
-                        </button>
+                        ${
+                          canDelete
+                            ? `
+                            <button class="action-btn-small delete" onclick="deleteUser(${user.id})" title="Delete">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        `
+                            : ""
+                        }
                     </div>
                 </td>
             </tr>
@@ -4596,9 +4503,11 @@
             },
           });
 
-          if (!response.ok) throw new Error("Failed to approve user");
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to approve user");
+          }
 
-          const data = await response.json();
           if (data.success) {
             showMessage("User approved successfully", "success");
             loadUsers();
@@ -4629,9 +4538,11 @@
             },
           });
 
-          if (!response.ok) throw new Error("Failed to delete user");
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok) {
+            throw new Error(data.error || "Failed to delete user");
+          }
 
-          const data = await response.json();
           if (data.success) {
             showMessage("User deleted successfully", "success");
             loadUsers();

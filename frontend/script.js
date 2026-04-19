@@ -1258,8 +1258,24 @@ const App = (() => {
 
         const data = await response.json();
 
-        if (!response.ok || !data?.token) {
+        if (!response.ok) {
           throw new Error(data?.error || "Unable to create account.");
+        }
+
+        if (data?.requires_approval || !data?.token) {
+          const approvalMessage =
+            data?.message ||
+            "Registration submitted. An administrator will review your account.";
+
+          ui.registerForm?.reset();
+          switchAuthMode("login");
+          setAuthMessage(approvalMessage, false);
+          notify(approvalMessage, "success");
+          trackEvent("register_pending_approval", {
+            method: "email_password",
+            role: data?.user?.role || "user",
+          });
+          return;
         }
 
         state.token = data.token;

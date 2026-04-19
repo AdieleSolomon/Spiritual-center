@@ -226,12 +226,45 @@ const createRecoveryToken = () => {
 };
 
 const SUPER_ADMIN_EMAIL = String(
-  process.env.SUPER_ADMIN_EMAIL ||
-    process.env.SECONDARY_ADMIN_EMAIL ||
-    "admin@spiritualcenter.com",
+  process.env.SUPER_ADMIN_EMAIL || "admin@spiritualcenter.com",
 )
   .trim()
   .toLowerCase();
+const SUPER_ADMIN_USERNAME = String(
+  process.env.SUPER_ADMIN_USERNAME || "admin",
+).trim();
+const SUPER_ADMIN_PASSWORD = String(
+  process.env.SUPER_ADMIN_PASSWORD || "admin@spiritualcenter123!",
+).trim();
+
+const isSuperAdminUser = (user = {}) =>
+  normalizeEmail(user?.email) === SUPER_ADMIN_EMAIL ||
+  user?.role === "super_admin";
+
+const isAdminUser = (user = {}) =>
+  isSuperAdminUser(user) || user?.role === "admin";
+
+const requireAdminAccess = (req, res) => {
+  if (!isAdminUser(req.user)) {
+    res.status(403).json({ error: "Admin access required" });
+    return false;
+  }
+
+  return true;
+};
+
+const requireSuperAdminAccess = (
+  req,
+  res,
+  message = "Super Admin access required",
+) => {
+  if (!isSuperAdminUser(req.user)) {
+    res.status(403).json({ error: message });
+    return false;
+  }
+
+  return true;
+};
 
 const signAuthToken = (user) =>
   jwt.sign(
@@ -240,9 +273,7 @@ const signAuthToken = (user) =>
       email: user.email,
       username: user.username,
       role: user.role,
-      isSuperAdmin:
-        normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ||
-        user.role === "super_admin",
+      isSuperAdmin: isSuperAdminUser(user),
     },
     JWT_SECRET,
     { expiresIn: "24h" },
@@ -1431,6 +1462,16 @@ const ensureUserAuthColumns = async (connection) => {
   }
 };
 
+const ensureUserRoleSupport = async (connection) => {
+  if (IS_POSTGRES) {
+    return;
+  }
+
+  await connection.execute(
+    "ALTER TABLE users MODIFY COLUMN role VARCHAR(20) NOT NULL DEFAULT 'user'",
+  );
+};
+
 const ensureDonationColumns = async (connection) => {
   if (IS_POSTGRES) {
     await connection.execute(
@@ -1584,87 +1625,85 @@ const buildPublicSupportConfig = (settings = {}) => ({
     settings.support_whatsapp || settings.whatsapp_number || "+2349072560420",
 });
 
-const ensureDefaultAdminUser = async (connection) => {
-  const upsertAdminUser = async ({ email, username, password }) => {
-    const normalizedEmail = String(email).trim().toLowerCase();
-    const normalizedUsername = String(username).trim().toLowerCase();
-    const hashedPassword = await bcrypt.hash(password, 12);
+const ensureSuperAdminUser = async (connection) => {
+  const normalizedEmail = normalizeEmail(SUPER_ADMIN_EMAIL);
+  const preferredUsername = normalizeUsername(SUPER_ADMIN_USERNAME || "admin");
+  const hashedPassword = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 12);
 
-    const [emailMatches] = await connection.execute(
-      "SELECT id FROM users WHERE LOWER(email) = ? LIMIT 1",
-      [normalizedEmail],
-    );
+  const resolveUniqueUsername = async (baseUsername) => {
+    const normalizedBaseUsername = normalizeUsername(baseUsername || "admin");
 
-    if (emailMatches.length > 0) {
-      await connection.execute(
-        `
-          UPDATE users
-          SET username = ?,
-              password = ?,
-              role = ?,
-              is_approved = ?,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `,
-        [username, hashedPassword, "admin", true, emailMatches[0].id],
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const candidate =
+        attempt === 0
+          ? normalizedBaseUsername
+          : `${normalizedBaseUsername}${attempt + 1}`;
+      const [matches] = await connection.execute(
+        "SELECT id FROM users WHERE LOWER(username) = ? LIMIT 1",
+        [candidate.toLowerCase()],
       );
-      return;
+
+      if (matches.length === 0) {
+        return candidate;
+      }
     }
 
-    const [usernameMatches] = await connection.execute(
-      "SELECT id FROM users WHERE LOWER(username) = ? LIMIT 1",
-      [normalizedUsername],
-    );
-
-    if (usernameMatches.length > 0) {
-      await connection.execute(
-        `
-          UPDATE users
-          SET email = ?,
-              password = ?,
-              role = ?,
-              is_approved = ?,
-              updated_at = CURRENT_TIMESTAMP
-          WHERE id = ?
-        `,
-        [email, hashedPassword, "admin", true, usernameMatches[0].id],
-      );
-      return;
-    }
-
-    await connection.execute(
-      "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
-      [username, email, hashedPassword, "admin", true],
-    );
+    return `${normalizedBaseUsername}${Date.now()}`;
   };
 
-  const adminEmail =
-    process.env.DEFAULT_ADMIN_EMAIL || "Wisdomadiele57@gmail.com";
-  const adminRawPassword = process.env.DEFAULT_ADMIN_PASSWORD || "admin123";
-  const adminUsername = process.env.DEFAULT_ADMIN_USERNAME || "admin";
+  const [emailMatches] = await connection.execute(
+    "SELECT id, username FROM users WHERE LOWER(email) = ? LIMIT 1",
+    [normalizedEmail],
+  );
 
-  await upsertAdminUser({
-    email: adminEmail,
-    username: adminUsername,
-    password: adminRawPassword,
-  });
+  const superAdminUsername =
+    normalizeUsername(emailMatches[0]?.username || "") ||
+    (await resolveUniqueUsername(preferredUsername));
 
-  const secondaryAdminEmail =
-    process.env.SECONDARY_ADMIN_EMAIL || "admin@spiritualcenter.com";
-  const secondaryAdminPassword =
-    process.env.SECONDARY_ADMIN_PASSWORD || "admin123";
-  const secondaryAdminUsername =
-    process.env.SECONDARY_ADMIN_USERNAME || "admin2";
+  if (emailMatches.length > 0) {
+    await connection.execute(
+      `
+        UPDATE users
+        SET username = ?,
+            password = ?,
+            role = ?,
+            is_approved = ?,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+      `,
+      [
+        superAdminUsername,
+        hashedPassword,
+        "super_admin",
+        true,
+        emailMatches[0].id,
+      ],
+    );
+  } else {
+    await connection.execute(
+      "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
+      [
+        superAdminUsername,
+        normalizedEmail,
+        hashedPassword,
+        "super_admin",
+        true,
+      ],
+    );
+  }
 
-  await upsertAdminUser({
-    email: secondaryAdminEmail,
-    username: secondaryAdminUsername,
-    password: secondaryAdminPassword,
-  });
+  await connection.execute(
+    `
+      UPDATE users
+      SET role = ?, updated_at = CURRENT_TIMESTAMP
+      WHERE role = ? AND LOWER(email) <> ?
+    `,
+    ["admin", "super_admin", normalizedEmail],
+  );
 
   return {
-    email: adminEmail,
-    password: adminRawPassword,
+    email: normalizedEmail,
+    password: SUPER_ADMIN_PASSWORD,
   };
 };
 
@@ -1776,11 +1815,12 @@ const initializePostgresDatabase = async () => {
     }
 
     await ensureUserAuthColumns(connection);
+    await ensureUserRoleSupport(connection);
     await ensureMaterialColumns(connection);
     await ensureDonationColumns(connection);
     await ensureMemberRequestColumns(connection);
 
-    await ensureDefaultAdminUser(connection);
+    await ensureSuperAdminUser(connection);
 
     for (const [key, value, type] of DEFAULT_SETTINGS) {
       await connection.execute(INSERT_DEFAULT_SETTING_SQL, [key, value, type]);
@@ -1824,7 +1864,7 @@ const initializeDatabase = async () => {
         password VARCHAR(255) NOT NULL,
         reset_password_token VARCHAR(128) NULL,
         reset_password_expires TIMESTAMP NULL,
-        role ENUM('user', 'admin') DEFAULT 'user',
+        role VARCHAR(20) DEFAULT 'user',
         is_approved BOOLEAN DEFAULT TRUE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -1834,6 +1874,7 @@ const initializeDatabase = async () => {
     `);
 
     await ensureUserAuthColumns(connection);
+    await ensureUserRoleSupport(connection);
 
     // Materials table (simplified - using this as main content table)
     await connection.execute(`
@@ -1986,8 +2027,8 @@ const initializeDatabase = async () => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
-    // Create default admin user
-    await ensureDefaultAdminUser(connection);
+    // Create the reserved super admin user
+    await ensureSuperAdminUser(connection);
 
     // Insert default settings without overwriting admin changes
     for (const [key, value, type] of DEFAULT_SETTINGS) {
@@ -2008,8 +2049,8 @@ const initializeDatabase = async () => {
 // Get comprehensive dashboard stats
 app.get("/api/admin/stats", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     // Get all stats in parallel
@@ -2141,13 +2182,14 @@ app.post(
     let uploadedSupabaseObjectPath = null;
 
     try {
-      const isSuperAdmin =
-        normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-        req.user.role === "super_admin";
-      if (!isSuperAdmin) {
-        return res
-          .status(403)
-          .json({ error: "Super Admin access required to manage materials" });
+      if (
+        !requireSuperAdminAccess(
+          req,
+          res,
+          "Super Admin access required to manage materials",
+        )
+      ) {
+        return;
       }
 
       const {
@@ -2312,7 +2354,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
     const parsedLimit = Math.min(Math.max(parseInt(limit, 10) || 20, 1), 100);
     const offset = (parsedPage - 1) * parsedLimit;
     const paginationClause = `LIMIT ${parsedLimit} OFFSET ${offset}`;
-    const isAdminRequest = req.user?.role === "admin";
+    const isAdminRequest = isAdminUser(req.user);
 
     const whereParts = [];
     const filterParams = [];
@@ -2450,7 +2492,7 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
 app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
   try {
     const materialId = req.params.id;
-    const isAdminRequest = req.user?.role === "admin";
+    const isAdminRequest = isAdminUser(req.user);
     const selectQuery = isAdminRequest
       ? `
       SELECT
@@ -2556,13 +2598,14 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
 // Update material
 app.put("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
-    if (!isSuperAdmin) {
-      return res
-        .status(403)
-        .json({ error: "Super Admin access required to manage materials" });
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to manage materials",
+      )
+    ) {
+      return;
     }
 
     const materialId = req.params.id;
@@ -2635,13 +2678,14 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
 // Delete material
 app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
-    if (!isSuperAdmin) {
-      return res
-        .status(403)
-        .json({ error: "Super Admin access required to manage materials" });
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to manage materials",
+      )
+    ) {
+      return;
     }
 
     const materialId = req.params.id;
@@ -2696,13 +2740,14 @@ app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
 // Get comprehensive analytics
 app.get("/api/analytics", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
-    if (!isSuperAdmin) {
-      return res
-        .status(403)
-        .json({ error: "Super Admin access required to view analytics" });
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to view analytics",
+      )
+    ) {
+      return;
     }
 
     const { period = "7d" } = req.query;
@@ -2870,13 +2915,14 @@ app.post("/api/analytics/event", async (req, res) => {
 // Get all settings
 app.get("/api/settings", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
-    if (!isSuperAdmin) {
-      return res
-        .status(403)
-        .json({ error: "Super Admin access required to view settings" });
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to view settings",
+      )
+    ) {
+      return;
     }
 
     const [settings] = await pool.execute(
@@ -2900,13 +2946,14 @@ app.get("/api/settings", authenticateToken, async (req, res) => {
 // Update settings
 app.put("/api/settings", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
-    if (!isSuperAdmin) {
-      return res
-        .status(403)
-        .json({ error: "Super Admin access required to update settings" });
+    if (
+      !requireSuperAdminAccess(
+        req,
+        res,
+        "Super Admin access required to update settings",
+      )
+    ) {
+      return;
     }
 
     const settings = req.body;
@@ -2963,8 +3010,8 @@ app.put("/api/settings", authenticateToken, async (req, res) => {
 // Get notifications
 app.get("/api/notifications", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const { unread = false } = req.query;
@@ -3051,8 +3098,8 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
 // Mark notification as read
 app.put("/api/notifications/:id/read", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const notificationId = req.params.id;
@@ -3082,8 +3129,8 @@ app.put("/api/notifications/:id/read", authenticateToken, async (req, res) => {
 // Clear all notifications
 app.delete("/api/notifications", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     // Mark all prayer requests as read
@@ -3122,7 +3169,14 @@ app.post("/api/auth/register", async (req, res) => {
     // Only allow 'user' and 'admin' registration from public endpoint
     const requestedRole = ["admin", "user"].includes(role) ? role : "user";
 
-    // Admins need approval, users are approved by default (or as per existing policy)
+    if (normalizedEmail === SUPER_ADMIN_EMAIL) {
+      return res.status(403).json({
+        success: false,
+        error: "That email address is reserved for the Super Admin account",
+      });
+    }
+
+    // Admins need approval, users are approved by default
     const isApproved = requestedRole === "user";
 
     if (!normalizedUsername || !normalizedEmail || !password) {
@@ -3201,11 +3255,10 @@ app.post("/api/auth/register", async (req, res) => {
       id: userId,
       username: normalizedUsername,
       email: normalizedEmail,
-      role: "user",
-      is_approved: true,
+      role: requestedRole,
+      is_approved: isApproved,
     };
-
-    const token = signAuthToken(user);
+    const token = isApproved ? signAuthToken(user) : null;
 
     await pool.execute(
       "INSERT INTO analytics (event_type, event_data, user_id) VALUES (?, ?, ?)",
@@ -3214,9 +3267,12 @@ app.post("/api/auth/register", async (req, res) => {
 
     res.status(201).json({
       success: true,
-      message: "Registration successful",
+      message: isApproved
+        ? "Registration successful"
+        : "Registration submitted and pending Super Admin approval",
       token,
       user,
+      requires_approval: !isApproved,
     });
   } catch (error) {
     if (error?.code === "ER_DUP_ENTRY" || error?.code === "23505") {
@@ -3441,7 +3497,7 @@ app.post("/api/auth/login", async (req, res) => {
     }
 
     // Check if user is approved
-    if (!user.is_approved && user.role !== "admin") {
+    if (!user.is_approved && !isSuperAdminUser(user)) {
       return res
         .status(401)
         .json({ error: "Your account is pending admin approval" });
@@ -3513,8 +3569,8 @@ app.get("/api/auth/validate", authenticateToken, async (req, res) => {
 
 app.get("/api/users", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const {
@@ -3594,115 +3650,15 @@ app.get("/api/users", authenticateToken, async (req, res) => {
 
 app.post("/api/users", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
-
-    const normalizedUsername = normalizeUsername(req.body?.username);
-    const normalizedEmail = normalizeEmail(req.body?.email);
-    const password = String(req.body?.password || "");
-    const role = String(req.body?.role || "user")
-      .trim()
-      .toLowerCase();
-    const isApproved = parseBoolean(
-      req.body?.is_approved ?? req.body?.isApproved,
-      true,
-    );
-
-    if (!normalizedUsername || !normalizedEmail || !password) {
-      return res.status(400).json({
-        success: false,
-        error: "Username, email, and password are required",
-      });
-    }
-
-    if (normalizedUsername.length < 3 || normalizedUsername.length > 100) {
-      return res.status(400).json({
-        success: false,
-        error: "Username must be between 3 and 100 characters",
-      });
-    }
-
-    if (!isValidEmail(normalizedEmail)) {
-      return res.status(400).json({
-        success: false,
-        error: "Please provide a valid email address",
-      });
-    }
-
-    if (!isStrongPassword(password)) {
-      return res.status(400).json({
-        success: false,
-        error: "Password must be at least 8 characters long",
-      });
-    }
-
-    if (!["user", "admin"].includes(role)) {
-      return res.status(400).json({
-        success: false,
-        error: 'Role must be either "user" or "admin"',
-      });
-    }
-
-    const [existingUsers] = await pool.execute(
-      "SELECT id FROM users WHERE email = ? OR username = ? LIMIT 1",
-      [normalizedEmail, normalizedUsername],
-    );
-
-    if (existingUsers.length > 0) {
-      return res.status(409).json({
-        success: false,
-        error: "A user already exists with that email or username",
-      });
-    }
-
-    const passwordHash = await bcrypt.hash(password, 12);
-    const [insertResult] = await pool.execute(
-      "INSERT INTO users (username, email, password, role, is_approved) VALUES (?, ?, ?, ?, ?)",
-      [normalizedUsername, normalizedEmail, passwordHash, role, isApproved],
-    );
-
-    let createdUserId = insertResult?.insertId || null;
-    if (!createdUserId) {
-      const [createdRows] = await pool.execute(
-        "SELECT id FROM users WHERE email = ? LIMIT 1",
-        [normalizedEmail],
-      );
-      createdUserId = createdRows[0]?.id || null;
-    }
-
-    await pool.execute(
-      "INSERT INTO analytics (event_type, event_data, user_id) VALUES (?, ?, ?)",
-      [
-        "user_create",
-        JSON.stringify({
-          created_user_id: createdUserId,
-          role,
-          is_approved: isApproved,
-        }),
-        req.user.userId,
-      ],
-    );
-
-    res.status(201).json({
-      success: true,
-      message: "User created successfully",
-      user: {
-        id: createdUserId,
-        username: normalizedUsername,
-        email: normalizedEmail,
-        role,
-        is_approved: isApproved,
-      },
+    return res.status(403).json({
+      success: false,
+      error:
+        "New users and admins must register through the website before approval",
     });
   } catch (error) {
-    if (error?.code === "ER_DUP_ENTRY" || error?.code === "23505") {
-      return res.status(409).json({
-        success: false,
-        error: "A user already exists with that email or username",
-      });
-    }
-
     console.error("Create user error:", error);
     res.status(500).json({
       success: false,
@@ -3714,12 +3670,10 @@ app.post("/api/users", authenticateToken, async (req, res) => {
 
 app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
   try {
-    const isSuperAdmin =
-      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
-      req.user.role === "super_admin";
+    const isSuperAdmin = isSuperAdminUser(req.user);
 
-    if (req.user.role !== "admin" && !isSuperAdmin) {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const targetUserId = Number.parseInt(req.params.id, 10);
@@ -3789,8 +3743,8 @@ app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
 
 app.delete("/api/users/:id", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const targetUserId = Number.parseInt(req.params.id, 10);
@@ -3809,8 +3763,10 @@ app.delete("/api/users/:id", authenticateToken, async (req, res) => {
       });
     }
 
+    const isSuperAdmin = isSuperAdminUser(req.user);
+
     const [users] = await pool.execute(
-      "SELECT id, role FROM users WHERE id = ? LIMIT 1",
+      "SELECT id, email, role FROM users WHERE id = ? LIMIT 1",
       [targetUserId],
     );
 
@@ -3821,18 +3777,20 @@ app.delete("/api/users/:id", authenticateToken, async (req, res) => {
       });
     }
 
-    if (users[0].role === "admin") {
-      const [adminCounts] = await pool.execute(
-        "SELECT COUNT(*) as total_admins FROM users WHERE role = 'admin'",
-      );
-      const totalAdmins = Number(adminCounts[0]?.total_admins || 0);
+    const targetUser = users[0];
 
-      if (totalAdmins <= 1) {
-        return res.status(400).json({
-          success: false,
-          error: "Cannot delete the last admin user",
-        });
-      }
+    if (isSuperAdminUser(targetUser)) {
+      return res.status(403).json({
+        success: false,
+        error: "The Super Admin account cannot be deleted",
+      });
+    }
+
+    if (targetUser.role === "admin" && !isSuperAdmin) {
+      return res.status(403).json({
+        success: false,
+        error: "Only Super Admin can delete admin accounts",
+      });
     }
 
     await pool.execute("DELETE FROM users WHERE id = ?", [targetUserId]);
@@ -3866,8 +3824,8 @@ app.put(
   authenticateToken,
   async (req, res) => {
     try {
-      if (req.user.role !== "admin" && req.user.role !== "super_admin") {
-        return res.status(403).json({ error: "Admin access required" });
+      if (!requireAdminAccess(req, res)) {
+        return;
       }
 
       const { status } = req.body;
@@ -3935,8 +3893,8 @@ app.post("/api/prayer-requests", authenticateToken, async (req, res) => {
 
 app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const { status = "", search = "", page = 1, limit = 20 } = req.query;
@@ -4071,8 +4029,8 @@ app.post("/api/counseling-requests", authenticateToken, async (req, res) => {
 
 app.get("/api/counseling-requests", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const { status = "", search = "", page = 1, limit = 20 } = req.query;
@@ -4162,8 +4120,8 @@ app.put(
   authenticateToken,
   async (req, res) => {
     try {
-      if (req.user.role !== "admin" && req.user.role !== "super_admin") {
-        return res.status(403).json({ error: "Admin access required" });
+      if (!requireAdminAccess(req, res)) {
+        return;
       }
 
       const { status } = req.body;
@@ -4213,8 +4171,8 @@ app.get("/api/support/config", async (req, res) => {
 
 app.post("/api/admin/daily-promise", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     const { promise_text, author } = req.body;
@@ -4311,8 +4269,8 @@ app.get("/api/daily-promises", async (req, res) => {
 
 app.post("/api/admin/devotion-posts", authenticateToken, async (req, res) => {
   try {
-    if (req.user.role !== "admin") {
-      return res.status(403).json({ error: "Admin access required" });
+    if (!requireAdminAccess(req, res)) {
+      return;
     }
 
     await ensureDevotionTables();

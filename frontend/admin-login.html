@@ -413,8 +413,8 @@
         isRegistrationMode = !isRegistrationMode;
 
         if (isRegistrationMode) {
-          headerSubtext.textContent = "Create an Admin Account";
-          btnText.textContent = "Register Admin";
+          headerSubtext.textContent = "Request Admin Access";
+          btnText.textContent = "Request Access";
           emailLabel.textContent = "Email Address";
           registrationFields.style.display = "block";
           confirmPasswordField.style.display = "block";
@@ -491,7 +491,7 @@
               throw new Error(data.error || "Registration failed");
             }
 
-            showSuccess("Registration submitted! A Super Admin must approve your account before you can login.");
+            showSuccess("Registration submitted! The Super Admin must approve your admin access before you can log in.");
             
             // Switch back to login mode
             setTimeout(() => {
@@ -503,7 +503,7 @@
             showError(error.message || "An error occurred. Please try again.");
           } finally {
             spinner.style.display = "none";
-            btnText.textContent = "Register Admin";
+            btnText.textContent = "Request Access";
             loginBtn.disabled = false;
           }
 
@@ -538,7 +538,12 @@
 
             // Check if user is admin or super_admin
             const user = data.user;
-            const isSuperAdmin = user.email === "admin@spiritualcenter.com" || user.role === "super_admin";
+            const normalizedUserEmail = String(user.email || "")
+              .trim()
+              .toLowerCase();
+            const isSuperAdmin =
+              normalizedUserEmail === "admin@spiritualcenter.com" ||
+              user.role === "super_admin";
             
             if (user.role !== "admin" && !isSuperAdmin) {
               throw new Error("You do not have admin access");
