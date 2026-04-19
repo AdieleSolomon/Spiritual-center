@@ -114,6 +114,32 @@ const parseByteSize = (
   return Math.floor(numericPart * (multipliers[unit] || 1));
 };
 
+const toNumber = (value, fallbackValue = 0) => {
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : fallbackValue;
+};
+
+const toNullableNumber = (value) => {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsedValue = Number(value);
+  return Number.isFinite(parsedValue) ? parsedValue : null;
+};
+
+const normalizeNumberFields = (record = {}, fields = []) => {
+  const normalizedRecord = { ...record };
+
+  fields.forEach((field) => {
+    if (field in normalizedRecord) {
+      normalizedRecord[field] = toNumber(normalizedRecord[field]);
+    }
+  });
+
+  return normalizedRecord;
+};
+
 const JWT_SECRET = process.env.JWT_SECRET || "spiritual-center-secret-key-2024";
 const PASSWORD_RESET_TOKEN_TTL_MINUTES = Number(
   process.env.PASSWORD_RESET_TOKEN_TTL_MINUTES || 30,
@@ -199,7 +225,13 @@ const createRecoveryToken = () => {
   };
 };
 
-const SUPER_ADMIN_EMAIL = "admin@spiritualcenter.com";
+const SUPER_ADMIN_EMAIL = String(
+  process.env.SUPER_ADMIN_EMAIL ||
+    process.env.SECONDARY_ADMIN_EMAIL ||
+    "admin@spiritualcenter.com",
+)
+  .trim()
+  .toLowerCase();
 
 const signAuthToken = (user) =>
   jwt.sign(
@@ -209,7 +241,8 @@ const signAuthToken = (user) =>
       username: user.username,
       role: user.role,
       isSuperAdmin:
-        user.email === SUPER_ADMIN_EMAIL || user.role === "super_admin",
+        normalizeEmail(user.email) === SUPER_ADMIN_EMAIL ||
+        user.role === "super_admin",
     },
     JWT_SECRET,
     { expiresIn: "24h" },
@@ -258,6 +291,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Middleware
+app.set("trust proxy", 1);
 app.use(
   cors({
     origin: (origin, callback) => {
@@ -326,20 +360,68 @@ if (parseBoolean(process.env.DB_SSL, false)) {
   mysqlConfig.ssl = { rejectUnauthorized: false };
 }
 
-const postgresSslEnabled = parseBoolean(
-  process.env.POSTGRES_SSL ??
-    process.env.DATABASE_SSL ??
-    process.env.SUPABASE_DB_SSL ??
-    process.env.DB_SSL,
-  true,
-);
-
 const postgresConnectionString =
   process.env.DATABASE_URL ||
   process.env.DATABASE_PUBLIC_URL ||
   process.env.POSTGRES_URL ||
   process.env.POSTGRES_CONNECTION_STRING ||
   process.env.SUPABASE_DATABASE_URL;
+
+const resolveHostnameFromConnectionString = (connectionString = "") => {
+  if (!connectionString) {
+    return "";
+  }
+
+  try {
+    return new URL(connectionString).hostname.toLowerCase();
+  } catch (error) {
+    return "";
+  }
+};
+
+const postgresHost =
+  resolveHostnameFromConnectionString(postgresConnectionString) ||
+  String(
+    process.env.PGHOST ||
+      process.env.POSTGRES_HOST ||
+      process.env.SUPABASE_DB_HOST ||
+      "",
+  )
+    .trim()
+    .toLowerCase();
+
+const isRailwayManagedPostgresHost =
+  postgresHost.endsWith(".railway.internal") ||
+  postgresHost.endsWith(".rlwy.net");
+
+const resolvePostgresSslEnabled = () => {
+  const configuredValue =
+    process.env.POSTGRES_SSL ??
+    process.env.DATABASE_SSL ??
+    process.env.SUPABASE_DB_SSL ??
+    process.env.DB_SSL;
+
+  if (
+    configuredValue !== undefined &&
+    configuredValue !== null &&
+    configuredValue !== ""
+  ) {
+    const explicitValue = parseBoolean(configuredValue);
+
+    if (explicitValue && isRailwayManagedPostgresHost) {
+      console.warn(
+        `POSTGRES_SSL=true is incompatible with Railway PostgreSQL host "${postgresHost}". Using non-SSL mode instead.`,
+      );
+      return false;
+    }
+
+    return explicitValue;
+  }
+
+  return !isRailwayManagedPostgresHost;
+};
+
+const postgresSslEnabled = resolvePostgresSslEnabled();
 
 const postgresConfig = postgresConnectionString
   ? {
@@ -348,11 +430,7 @@ const postgresConfig = postgresConnectionString
       ssl: postgresSslEnabled ? { rejectUnauthorized: false } : false,
     }
   : {
-      host:
-        process.env.PGHOST ||
-        process.env.POSTGRES_HOST ||
-        process.env.SUPABASE_DB_HOST ||
-        "localhost",
+      host: postgresHost || "localhost",
       user:
         process.env.PGUSER ||
         process.env.POSTGRES_USER ||
@@ -1659,13 +1737,42 @@ const ensureDevotionTables = async () => {
 
 const initializePostgresDatabase = async () => {
   let connection;
+  let updateTriggerFunctionAvailable = true;
 
   try {
     connection = await pool.getConnection();
     await connection.execute("BEGIN");
 
     for (const statement of postgresSchemaStatements) {
-      await connection.execute(statement);
+      const trimmedStatement = String(statement || "").trim();
+      if (!trimmedStatement) continue;
+
+      const isUpdateAtFunction =
+        /^CREATE\s+OR\s+REPLACE\s+FUNCTION\s+update_updated_at_column/i.test(
+          trimmedStatement,
+        );
+      const isCreateTrigger = /^CREATE\s+TRIGGER/i.test(trimmedStatement);
+      const isDropTrigger = /^DROP\s+TRIGGER/i.test(trimmedStatement);
+      const isCreateIndex = /^CREATE\s+INDEX/i.test(trimmedStatement);
+
+      if (isCreateTrigger && !updateTriggerFunctionAvailable) {
+        continue;
+      }
+
+      try {
+        await connection.execute(statement);
+      } catch (error) {
+        if (isUpdateAtFunction) {
+          updateTriggerFunctionAvailable = false;
+          continue;
+        }
+
+        if (isDropTrigger || isCreateTrigger || isCreateIndex) {
+          continue;
+        }
+
+        throw error;
+      }
     }
 
     await ensureUserAuthColumns(connection);
@@ -1961,9 +2068,18 @@ app.get("/api/admin/stats", authenticateToken, async (req, res) => {
     const [storageResult] = await pool.execute(
       "SELECT COALESCE(SUM(file_size), 0) as total_size FROM materials WHERE file_size IS NOT NULL",
     );
+    const totalUsers = toNumber(total_users);
+    const totalMaterials = toNumber(total_materials);
+    const totalPrayers = toNumber(total_prayers);
+    const pendingPrayers = toNumber(pending_prayers);
+    const pendingCounseling = toNumber(pending_counseling);
+    const totalDonations = toNumber(total_donations);
+    const totalAmount = toNumber(total_amount);
+    const recentUploads = toNumber(recent_uploads);
+    const activeUsers = toNumber(active_users);
     const storage_used =
       Math.round(
-        ((storageResult[0]?.total_size || 0) / (1024 * 1024 * 1024)) * 100,
+        (toNumber(storageResult[0]?.total_size) / (1024 * 1024 * 1024)) * 100,
       ) / 100; // GB
 
     // Get recent materials
@@ -1986,20 +2102,19 @@ app.get("/api/admin/stats", authenticateToken, async (req, res) => {
     res.json({
       success: true,
       stats: {
-        total_users,
-        total_materials,
-        total_prayers,
-        pending_prayers,
-        pending_counseling,
-        pending_requests:
-          Number(pending_prayers || 0) + Number(pending_counseling || 0),
-        total_donations,
-        total_amount: parseFloat(total_amount),
-        recent_uploads,
-        active_users,
+        total_users: totalUsers,
+        total_materials: totalMaterials,
+        total_prayers: totalPrayers,
+        pending_prayers: pendingPrayers,
+        pending_counseling: pendingCounseling,
+        pending_requests: pendingPrayers + pendingCounseling,
+        total_donations: totalDonations,
+        total_amount: totalAmount,
+        recent_uploads: recentUploads,
+        active_users: activeUsers,
         storage_used: `${storage_used} GB`,
         engagement_rate:
-          total_users > 0 ? Math.round((active_users / total_users) * 100) : 0,
+          totalUsers > 0 ? Math.round((activeUsers / totalUsers) * 100) : 0,
       },
       recent_materials: recentMaterials,
       top_materials: topMaterials,
@@ -2027,7 +2142,8 @@ app.post(
 
     try {
       const isSuperAdmin =
-        req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+        normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+        req.user.role === "super_admin";
       if (!isSuperAdmin) {
         return res
           .status(403)
@@ -2439,7 +2555,8 @@ app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
 app.put("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
     if (!isSuperAdmin) {
       return res
         .status(403)
@@ -2517,7 +2634,8 @@ app.put("/api/materials/:id", authenticateToken, async (req, res) => {
 app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
     if (!isSuperAdmin) {
       return res
         .status(403)
@@ -2577,7 +2695,8 @@ app.delete("/api/materials/:id", authenticateToken, async (req, res) => {
 app.get("/api/analytics", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
     if (!isSuperAdmin) {
       return res
         .status(403)
@@ -2671,15 +2790,46 @@ app.get("/api/analytics", authenticateToken, async (req, res) => {
       WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 DAY)
     `);
 
+    const normalizedUserGrowth = (userGrowth || []).map((row) =>
+      normalizeNumberFields(row, ["new_users"]),
+    );
+    const normalizedMaterialGrowth = (materialGrowth || []).map((row) =>
+      normalizeNumberFields(row, [
+        "new_materials",
+        "videos",
+        "documents",
+        "images",
+        "audio",
+      ]),
+    );
+    const normalizedTopMaterials = (topMaterials || []).map((row) => ({
+      ...row,
+      views: toNumber(row.views),
+      downloads: toNumber(row.downloads),
+      conversion_rate: toNullableNumber(row.conversion_rate),
+    }));
+    const normalizedActivityByHour = (activityByHour || []).map((row) =>
+      normalizeNumberFields(row, ["hour", "activity_count"]),
+    );
+    const normalizedEventBreakdown = (eventBreakdown || []).map((row) =>
+      normalizeNumberFields(row, ["count"]),
+    );
+    const normalizedRealtime = normalizeNumberFields(realtimeStats[0] || {}, [
+      "active_users_today",
+      "views_today",
+      "downloads_today",
+      "logins_today",
+    ]);
+
     res.json({
       success: true,
       analytics: {
-        user_growth: userGrowth,
-        material_growth: materialGrowth,
-        top_materials: topMaterials,
-        activity_by_hour: activityByHour,
-        event_breakdown: eventBreakdown,
-        realtime: realtimeStats[0] || {},
+        user_growth: normalizedUserGrowth,
+        material_growth: normalizedMaterialGrowth,
+        top_materials: normalizedTopMaterials,
+        activity_by_hour: normalizedActivityByHour,
+        event_breakdown: normalizedEventBreakdown,
+        realtime: normalizedRealtime,
       },
       period,
       generated_at: new Date().toISOString(),
@@ -2719,7 +2869,8 @@ app.post("/api/analytics/event", async (req, res) => {
 app.get("/api/settings", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
     if (!isSuperAdmin) {
       return res
         .status(403)
@@ -2748,7 +2899,8 @@ app.get("/api/settings", authenticateToken, async (req, res) => {
 app.put("/api/settings", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
     if (!isSuperAdmin) {
       return res
         .status(403)
@@ -2876,7 +3028,7 @@ app.get("/api/notifications", authenticateToken, async (req, res) => {
     const [unreadCountResult] = await pool.execute(`
       SELECT COUNT(*) as count FROM prayer_requests WHERE status = 'pending'
     `);
-    const unread_count = unreadCountResult[0]?.count || 0;
+    const unread_count = toNumber(unreadCountResult[0]?.count);
 
     res.json({
       success: true,
@@ -3377,47 +3529,46 @@ app.get("/api/users", authenticateToken, async (req, res) => {
     );
     const offset = (parsedPage - 1) * parsedLimit;
 
-    let query = `
-      SELECT 
-        id, username, email, role, is_approved,
-        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
-        DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
+    let whereClause = `
       FROM users
       WHERE 1=1
     `;
     const params = [];
 
     if (search) {
-      query += ` AND (username LIKE ? OR email LIKE ?)`;
+      whereClause += ` AND (username LIKE ? OR email LIKE ?)`;
       params.push(`%${search}%`, `%${search}%`);
     }
 
     if (role) {
-      query += ` AND role = ?`;
+      whereClause += ` AND role = ?`;
       params.push(role);
     }
 
     if (status === "approved") {
-      query += ` AND is_approved = TRUE`;
+      whereClause += ` AND is_approved = TRUE`;
     } else if (status === "pending") {
-      query += ` AND is_approved = FALSE`;
+      whereClause += ` AND is_approved = FALSE`;
     }
 
+    let query = `
+      SELECT 
+        id, username, email, role, is_approved,
+        DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at,
+        DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at
+      ${whereClause}
+    `;
     query += ` ORDER BY created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
 
     const [users] = await pool.execute(query, params);
 
     // Get total count
-    const [countResult] = await pool.execute(
-      query
-        .split("ORDER BY")[0]
-        .replace(
-          "SELECT id, username, email, role, is_approved, DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') as created_at, DATE_FORMAT(updated_at, '%Y-%m-%d %H:%i:%s') as updated_at",
-          "SELECT COUNT(*) as total",
-        ),
-      params,
-    );
-    const total = countResult[0]?.total || 0;
+    const countQuery = `
+      SELECT COUNT(*) as total
+      ${whereClause}
+    `;
+    const [countResult] = await pool.execute(countQuery, params);
+    const total = toNumber(countResult[0]?.total);
 
     res.json({
       success: true,
@@ -3562,7 +3713,8 @@ app.post("/api/users", authenticateToken, async (req, res) => {
 app.put("/api/users/:id/approve", authenticateToken, async (req, res) => {
   try {
     const isSuperAdmin =
-      req.user.email === SUPER_ADMIN_EMAIL || req.user.role === "super_admin";
+      normalizeEmail(req.user.email) === SUPER_ADMIN_EMAIL ||
+      req.user.role === "super_admin";
 
     if (req.user.role !== "admin" && !isSuperAdmin) {
       return res.status(403).json({ error: "Admin access required" });

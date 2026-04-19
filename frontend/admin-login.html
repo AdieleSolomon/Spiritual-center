@@ -386,7 +386,7 @@
       const API_BASE = normalizeApiBase(
         appConfigApiBase ||
           resolveConfiguredApiBase(configuredApiBase) ||
-          (isLocalHost ? "http://localhost:5501" : window.location.origin),
+          window.location.origin,
       );
 
       const loginForm = document.getElementById("loginForm");

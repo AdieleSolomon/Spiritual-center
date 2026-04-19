@@ -28,8 +28,8 @@
 
 ## Frontend note
 - `frontend/app-config.js` is the live runtime config for the static frontend.
-- Update `frontend/app-config.js` with your real Railway backend domain after Railway generates it.
-- The current placeholder is `https://your-railway-backend.up.railway.app/api`.
+- It now defaults non-local traffic to `https://center-of-knowledge-production.up.railway.app/api`.
+- Keep that value updated if the Railway backend domain changes.
 
 ## File uploads
 - This project still uses the existing optional Supabase storage integration for persistent uploads.

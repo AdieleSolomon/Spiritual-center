@@ -174,8 +174,11 @@
             ><i class="fa-solid fa-book-open"></i
             ><span>Daily Bible<br />Reading</span></a
           >
-          <a href="devotion.html" class="nav-page-link nav-page-link-compact desktop-nav-item"
-            ><i class="fa-solid fa-fire-flame-curved"></i><span>Devotion</span></a
+          <a
+            href="devotion.html"
+            class="nav-page-link nav-page-link-compact desktop-nav-item"
+            ><i class="fa-solid fa-fire-flame-curved"></i
+            ><span>Devotion</span></a
           >
           <a
             href="daily-promise.html"
@@ -1057,8 +1060,7 @@
         };
         const configuredApiBase = window.APP_CONFIG?.API_BASE?.trim?.() || "";
         const API_BASE = normalizeApiBase(
-          configuredApiBase ||
-            (isLocalHost ? "http://localhost:5501" : window.location.origin),
+          configuredApiBase || window.location.origin,
         );
         const feedPosts = document.getElementById("feedPosts");
         const feedNotice = document.getElementById("feedNotice");

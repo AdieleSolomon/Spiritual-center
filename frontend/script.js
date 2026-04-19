@@ -63,8 +63,7 @@ const App = (() => {
 
   const configuredApiBase = getConfiguredApiBase();
   const API_BASE = normalizeApiBase(
-    configuredApiBase ||
-      (isLocalHost ? "http://localhost:5501" : window.location.origin),
+    configuredApiBase || window.location.origin,
   );
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
   const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
