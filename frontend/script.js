@@ -72,6 +72,7 @@ const App = (() => {
   );
   const BACKEND_ORIGIN = API_BASE.replace(/\/api\/?$/, "");
   const POST_AUTH_REDIRECT_KEY = "postAuthRedirect";
+  const ADMIN_DASHBOARD_PATH = "admin-dashboard.html";
   const DAILY_PROMISE_COLLAPSE_MIN_CHARS = 260;
   const RESOURCE_PAGE_SIZE = 6;
   const RESOURCE_MAX_LIMIT = 100;
@@ -263,6 +264,23 @@ const App = (() => {
     navOverlay: document.getElementById("navOverlay"),
     navDropdownTrigger: document.getElementById("exploreDropdownBtn"),
     navDropdownMenu: document.getElementById("exploreDropdownMenu"),
+    adminEntryButtons: Array.from(
+      document.querySelectorAll(
+        '.header-actions a[href="admin-login.html"], .mobile-nav-actions a[href="admin-login.html"]',
+      ),
+    ).map((button) => {
+      if (!button.dataset.adminDefaultHtml) {
+        button.dataset.adminDefaultHtml = button.innerHTML;
+      }
+      if (!button.dataset.adminDefaultLabel) {
+        button.dataset.adminDefaultLabel = button.textContent.trim();
+      }
+      if (!button.dataset.adminDefaultHref) {
+        button.dataset.adminDefaultHref =
+          button.getAttribute("href") || "admin-login.html";
+      }
+      return button;
+    }),
     openAuthBtns: Array.from(document.querySelectorAll("[data-open-auth]")).map(
       (button) => {
         if (!button.dataset.authDefaultHtml) {
@@ -462,6 +480,99 @@ const App = (() => {
     }
 
     return displayName;
+  }
+
+  function isPrivilegedUser(user = null) {
+    const normalizedEmail = String(user?.email || "")
+      .trim()
+      .toLowerCase();
+
+    return Boolean(
+      user &&
+        (user.role === "admin" ||
+          user.role === "super_admin" ||
+          normalizedEmail === "admin@spiritualcenter.com"),
+    );
+  }
+
+  function getStoredAdminDisplayName() {
+    try {
+      return String(
+        localStorage.getItem("adminUsername") ||
+          localStorage.getItem("adminEmail") ||
+          "",
+      ).trim();
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function formatAdminFirstName(value = "") {
+    const normalized = String(value || "").trim();
+    if (!normalized) return "";
+
+    const source = normalized.includes("@")
+      ? normalized.split("@")[0]
+      : normalized;
+    const firstSegment =
+      source
+        .split(/[\s._-]+/)
+        .map((part) => part.trim())
+        .find(Boolean) || source;
+
+    if (!firstSegment) return "";
+
+    return firstSegment.charAt(0).toUpperCase() + firstSegment.slice(1);
+  }
+
+  function getAdminSessionSummary() {
+    const currentAdminUser = isPrivilegedUser(state.user) ? state.user : null;
+    const hasAdminSession = Boolean(
+      localStorage.getItem("adminToken") || currentAdminUser,
+    );
+    const displayName =
+      currentAdminUser?.username ||
+      currentAdminUser?.email ||
+      getStoredAdminDisplayName();
+    const firstName = formatAdminFirstName(displayName) || "Admin";
+
+    return {
+      hasAdminSession,
+      displayName,
+      firstName,
+    };
+  }
+
+  function renderAdminEntryButton(
+    button,
+    { hasAdminSession, displayName, firstName },
+  ) {
+    if (!button) return;
+
+    if (hasAdminSession) {
+      button.textContent = firstName;
+      button.setAttribute("href", ADMIN_DASHBOARD_PATH);
+      button.dataset.adminState = "signed-in";
+      button.setAttribute(
+        "aria-label",
+        displayName
+          ? `Open admin dashboard for ${displayName}`
+          : "Open admin dashboard",
+      );
+      button.title = displayName || firstName;
+      return;
+    }
+
+    button.innerHTML =
+      button.dataset.adminDefaultHtml || button.dataset.adminDefaultLabel || "";
+    button.setAttribute(
+      "href",
+      button.dataset.adminDefaultHref || "admin-login.html",
+    );
+    button.dataset.adminState = "guest";
+    const defaultLabel = button.dataset.adminDefaultLabel || "Admin";
+    button.setAttribute("aria-label", defaultLabel);
+    button.removeAttribute("title");
   }
 
   function renderOpenAuthButton(button, label, isSignedIn) {
@@ -1772,6 +1883,9 @@ const App = (() => {
     localStorage.removeItem("authToken");
     localStorage.removeItem("adminToken");
     localStorage.removeItem("adminEmail");
+    localStorage.removeItem("adminUsername");
+    localStorage.removeItem("adminRole");
+    localStorage.removeItem("isSuperAdmin");
     localStorage.removeItem(MEMBER_DISPLAY_NAME_KEY);
   }
 
@@ -1786,6 +1900,7 @@ const App = (() => {
       ? persistMemberDisplayName(state.user)
       : getStoredMemberDisplayName();
     const authButtonLabel = resolvedDisplayName || "Member";
+    const adminSessionSummary = getAdminSessionSummary();
 
     document.documentElement.classList.toggle(
       "has-auth-session",
@@ -1806,6 +1921,10 @@ const App = (() => {
 
     ui.openAuthBtns.forEach((button) => {
       renderOpenAuthButton(button, authButtonLabel, hasStoredSession);
+    });
+
+    ui.adminEntryButtons.forEach((button) => {
+      renderAdminEntryButton(button, adminSessionSummary);
     });
 
     if (loggedIn) {

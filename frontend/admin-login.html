@@ -20,6 +20,10 @@
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
       rel="stylesheet" />
     <style>
+      html {
+        -webkit-text-size-adjust: 100%;
+      }
+
       * {
         margin: 0;
         padding: 0;
@@ -41,11 +45,14 @@
           ),
           linear-gradient(135deg, #050d18 0%, #081727 45%, #0a2032 100%);
         min-height: 100vh;
+        min-height: 100dvh;
         display: flex;
         justify-content: center;
         align-items: center;
         padding: 20px;
         color: #e2e8f0;
+        overflow-x: hidden;
+        overflow-y: auto;
       }
 
       .login-container {
@@ -117,6 +124,7 @@
         text-transform: uppercase;
       }
 
+      input[type="text"],
       input[type="email"],
       input[type="password"] {
         width: 100%;
@@ -130,6 +138,14 @@
         color: #f1f5f9;
       }
 
+      input[type="text"]::placeholder,
+      input[type="email"]::placeholder,
+      input[type="password"]::placeholder {
+        color: #8ea5bb;
+        opacity: 1;
+      }
+
+      input[type="text"]:focus,
       input[type="email"]:focus,
       input[type="password"]:focus {
         outline: none;
@@ -146,6 +162,24 @@
         color: #c3d3e3;
       }
 
+      .remember-forgot label {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 0;
+        color: #c3d3e3;
+        font-size: 13px;
+        font-weight: 500;
+        letter-spacing: normal;
+        text-transform: none;
+      }
+
+      .remember-forgot input[type="checkbox"] {
+        width: 16px;
+        height: 16px;
+        accent-color: #2eb69f;
+      }
+
       .remember-forgot a {
         color: #2eb69f;
         text-decoration: none;
@@ -158,6 +192,7 @@
 
       .login-btn {
         width: 100%;
+        min-height: 48px;
         padding: 12px;
         background: linear-gradient(135deg, #2eb69f 0%, #1f8f7e 100%);
         color: white;
@@ -236,14 +271,15 @@
       }
 
       .back-link a {
-        color: #667eea;
+        color: #8fe3d5;
         text-decoration: none;
         font-size: 14px;
+        font-weight: 600;
         transition: color 0.3s;
       }
 
       .back-link a:hover {
-        color: #d7a95e;
+        color: #f0c782;
       }
 
       .loading-spinner {
@@ -269,13 +305,77 @@
         justify-content: center;
       }
 
+      @media (max-height: 760px) {
+        body {
+          align-items: flex-start;
+        }
+      }
+
       @media (max-width: 480px) {
+        body {
+          align-items: flex-start;
+          padding: 14px 12px 24px;
+        }
+
         .login-container {
-          padding: 30px 20px;
+          padding: 24px 16px;
+          border-radius: 18px;
+        }
+
+        .login-header {
+          margin-bottom: 24px;
+        }
+
+        .login-icon {
+          width: 56px;
+          height: 56px;
+          margin-bottom: 14px;
+          border-radius: 16px;
+          font-size: 24px;
         }
 
         .login-header h1 {
           font-size: 24px;
+          margin-bottom: 8px;
+        }
+
+        .login-header p,
+        .back-link a,
+        #toggleText {
+          font-size: 13px;
+        }
+
+        .remember-forgot {
+          flex-wrap: wrap;
+          gap: 10px;
+          align-items: flex-start;
+          margin-bottom: 20px;
+        }
+
+        .back-link {
+          margin-top: 18px;
+        }
+
+        #toggleText {
+          line-height: 1.6;
+        }
+      }
+
+      @media (max-width: 360px) {
+        body {
+          padding-inline: 10px;
+        }
+
+        .login-container {
+          padding: 22px 14px;
+        }
+
+        .login-header h1 {
+          font-size: 22px;
+        }
+
+        .login-btn {
+          font-size: 15px;
         }
       }
     </style>
