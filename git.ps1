@@ -6,7 +6,10 @@ git pull origin main
 # normal commit
 git add .
 git commit -m "update $(Get-Date -Format 'yyyy-MM-dd')"
+<<<<<<< HEAD
 git pull origin main
+=======
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 git push origin main
 
 
@@ -15,7 +18,11 @@ git inits
 git pull origin main
 git add .
 git commit -m "Initial commit - Complete website with gallery"
+<<<<<<< HEAD
 git remote add origin
+=======
+git remote add origin https://github.com/AdieleSolomon/ELASTIC-TOURS-LTD.git
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 git push -u origin main
 
 

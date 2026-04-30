@@ -489,9 +489,15 @@ const App = (() => {
 
     return Boolean(
       user &&
+<<<<<<< HEAD
       (user.role === "admin" ||
         user.role === "super_admin" ||
         normalizedEmail === "admin@spiritualcenter.com"),
+=======
+        (user.role === "admin" ||
+          user.role === "super_admin" ||
+          normalizedEmail === "admin@spiritualcenter.com"),
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
     );
   }
 
@@ -781,6 +787,7 @@ const App = (() => {
   function setupMobileNav() {
     if (!ui.navToggle || !ui.mainNav) return;
 
+<<<<<<< HEAD
     // Inject scrolling fix for mobile navigation panel
     const injectScrollFix = () => {
       if (document.getElementById("mobile-nav-scroll-fix")) return;
@@ -875,6 +882,12 @@ const App = (() => {
       );
       ui.navOverlay?.classList.toggle("open", isOpen);
       ui.navOverlay?.setAttribute("aria-hidden", String(!isOpen));
+=======
+    const syncMenuState = (isOpen) => {
+      ui.mainNav.classList.toggle("open", isOpen);
+      ui.navToggle.setAttribute("aria-expanded", String(isOpen));
+      ui.navOverlay?.classList.toggle("open", isOpen);
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
       document.body.classList.toggle("nav-open", isOpen);
     };
 
@@ -886,8 +899,11 @@ const App = (() => {
 
     ui.navToggle.setAttribute("aria-expanded", "false");
     ui.navToggle.setAttribute("aria-controls", "mainNav");
+<<<<<<< HEAD
     ui.navToggle.setAttribute("type", "button");
     ui.navOverlay?.setAttribute("aria-hidden", "true");
+=======
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 
     ui.navToggle.addEventListener("click", () => {
       syncMenuState(!ui.mainNav.classList.contains("open"));
@@ -920,7 +936,11 @@ const App = (() => {
     });
 
     window.addEventListener("resize", () => {
+<<<<<<< HEAD
       if (window.innerWidth > 1120) {
+=======
+      if (window.innerWidth > 900) {
+>>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
         closeMenu();
       }
     });
