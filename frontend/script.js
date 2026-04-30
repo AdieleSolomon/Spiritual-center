@@ -788,11 +788,14 @@ const App = (() => {
       style.id = "mobile-nav-scroll-fix";
       style.textContent = `
         @media (max-width: 1120px) {
-          .main-nav.open {
+          nav.main-nav.open {
+            display: flex !important;
+            flex-direction: column !important;
             overflow-y: auto !important;
-            max-height: 100vh !important;
+            max-height: 100dvh !important;
+            height: auto !important;
             overscroll-behavior: contain;
-            -webkit-overflow-scrolling: touch;
+            -webkit-overflow-scrolling: touch !important;
           }
         }
       `;
