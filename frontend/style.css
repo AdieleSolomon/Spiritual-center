@@ -31,10 +31,7 @@ html {
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--header-height) + 10px);
   font-size: 16px;
-<<<<<<< HEAD
   overflow-x: hidden;
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 }
 
 html.has-auth-session #resourceLoginBtn {
@@ -354,12 +351,15 @@ h3 {
   display: none;
 }
 
+.nav-overlay {
+  display: none;
+}
+
 body.nav-open {
   overflow: hidden;
 }
 
 .landing-home .nav-overlay,
-.landing-home .mobile-nav-panel,
 .landing-home .hero-mobile-hint {
   display: none;
 }
@@ -437,6 +437,12 @@ body.nav-open {
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  touch-action: manipulation;
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .hero {
@@ -3412,7 +3418,7 @@ h3 {
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 1120px) {
   .topbar {
     display: none;
   }
@@ -3434,6 +3440,10 @@ h3 {
   .nav-toggle {
     display: inline-flex;
     z-index: 101;
+    min-width: 48px;
+    min-height: 48px;
+    pointer-events: auto;
+    user-select: none;
   }
 
   .main-nav {
@@ -3789,8 +3799,8 @@ h3 {
   }
 }
 
-@media (max-width: 900px) {
-  .landing-home .nav-overlay {
+@media (max-width: 1120px) {
+  .nav-overlay {
     display: block;
     position: fixed;
     inset: 0;
@@ -3805,13 +3815,13 @@ h3 {
     z-index: 29;
   }
 
-  .landing-home .nav-overlay.open {
+  .nav-overlay.open {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
   }
 
-  .landing-home .main-nav {
+  .main-nav {
     position: fixed;
     top: 0;
     right: 0;
@@ -3840,12 +3850,9 @@ h3 {
     box-shadow: 0 28px 48px rgba(1, 8, 14, 0.42);
     overflow-y: auto;
     overscroll-behavior: contain;
-<<<<<<< HEAD
     scroll-behavior: smooth;
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
     transform: translateX(106%);
     opacity: 0;
     visibility: hidden;
@@ -3857,23 +3864,23 @@ h3 {
     z-index: 30;
   }
 
-  .landing-home .main-nav.open {
+  .main-nav.open {
     transform: translateX(0);
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
   }
 
-  .landing-home .desktop-nav-item {
+  .desktop-nav-item {
     display: none;
   }
 
-  .landing-home .mobile-nav-panel {
+  .mobile-nav-panel {
     display: grid;
     gap: 18px;
   }
 
-  .landing-home .mobile-nav-actions {
+  .mobile-nav-actions {
     margin-top: auto;
     padding-top: 18px;
     border-top: 1px solid rgba(255, 255, 255, 0.14);
@@ -4536,7 +4543,6 @@ h3 {
   }
 }
 
-<<<<<<< HEAD
 /* Shared mobile navigation refresh for every public page. */
 .mobile-nav-panel {
   display: none;
@@ -4663,6 +4669,10 @@ h3 {
   .nav-toggle {
     display: inline-flex;
     z-index: 101;
+    pointer-events: auto;
+    min-width: 48px;
+    min-height: 48px;
+    user-select: none;
   }
 
   .header-actions {
@@ -4719,6 +4729,11 @@ h3 {
   .mobile-nav-panel {
     display: grid;
     gap: 18px;
+  }
+
+  .landing-home .mobile-nav-panel,
+  .main-nav.has-shared-mobile-panel .mobile-nav-panel {
+    display: grid;
   }
 
   .main-nav.has-shared-mobile-panel
@@ -4829,8 +4844,6 @@ h3 {
   }
 }
 
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 @media (prefers-reduced-motion: reduce) {
   .hero::before,
   .hero::after,

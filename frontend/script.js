@@ -489,15 +489,9 @@ const App = (() => {
 
     return Boolean(
       user &&
-<<<<<<< HEAD
       (user.role === "admin" ||
         user.role === "super_admin" ||
         normalizedEmail === "admin@spiritualcenter.com"),
-=======
-        (user.role === "admin" ||
-          user.role === "super_admin" ||
-          normalizedEmail === "admin@spiritualcenter.com"),
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
     );
   }
 
@@ -787,7 +781,6 @@ const App = (() => {
   function setupMobileNav() {
     if (!ui.navToggle || !ui.mainNav) return;
 
-<<<<<<< HEAD
     // Inject scrolling fix for mobile navigation panel
     const injectScrollFix = () => {
       if (document.getElementById("mobile-nav-scroll-fix")) return;
@@ -810,64 +803,87 @@ const App = (() => {
     };
     injectScrollFix();
 
+    const getHomeSectionHref = (hash) =>
+      document.body.classList.contains("landing-home")
+        ? hash
+        : `index.html${hash}`;
+
+    const buildSharedMobilePanelMarkup = () => `
+      <div class="mobile-nav-group">
+        <p class="mobile-nav-title">Ministry</p>
+        <a href="${getHomeSectionHref("#home")}" class="mobile-nav-link">
+          <i class="fa-solid fa-house"></i> Home
+        </a>
+        <a href="${getHomeSectionHref("#about")}" class="mobile-nav-link">
+          <i class="fa-solid fa-church"></i> About Ministry
+        </a>
+        <a href="${getHomeSectionHref("#services")}" class="mobile-nav-link">
+          <i class="fa-solid fa-compass"></i> What We Do
+        </a>
+        <a href="${getHomeSectionHref("#support")}" class="mobile-nav-link">
+          <i class="fa-solid fa-hand-holding-heart"></i> Support Ministry
+        </a>
+        <a href="${getHomeSectionHref("#contact")}" class="mobile-nav-link">
+          <i class="fa-solid fa-handshake"></i> Contact
+        </a>
+      </div>
+      <div class="mobile-nav-group">
+        <p class="mobile-nav-title">Resources</p>
+        <a href="all-materials.html" class="mobile-nav-link">
+          <i class="fa-solid fa-book-bible"></i> All Materials
+        </a>
+        <a href="bible-reading.html" class="mobile-nav-link">
+          <i class="fa-solid fa-book-open"></i> Bible Reading
+        </a>
+        <a href="devotion.html" class="mobile-nav-link">
+          <i class="fa-solid fa-fire-flame-curved"></i> Devotion
+        </a>
+        <a href="daily-promise.html" class="mobile-nav-link">
+          <i class="fa-solid fa-star"></i> Daily Promise
+        </a>
+        <a href="community.html" class="mobile-nav-link">
+          <i class="fa-solid fa-users"></i> Community
+        </a>
+      </div>
+      <div class="mobile-nav-group">
+        <p class="mobile-nav-title">Care &amp; Support</p>
+        <a href="prayer.html" class="mobile-nav-link" data-protected-section>
+          <i class="fa-solid fa-hands-praying"></i> Prayer
+        </a>
+        <a href="counseling.html" class="mobile-nav-link" data-protected-section>
+          <i class="fa-solid fa-user-doctor"></i> Counseling
+        </a>
+        <a href="index-youth.html" class="mobile-nav-link">
+          <i class="fa-solid fa-right-left"></i> Youth Version
+        </a>
+        <a
+          href="https://www.youtube.com/@Adiele.Solomon.C"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="mobile-nav-link mobile-nav-link--youtube">
+          <i class="fa-brands fa-youtube"></i> YouTube
+        </a>
+      </div>
+    `;
+
     const ensureSharedMobilePanel = () => {
       ui.mainNav.classList.add("has-shared-mobile-panel");
 
-      if (ui.mainNav.querySelector(".mobile-nav-panel")) {
-        return;
+      const panel =
+        ui.mainNav.querySelector(".mobile-nav-panel") ||
+        document.createElement("div");
+      panel.className = "mobile-nav-panel";
+      panel.innerHTML = buildSharedMobilePanelMarkup();
+
+      if (!panel.parentElement) {
+        ui.mainNav.insertBefore(
+          panel,
+          ui.mainNav.querySelector(".mobile-nav-actions"),
+        );
       }
 
-      const panel = document.createElement("div");
-      panel.className = "mobile-nav-panel";
-      panel.innerHTML = `
-        <div class="mobile-nav-group">
-          <p class="mobile-nav-title">Quick Access</p>
-          <a href="index.html#services" class="mobile-nav-link">
-            <i class="fa-solid fa-compass"></i> Discover Ministry
-          </a>
-          <a href="index.html#contact" class="mobile-nav-link">
-            <i class="fa-solid fa-handshake"></i> Request Counsel
-          </a>
-          <a href="index.html#support" class="mobile-nav-link">
-            <i class="fa-solid fa-hand-holding-heart"></i> Support Ministry
-          </a>
-          <a
-            href="https://www.youtube.com/@Adiele.Solomon.C"
-            target="_blank"
-            rel="noopener noreferrer"
-            class="mobile-nav-link mobile-nav-link--youtube">
-            <i class="fa-brands fa-youtube"></i> YouTube
-          </a>
-        </div>
-        <div class="mobile-nav-group">
-          <p class="mobile-nav-title">Daily Resources</p>
-          <a href="bible-reading.html" class="mobile-nav-link">
-            <i class="fa-solid fa-book-open"></i> Bible Reading
-          </a>
-          <a href="devotion.html" class="mobile-nav-link">
-            <i class="fa-solid fa-fire-flame-curved"></i> Devotion
-          </a>
-          <a href="daily-promise.html" class="mobile-nav-link">
-            <i class="fa-solid fa-star"></i> Daily Promise
-          </a>
-          <a href="community.html" class="mobile-nav-link">
-            <i class="fa-solid fa-users"></i> Community
-          </a>
-        </div>
-        <div class="mobile-nav-group">
-          <p class="mobile-nav-title">Care &amp; Support</p>
-          <a href="prayer.html" class="mobile-nav-link" data-protected-section>
-            <i class="fa-solid fa-hands-praying"></i> Prayer
-          </a>
-          <a href="counseling.html" class="mobile-nav-link" data-protected-section>
-            <i class="fa-solid fa-user-doctor"></i> Counseling
-          </a>
-        </div>
-      `;
-
-      ui.mainNav.insertBefore(
-        panel,
-        ui.mainNav.querySelector(".mobile-nav-actions"),
+      ui.protectedSectionLinks = Array.from(
+        document.querySelectorAll("[data-protected-section]"),
       );
     };
 
@@ -882,12 +898,6 @@ const App = (() => {
       );
       ui.navOverlay?.classList.toggle("open", isOpen);
       ui.navOverlay?.setAttribute("aria-hidden", String(!isOpen));
-=======
-    const syncMenuState = (isOpen) => {
-      ui.mainNav.classList.toggle("open", isOpen);
-      ui.navToggle.setAttribute("aria-expanded", String(isOpen));
-      ui.navOverlay?.classList.toggle("open", isOpen);
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
       document.body.classList.toggle("nav-open", isOpen);
     };
 
@@ -899,15 +909,22 @@ const App = (() => {
 
     ui.navToggle.setAttribute("aria-expanded", "false");
     ui.navToggle.setAttribute("aria-controls", "mainNav");
-<<<<<<< HEAD
     ui.navToggle.setAttribute("type", "button");
     ui.navOverlay?.setAttribute("aria-hidden", "true");
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 
-    ui.navToggle.addEventListener("click", () => {
+    ui.navToggle.addEventListener("click", (event) => {
+      event.stopImmediatePropagation();
+      event.preventDefault?.();
       syncMenuState(!ui.mainNav.classList.contains("open"));
     });
+
+    ui.navToggle.addEventListener(
+      "touchstart",
+      (event) => {
+        event.stopImmediatePropagation();
+      },
+      { passive: true },
+    );
 
     ui.mainNav.querySelectorAll("a").forEach((link) => {
       link.addEventListener("click", () => {
@@ -936,11 +953,7 @@ const App = (() => {
     });
 
     window.addEventListener("resize", () => {
-<<<<<<< HEAD
       if (window.innerWidth > 1120) {
-=======
-      if (window.innerWidth > 900) {
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
         closeMenu();
       }
     });
