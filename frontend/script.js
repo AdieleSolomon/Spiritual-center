@@ -857,7 +857,7 @@ const App = (() => {
           <i class="fa-solid fa-right-left"></i> Youth Version
         </a>
         <a
-          href="https://www.youtube.com/@Adiele.Solomon.C"
+          href="https://www.youtube.com/channel/UCFp25-UmkyXpp6oBRxJZ3oQ"
           target="_blank"
           rel="noopener noreferrer"
           class="mobile-nav-link mobile-nav-link--youtube">
@@ -1065,7 +1065,46 @@ const App = (() => {
   }
 
   function setupModal() {
-    if (!ui.authModal) return;
+    const getCurrentAuthRedirectTarget = () =>
+      `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    const handleAuthButtonClick = (button, openModal = null) => {
+      if (button.dataset.authState === "member") {
+        return;
+      }
+
+      const mode = button.dataset.openAuthMode || "login";
+
+      if (openModal) {
+        openModal(mode);
+        return;
+      }
+
+      redirectToAuthEntryPage(getCurrentAuthRedirectTarget());
+    };
+
+    const wireOpenAuthButtons = (openModal = null) => {
+      ui.openAuthBtns.forEach((button) => {
+        button.addEventListener("click", () => {
+          handleAuthButtonClick(button, openModal);
+        });
+      });
+      ui.resourceLoginBtn?.addEventListener("click", () => {
+        if (openModal) {
+          openModal("login");
+          return;
+        }
+        redirectToAuthEntryPage(getCurrentAuthRedirectTarget());
+      });
+      ui.logoutBtn?.addEventListener("click", () => {
+        logoutCurrentSession();
+      });
+    };
+
+    if (!ui.authModal) {
+      wireOpenAuthButtons();
+      return;
+    }
 
     const open = (mode = "login") => {
       switchAuthMode(mode);
@@ -1086,17 +1125,7 @@ const App = (() => {
 
     switchAuthMode("login");
 
-    ui.openAuthBtns.forEach((button) => {
-      button.addEventListener("click", () => {
-        if (button.dataset.authState === "member") {
-          return;
-        }
-        open(button.dataset.openAuthMode || "login");
-      });
-    });
-    ui.resourceLoginBtn?.addEventListener("click", () => {
-      open("login");
-    });
+    wireOpenAuthButtons(open);
     ui.authModeButtons.forEach((button) => {
       button.addEventListener("click", () => {
         switchAuthMode(button.dataset.authMode || "login");
@@ -1114,10 +1143,6 @@ const App = (() => {
       if (event.key === "Escape") {
         close();
       }
-    });
-
-    ui.logoutBtn?.addEventListener("click", () => {
-      logoutCurrentSession();
     });
 
     ui.authModal.closeModal = close;
