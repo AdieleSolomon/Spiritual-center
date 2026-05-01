@@ -31,10 +31,7 @@ html {
   scroll-behavior: smooth;
   scroll-padding-top: calc(var(--header-height) + 10px);
   font-size: 16px;
-<<<<<<< HEAD
   overflow-x: hidden;
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 }
 
 html.has-auth-session #resourceLoginBtn {
@@ -3840,12 +3837,9 @@ h3 {
     box-shadow: 0 28px 48px rgba(1, 8, 14, 0.42);
     overflow-y: auto;
     overscroll-behavior: contain;
-<<<<<<< HEAD
     scroll-behavior: smooth;
     scrollbar-gutter: stable;
     -webkit-overflow-scrolling: touch;
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
     transform: translateX(106%);
     opacity: 0;
     visibility: hidden;
@@ -4536,7 +4530,6 @@ h3 {
   }
 }
 
-<<<<<<< HEAD
 /* Shared mobile navigation refresh for every public page. */
 .mobile-nav-panel {
   display: none;
@@ -4829,8 +4822,6 @@ h3 {
   }
 }
 
-=======
->>>>>>> 2e079c07e1ba014a2dca109a3c86becc94f626f7
 @media (prefers-reduced-motion: reduce) {
   .hero::before,
   .hero::after,
