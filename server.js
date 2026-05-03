@@ -2358,19 +2358,86 @@ const initializeDatabase = async () => {
 let databaseReady = false;
 let databaseInitPromise = null;
 
-const ensureDatabaseReady = async () => {
-  if (databaseReady) {
+const isMissingTableError = (error) => {
+  if (!error) return false;
+  if (IS_POSTGRES) {
+    return String(error.code || "") === "42P01";
+  }
+  return String(error.code || "") === "ER_NO_SUCH_TABLE";
+};
+
+const isMissingColumnError = (error, columnName = "") => {
+  const needle = String(columnName || "").toLowerCase();
+  if (!error || !needle) return false;
+  const message = String(error.message || "").toLowerCase();
+  if (IS_POSTGRES) {
+    return String(error.code || "") === "42703" && message.includes(needle);
+  }
+  return (
+    String(error.code || "") === "ER_BAD_FIELD_ERROR" &&
+    message.includes(needle)
+  );
+};
+
+const checkTablesExist = async (tables = []) => {
+  if (!Array.isArray(tables) || tables.length === 0) {
     return true;
   }
 
+  for (const table of tables) {
+    const name = String(table || "").trim();
+    if (!name) continue;
+    try {
+      await pool.execute(`SELECT 1 FROM ${name} LIMIT 1`);
+    } catch (error) {
+      if (isMissingTableError(error)) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  return true;
+};
+
+const ensureDatabaseReady = async (requiredTables = []) => {
+  if (databaseReady) {
+    try {
+      const ok = await checkTablesExist(requiredTables);
+      if (ok) {
+        return true;
+      }
+      databaseReady = false;
+    } catch {
+      databaseReady = false;
+    }
+  }
+
   if (databaseInitPromise) {
-    return databaseInitPromise;
+    const initOk = await databaseInitPromise;
+    if (!initOk) return false;
+    try {
+      const ok = await checkTablesExist(requiredTables);
+      if (!ok) {
+        databaseReady = false;
+      }
+      return ok;
+    } catch {
+      databaseReady = false;
+      return false;
+    }
   }
 
   databaseInitPromise = (async () => {
     try {
       const ok = await initializeDatabase();
-      databaseReady = Boolean(ok);
+      if (!ok) {
+        databaseReady = false;
+        return false;
+      }
+
+      const tablesOk = await checkTablesExist(requiredTables);
+      databaseReady = Boolean(tablesOk);
       return databaseReady;
     } catch {
       databaseReady = false;
@@ -4380,10 +4447,21 @@ app.put(
         return res.status(400).json({ error: "Invalid status" });
       }
 
-      await pool.execute(
-        "UPDATE prayer_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [status, req.params.id],
-      );
+      try {
+        await pool.execute(
+          "UPDATE prayer_requests SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          [status, req.params.id],
+        );
+      } catch (error) {
+        if (isMissingColumnError(error, "updated_at")) {
+          await pool.execute(
+            "UPDATE prayer_requests SET status = ? WHERE id = ?",
+            [status, req.params.id],
+          );
+        } else {
+          throw error;
+        }
+      }
 
       res.json({ success: true, message: "Status updated" });
     } catch (error) {
@@ -4525,7 +4603,14 @@ app.get(
   authenticateOptionalToken,
   async (req, res) => {
     try {
-      if (!(await ensureDatabaseReady())) {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
         return res.status(503).json({
           success: false,
           error: "Database is not ready yet. Please try again shortly.",
@@ -4538,18 +4623,38 @@ app.get(
         200,
       );
 
-      const [members] = await pool.execute(
-        `
-        SELECT
-          id,
-          name,
-          created_at
-        FROM prayer_team_applications
-        WHERE status = 'approved'
-        ORDER BY updated_at DESC, created_at DESC
-        LIMIT ${parsedLimit}
-      `,
-      );
+      let members = [];
+      try {
+        [members] = await pool.execute(
+          `
+            SELECT
+              id,
+              name,
+              created_at
+            FROM prayer_team_applications
+            WHERE status = 'approved'
+            ORDER BY updated_at DESC, created_at DESC
+            LIMIT ${parsedLimit}
+          `,
+        );
+      } catch (error) {
+        if (isMissingColumnError(error, "updated_at")) {
+          [members] = await pool.execute(
+            `
+              SELECT
+                id,
+                name,
+                created_at
+              FROM prayer_team_applications
+              WHERE status = 'approved'
+              ORDER BY created_at DESC
+              LIMIT ${parsedLimit}
+            `,
+          );
+        } else {
+          throw error;
+        }
+      }
 
       res.json({
         success: true,
@@ -4571,7 +4676,14 @@ app.post(
   authenticateOptionalToken,
   async (req, res) => {
     try {
-      if (!(await ensureDatabaseReady())) {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
         return res.status(503).json({
           success: false,
           error: "Database is not ready yet. Please try again shortly.",
@@ -4660,7 +4772,14 @@ app.post(
 
 app.get("/api/prayer-team/me", authenticateToken, async (req, res) => {
   try {
-    if (!(await ensureDatabaseReady())) {
+    if (
+      !(await ensureDatabaseReady([
+        "users",
+        "prayer_team_applications",
+        "prayer_team_threads",
+        "prayer_team_messages",
+      ]))
+    ) {
       return res.status(503).json({
         success: false,
         error: "Database is not ready yet. Please try again shortly.",
@@ -4700,7 +4819,14 @@ app.get("/api/prayer-team/me", authenticateToken, async (req, res) => {
 
 app.get("/api/prayer-team/threads", authenticateToken, async (req, res) => {
   try {
-    if (!(await ensureDatabaseReady())) {
+    if (
+      !(await ensureDatabaseReady([
+        "users",
+        "prayer_team_applications",
+        "prayer_team_threads",
+        "prayer_team_messages",
+      ]))
+    ) {
       return res.status(503).json({
         success: false,
         error: "Database is not ready yet. Please try again shortly.",
@@ -4747,7 +4873,14 @@ app.get(
   authenticateToken,
   async (req, res) => {
     try {
-      if (!(await ensureDatabaseReady())) {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
         return res.status(503).json({
           success: false,
           error: "Database is not ready yet. Please try again shortly.",
@@ -4798,7 +4931,14 @@ app.post(
   prayerTeamVoiceUpload.single("voice_note"),
   async (req, res) => {
     try {
-      if (!(await ensureDatabaseReady())) {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
         return res.status(503).json({
           success: false,
           error: "Database is not ready yet. Please try again shortly.",
@@ -4867,7 +5007,14 @@ app.delete(
   authenticateToken,
   async (req, res) => {
     try {
-      if (!(await ensureDatabaseReady())) {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
         return res.status(503).json({
           success: false,
           error: "Database is not ready yet. Please try again shortly.",
@@ -4934,6 +5081,21 @@ app.post(
   authenticateToken,
   async (req, res) => {
     try {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_requests",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!requireAdminAccess(req, res)) {
         return;
       }
@@ -4998,6 +5160,20 @@ app.get(
   authenticateToken,
   async (req, res) => {
     try {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!requireAdminAccess(req, res)) {
         return;
       }
@@ -5080,6 +5256,20 @@ app.put(
   authenticateToken,
   async (req, res) => {
     try {
+      if (
+        !(await ensureDatabaseReady([
+          "users",
+          "prayer_team_applications",
+          "prayer_team_threads",
+          "prayer_team_messages",
+        ]))
+      ) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!requireAdminAccess(req, res)) {
         return;
       }
@@ -5092,10 +5282,21 @@ app.put(
           .json({ success: false, error: "Invalid status" });
       }
 
-      await pool.execute(
-        "UPDATE prayer_team_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        [status, req.params.id],
-      );
+      try {
+        await pool.execute(
+          "UPDATE prayer_team_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+          [status, req.params.id],
+        );
+      } catch (error) {
+        if (isMissingColumnError(error, "updated_at")) {
+          await pool.execute(
+            "UPDATE prayer_team_applications SET status = ? WHERE id = ?",
+            [status, req.params.id],
+          );
+        } else {
+          throw error;
+        }
+      }
 
       res.json({ success: true, message: "Status updated" });
     } catch (error) {
