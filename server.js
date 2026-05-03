@@ -2355,6 +2355,34 @@ const initializeDatabase = async () => {
   }
 };
 
+let databaseReady = false;
+let databaseInitPromise = null;
+
+const ensureDatabaseReady = async () => {
+  if (databaseReady) {
+    return true;
+  }
+
+  if (databaseInitPromise) {
+    return databaseInitPromise;
+  }
+
+  databaseInitPromise = (async () => {
+    try {
+      const ok = await initializeDatabase();
+      databaseReady = Boolean(ok);
+      return databaseReady;
+    } catch {
+      databaseReady = false;
+      return false;
+    } finally {
+      databaseInitPromise = null;
+    }
+  })();
+
+  return databaseInitPromise;
+};
+
 // ==================== ADMIN DASHBOARD ENDPOINTS ====================
 
 // Get comprehensive dashboard stats
@@ -4497,6 +4525,13 @@ app.get(
   authenticateOptionalToken,
   async (req, res) => {
     try {
+      if (!(await ensureDatabaseReady())) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       const { limit = 50 } = req.query;
       const parsedLimit = Math.min(
         Math.max(Number.parseInt(limit, 10) || 50, 1),
@@ -4536,6 +4571,13 @@ app.post(
   authenticateOptionalToken,
   async (req, res) => {
     try {
+      if (!(await ensureDatabaseReady())) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       const { name, email, whatsapp_number, message } = req.body || {};
       const normalizedName = String(name || "").trim();
       const normalizedEmail = String(email || "")
@@ -4618,6 +4660,13 @@ app.post(
 
 app.get("/api/prayer-team/me", authenticateToken, async (req, res) => {
   try {
+    if (!(await ensureDatabaseReady())) {
+      return res.status(503).json({
+        success: false,
+        error: "Database is not ready yet. Please try again shortly.",
+      });
+    }
+
     const application = await getPrayerTeamApplicationForUser(req.user);
     const status = application
       ? String(application.status || "pending")
@@ -4651,6 +4700,13 @@ app.get("/api/prayer-team/me", authenticateToken, async (req, res) => {
 
 app.get("/api/prayer-team/threads", authenticateToken, async (req, res) => {
   try {
+    if (!(await ensureDatabaseReady())) {
+      return res.status(503).json({
+        success: false,
+        error: "Database is not ready yet. Please try again shortly.",
+      });
+    }
+
     if (!(await requirePrayerTeamApproval(req, res))) {
       return;
     }
@@ -4691,6 +4747,13 @@ app.get(
   authenticateToken,
   async (req, res) => {
     try {
+      if (!(await ensureDatabaseReady())) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!(await requirePrayerTeamApproval(req, res))) {
         return;
       }
@@ -4735,6 +4798,13 @@ app.post(
   prayerTeamVoiceUpload.single("voice_note"),
   async (req, res) => {
     try {
+      if (!(await ensureDatabaseReady())) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!(await requirePrayerTeamApproval(req, res))) {
         return;
       }
@@ -4797,6 +4867,13 @@ app.delete(
   authenticateToken,
   async (req, res) => {
     try {
+      if (!(await ensureDatabaseReady())) {
+        return res.status(503).json({
+          success: false,
+          error: "Database is not ready yet. Please try again shortly.",
+        });
+      }
+
       if (!(await requirePrayerTeamApproval(req, res))) {
         return;
       }
@@ -5901,6 +5978,7 @@ process.on("unhandledRejection", (reason, promise) => {
 
     console.log("🔄 Initializing database...");
     const dbInitialized = await initializeDatabase();
+    databaseReady = Boolean(dbInitialized);
 
     if (dbInitialized) {
       console.log("✅ Database initialization complete");
