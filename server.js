@@ -1450,7 +1450,8 @@ const postgresSchemaStatements = [
       is_anonymous BOOLEAN DEFAULT FALSE,
       status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'read', 'responded')),
       user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `,
   "CREATE INDEX IF NOT EXISTS idx_prayer_status ON prayer_requests (status)",
@@ -1753,6 +1754,9 @@ const ensureMemberRequestColumns = async (connection) => {
       "ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)",
     );
     await connection.execute(
+      "ALTER TABLE prayer_requests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+    );
+    await connection.execute(
       "ALTER TABLE counseling_requests ADD COLUMN IF NOT EXISTS whatsapp_number VARCHAR(50)",
     );
     return;
@@ -1760,6 +1764,7 @@ const ensureMemberRequestColumns = async (connection) => {
 
   const alterStatements = [
     "ALTER TABLE prayer_requests ADD COLUMN whatsapp_number VARCHAR(50) NULL",
+    "ALTER TABLE prayer_requests ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
     "ALTER TABLE counseling_requests ADD COLUMN whatsapp_number VARCHAR(50) NULL",
   ];
 
@@ -1995,7 +2000,6 @@ const initializePostgresDatabase = async () => {
 
   try {
     connection = await pool.getConnection();
-    await connection.execute("BEGIN");
 
     for (const statement of postgresSchemaStatements) {
       const trimmedStatement = String(statement || "").trim();
@@ -2025,35 +2029,77 @@ const initializePostgresDatabase = async () => {
           continue;
         }
 
-        throw error;
+        console.error("Database initialization statement failed (postgres)");
+        console.error("SQL:", trimmedStatement);
+        console.error("Message:", error?.message);
+        console.error("Code:", error?.code);
+        console.error("Detail:", error?.detail);
+        console.error("Where:", error?.where);
+        continue;
       }
     }
 
-    await ensureUserAuthColumns(connection);
-    await ensureUserRoleSupport(connection);
-    await ensureMaterialColumns(connection);
-    await ensureDonationColumns(connection);
-    await ensureMemberRequestColumns(connection);
-
-    await ensureSuperAdminUser(connection);
-
-    for (const [key, value, type] of DEFAULT_SETTINGS) {
-      await connection.execute(INSERT_DEFAULT_SETTING_SQL, [key, value, type]);
+    try {
+      await ensureUserAuthColumns(connection);
+    } catch (error) {
+      console.warn("ensureUserAuthColumns failed (postgres):", error?.message);
+    }
+    try {
+      await ensureUserRoleSupport(connection);
+    } catch (error) {
+      console.warn("ensureUserRoleSupport failed (postgres):", error?.message);
+    }
+    try {
+      await ensureMaterialColumns(connection);
+    } catch (error) {
+      console.warn("ensureMaterialColumns failed (postgres):", error?.message);
+    }
+    try {
+      await ensureDonationColumns(connection);
+    } catch (error) {
+      console.warn("ensureDonationColumns failed (postgres):", error?.message);
+    }
+    try {
+      await ensureMemberRequestColumns(connection);
+    } catch (error) {
+      console.warn(
+        "ensureMemberRequestColumns failed (postgres):",
+        error?.message,
+      );
     }
 
-    await connection.execute("COMMIT");
-    console.log("Database initialized successfully (postgres)");
-    return true;
+    try {
+      await ensureSuperAdminUser(connection);
+    } catch (error) {
+      console.warn("ensureSuperAdminUser failed (postgres):", error?.message);
+    }
+
+    try {
+      for (const [key, value, type] of DEFAULT_SETTINGS) {
+        await connection.execute(INSERT_DEFAULT_SETTING_SQL, [
+          key,
+          value,
+          type,
+        ]);
+      }
+    } catch (error) {
+      console.warn("Default settings init failed (postgres):", error?.message);
+    }
+
+    try {
+      await connection.execute("SELECT 1 FROM users LIMIT 1");
+      console.log("Database initialized successfully (postgres)");
+      return true;
+    } catch (error) {
+      console.warn(
+        "Database initialization incomplete (postgres): users table not reachable",
+      );
+      return false;
+    }
   } catch (error) {
-    if (connection) {
-      try {
-        await connection.execute("ROLLBACK");
-      } catch (rollbackError) {
-        console.error("Rollback failed:", rollbackError.message);
-      }
-    }
-
-    console.error("Database initialization failed:", error.message);
+    console.error("Database initialization failed:", error?.message);
+    console.error("Code:", error?.code);
+    console.error("Detail:", error?.detail);
     return false;
   } finally {
     if (connection && typeof connection.release === "function") {
@@ -2131,6 +2177,7 @@ const initializeDatabase = async () => {
         status ENUM('pending', 'read', 'responded') DEFAULT 'pending',
         user_id INT,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
         INDEX idx_status (status),
         INDEX idx_created (created_at)
