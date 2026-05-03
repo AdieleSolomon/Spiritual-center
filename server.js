@@ -276,16 +276,30 @@ const getPrayerTeamApplicationForUser = async (user = null) => {
   const email = normalizeEmail(user?.email);
   const userId = user?.userId ?? null;
 
-  const [rows] = await pool.execute(
-    `
-      SELECT id, status, created_at, updated_at
-      FROM prayer_team_applications
-      WHERE (? IS NOT NULL AND user_id = ?) OR (LOWER(email) = ?)
-      ORDER BY created_at DESC
-      LIMIT 1
-    `,
-    [userId, userId, email],
-  );
+  let rows = [];
+  if (userId !== null && userId !== undefined && userId !== "") {
+    [rows] = await pool.execute(
+      `
+        SELECT id, status, created_at, updated_at
+        FROM prayer_team_applications
+        WHERE user_id = ? OR (LOWER(email) = ?)
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [userId, email],
+    );
+  } else {
+    [rows] = await pool.execute(
+      `
+        SELECT id, status, created_at, updated_at
+        FROM prayer_team_applications
+        WHERE LOWER(email) = ?
+        ORDER BY created_at DESC
+        LIMIT 1
+      `,
+      [email],
+    );
+  }
 
   return rows?.[0] || null;
 };
