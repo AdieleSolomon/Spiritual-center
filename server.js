@@ -13,6 +13,8 @@ import { dirname } from "path";
 import dotenv from "dotenv";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+import { Readable } from "stream";
+import mammoth from "mammoth";
 
 // Initialize dotenv
 dotenv.config();
@@ -260,6 +262,44 @@ const requireSuperAdminAccess = (
 ) => {
   if (!isSuperAdminUser(req.user)) {
     res.status(403).json({ error: message });
+    return false;
+  }
+
+  return true;
+};
+
+const getPrayerTeamApplicationForUser = async (user = null) => {
+  if (!user?.email && !user?.userId) {
+    return null;
+  }
+
+  const email = normalizeEmail(user?.email);
+  const userId = user?.userId ?? null;
+
+  const [rows] = await pool.execute(
+    `
+      SELECT id, status, created_at, updated_at
+      FROM prayer_team_applications
+      WHERE (? IS NOT NULL AND user_id = ?) OR (LOWER(email) = ?)
+      ORDER BY created_at DESC
+      LIMIT 1
+    `,
+    [userId, userId, email],
+  );
+
+  return rows?.[0] || null;
+};
+
+const requirePrayerTeamApproval = async (req, res) => {
+  if (isAdminUser(req.user)) {
+    return true;
+  }
+
+  const application = await getPrayerTeamApplicationForUser(req.user);
+  if (!application || String(application.status).toLowerCase() !== "approved") {
+    res
+      .status(403)
+      .json({ success: false, error: "Prayer team access required" });
     return false;
   }
 
@@ -1096,6 +1136,53 @@ const removeStoredMaterialFile = async (fileUrl = "") => {
   safeUnlink(localFilePath);
 };
 
+const resolveInlineContentType = (fileName = "", fallback = "") => {
+  const ext = extname(String(fileName || "").trim()).toLowerCase();
+  if (ext === ".pdf") return "application/pdf";
+  if (ext === ".doc") return "application/msword";
+  if (ext === ".docx")
+    return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  if (ext === ".ppt") return "application/vnd.ms-powerpoint";
+  if (ext === ".pptx")
+    return "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+  if (ext === ".xls") return "application/vnd.ms-excel";
+  if (ext === ".xlsx")
+    return "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  if (ext === ".txt") return "text/plain; charset=utf-8";
+  return String(fallback || "").trim() || "application/octet-stream";
+};
+
+const sanitizeInlineFileName = (value = "") =>
+  String(value || "")
+    .replace(/[\\\/]/g, "_")
+    .replace(/[\r\n"]/g, "")
+    .trim() || "file";
+
+const ensureInlineFileNameExtension = (fileName = "", fileUrl = "") => {
+  const safeName = sanitizeInlineFileName(fileName);
+  if (extname(safeName)) {
+    return safeName;
+  }
+
+  const urlText = String(fileUrl || "").trim();
+  if (!urlText) {
+    return safeName;
+  }
+
+  const extFromUrl = (() => {
+    if (/^https?:\/\//i.test(urlText)) {
+      try {
+        return extname(new URL(urlText).pathname || "").toLowerCase();
+      } catch {
+        return "";
+      }
+    }
+    return extname(urlText).toLowerCase();
+  })();
+
+  return extFromUrl ? `${safeName}${extFromUrl}` : safeName;
+};
+
 // Auth middleware
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
@@ -1187,6 +1274,33 @@ const upload = multer({
     } else {
       cb(new Error(`Invalid file type: ${file.mimetype}`), false);
     }
+  },
+});
+
+const prayerTeamVoiceStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = join("uploads", "prayer-team");
+    if (!existsSync(uploadDir)) {
+      mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const safeName = file.originalname.replace(/[^a-zA-Z0-9.]/g, "_");
+    cb(null, `prayer-voice-${uniqueSuffix}-${safeName}`);
+  },
+});
+
+const prayerTeamVoiceUpload = multer({
+  storage: prayerTeamVoiceStorage,
+  limits: { fileSize: Math.min(MAX_UPLOAD_SIZE_BYTES, 30 * 1024 * 1024) },
+  fileFilter: (req, file, cb) => {
+    if (String(file.mimetype || "").startsWith("audio/")) {
+      cb(null, true);
+      return;
+    }
+    cb(new Error(`Invalid file type: ${file.mimetype}`), false);
   },
 });
 
@@ -1359,6 +1473,49 @@ const postgresSchemaStatements = [
   "CREATE INDEX IF NOT EXISTS idx_counseling_status ON counseling_requests (status)",
   "CREATE INDEX IF NOT EXISTS idx_counseling_user_id ON counseling_requests (user_id)",
   `
+    CREATE TABLE IF NOT EXISTS prayer_team_applications (
+      id SERIAL PRIMARY KEY,
+      name VARCHAR(255) NOT NULL,
+      email VARCHAR(255) NOT NULL,
+      whatsapp_number VARCHAR(50) NOT NULL,
+      message TEXT,
+      status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "DROP TRIGGER IF EXISTS update_prayer_team_applications_updated_at ON prayer_team_applications",
+  "CREATE TRIGGER update_prayer_team_applications_updated_at BEFORE UPDATE ON prayer_team_applications FOR EACH ROW EXECUTE FUNCTION update_updated_at_column()",
+  "CREATE INDEX IF NOT EXISTS idx_prayer_team_status ON prayer_team_applications (status)",
+  "CREATE INDEX IF NOT EXISTS idx_prayer_team_created ON prayer_team_applications (created_at)",
+  `
+    CREATE TABLE IF NOT EXISTS prayer_team_threads (
+      id SERIAL PRIMARY KEY,
+      prayer_request_id INTEGER REFERENCES prayer_requests(id) ON DELETE SET NULL,
+      title VARCHAR(255) NOT NULL,
+      request_text TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE UNIQUE INDEX IF NOT EXISTS uniq_prayer_team_prayer_request ON prayer_team_threads (prayer_request_id)",
+  "CREATE INDEX IF NOT EXISTS idx_prayer_team_threads_created ON prayer_team_threads (created_at)",
+  `
+    CREATE TABLE IF NOT EXISTS prayer_team_messages (
+      id SERIAL PRIMARY KEY,
+      thread_id INTEGER NOT NULL REFERENCES prayer_team_threads(id) ON DELETE CASCADE,
+      user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      message_text TEXT,
+      voice_note_url VARCHAR(1000),
+      voice_note_mime VARCHAR(120),
+      voice_note_size INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `,
+  "CREATE INDEX IF NOT EXISTS idx_prayer_team_messages_thread ON prayer_team_messages (thread_id)",
+  "CREATE INDEX IF NOT EXISTS idx_prayer_team_messages_created ON prayer_team_messages (created_at)",
+  `
     CREATE TABLE IF NOT EXISTS daily_promises (
       id SERIAL PRIMARY KEY,
       promise_text TEXT NOT NULL,
@@ -1517,7 +1674,9 @@ const ensureUserRoleSupport = async (connection) => {
       `);
     }
 
-    await connection.execute("ALTER TABLE users ALTER COLUMN role SET NOT NULL");
+    await connection.execute(
+      "ALTER TABLE users ALTER COLUMN role SET NOT NULL",
+    );
     return;
   }
 
@@ -1993,6 +2152,55 @@ const initializeDatabase = async () => {
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
         INDEX idx_status (status),
         INDEX idx_user_id (user_id)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS prayer_team_applications (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        email VARCHAR(255) NOT NULL,
+        whatsapp_number VARCHAR(50) NOT NULL,
+        message TEXT,
+        status ENUM('pending', 'approved', 'rejected') DEFAULT 'pending',
+        user_id INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+        INDEX idx_status (status),
+        INDEX idx_created (created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS prayer_team_threads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        prayer_request_id INT,
+        title VARCHAR(255) NOT NULL,
+        request_text TEXT NOT NULL,
+        created_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uniq_prayer_request (prayer_request_id),
+        INDEX idx_created (created_at),
+        FOREIGN KEY (prayer_request_id) REFERENCES prayer_requests(id) ON DELETE SET NULL,
+        FOREIGN KEY (created_by) REFERENCES users(id) ON DELETE SET NULL
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await connection.execute(`
+      CREATE TABLE IF NOT EXISTS prayer_team_messages (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        thread_id INT NOT NULL,
+        user_id INT,
+        message_text TEXT,
+        voice_note_url VARCHAR(1000),
+        voice_note_mime VARCHAR(120),
+        voice_note_size INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_thread (thread_id),
+        INDEX idx_created (created_at),
+        FOREIGN KEY (thread_id) REFERENCES prayer_team_threads(id) ON DELETE CASCADE,
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
     `);
 
@@ -2537,6 +2745,218 @@ app.get("/api/materials", authenticateOptionalToken, async (req, res) => {
     });
   }
 });
+
+app.get(
+  "/api/materials/:id/open",
+  authenticateOptionalToken,
+  async (req, res) => {
+    try {
+      const materialId = req.params.id;
+      const isAdminRequest = isAdminUser(req.user);
+
+      const [rows] = await pool.execute(
+        "SELECT id, file_url, file_name, is_public FROM materials WHERE id = ?",
+        [materialId],
+      );
+
+      if (!rows?.length) {
+        return res.status(404).json({
+          success: false,
+          error: "Material not found",
+        });
+      }
+
+      const material = rows[0];
+      const isPublicValue =
+        material?.is_public === true ||
+        material?.is_public === 1 ||
+        material?.is_public === "1" ||
+        material?.is_public === "true";
+
+      if (!isPublicValue && !isAdminRequest) {
+        return res.status(403).json({
+          success: false,
+          error: "Material is private",
+        });
+      }
+
+      const fileUrl = String(material.file_url || "").trim();
+      if (!fileUrl) {
+        return res.status(404).json({
+          success: false,
+          error: "Material file not available",
+        });
+      }
+
+      const requestedName =
+        String(req.query.name || "").trim() || String(material.file_name || "");
+      const safeFileName = ensureInlineFileNameExtension(
+        requestedName,
+        fileUrl,
+      );
+
+      const localFilePath = resolveLocalUploadFilePath(fileUrl);
+      if (localFilePath) {
+        res.setHeader(
+          "Content-Disposition",
+          `inline; filename="${safeFileName}"`,
+        );
+        res.setHeader(
+          "Content-Type",
+          resolveInlineContentType(safeFileName, ""),
+        );
+        return res.sendFile(localFilePath);
+      }
+
+      if (!/^https?:\/\//i.test(fileUrl)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid file url",
+        });
+      }
+
+      const upstream = await fetch(fileUrl);
+      if (!upstream.ok) {
+        return res.status(upstream.status).json({
+          success: false,
+          error: "Failed to fetch material file",
+        });
+      }
+
+      const upstreamType = upstream.headers.get("content-type") || "";
+      res.setHeader(
+        "Content-Disposition",
+        `inline; filename="${safeFileName}"`,
+      );
+      res.setHeader(
+        "Content-Type",
+        resolveInlineContentType(safeFileName, upstreamType),
+      );
+
+      const body = upstream.body;
+      if (!body) {
+        return res.status(500).json({
+          success: false,
+          error: "Empty file stream",
+        });
+      }
+
+      Readable.fromWeb(body).pipe(res);
+    } catch (error) {
+      console.error("Open material file error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to open material file",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.get(
+  "/api/materials/:id/view",
+  authenticateOptionalToken,
+  async (req, res) => {
+    try {
+      const materialId = req.params.id;
+      const isAdminRequest = isAdminUser(req.user);
+
+      const [rows] = await pool.execute(
+        "SELECT id, file_url, file_name, is_public FROM materials WHERE id = ?",
+        [materialId],
+      );
+
+      if (!rows?.length) {
+        return res.status(404).send("Material not found");
+      }
+
+      const material = rows[0];
+      const isPublicValue =
+        material?.is_public === true ||
+        material?.is_public === 1 ||
+        material?.is_public === "1" ||
+        material?.is_public === "true";
+
+      if (!isPublicValue && !isAdminRequest) {
+        return res.status(403).send("Material is private");
+      }
+
+      const fileUrl = String(material.file_url || "").trim();
+      if (!fileUrl) {
+        return res.status(404).send("Material file not available");
+      }
+
+      const requestedName =
+        String(req.query.name || "").trim() || String(material.file_name || "");
+      const safeFileName = ensureInlineFileNameExtension(
+        requestedName,
+        fileUrl,
+      );
+      const ext = extname(safeFileName).toLowerCase();
+      const openUrl = `/api/materials/${encodeURIComponent(materialId)}/open${
+        safeFileName ? `?name=${encodeURIComponent(safeFileName)}` : ""
+      }`;
+
+      if (ext === ".pdf") {
+        res.setHeader("Content-Type", "text/html; charset=utf-8");
+        return res.send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${safeFileName}</title>
+    <style>
+      html, body { height: 100%; margin: 0; background: #0f172a; }
+      iframe { width: 100%; height: 100%; border: 0; background: #0f172a; }
+    </style>
+  </head>
+  <body>
+    <iframe src="${openUrl}" title="${safeFileName}"></iframe>
+  </body>
+</html>`);
+      }
+
+      if (ext !== ".docx") {
+        return res.redirect(openUrl);
+      }
+
+      const localFilePath = resolveLocalUploadFilePath(fileUrl);
+      const buffer = localFilePath
+        ? readFileSync(localFilePath)
+        : Buffer.from(await (await fetch(fileUrl)).arrayBuffer());
+
+      const result = await mammoth.convertToHtml({ buffer });
+      const html = String(result?.value || "").trim();
+
+      res.setHeader("Content-Type", "text/html; charset=utf-8");
+      return res.send(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>${safeFileName}</title>
+    <style>
+      :root { color-scheme: dark; }
+      body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background: #0f172a; color: #e2e8f0; }
+      .wrap { max-width: 980px; margin: 0 auto; padding: 24px 16px; }
+      .doc { background: rgba(30, 41, 59, 0.7); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 18px; }
+      .doc :where(p, li) { line-height: 1.6; }
+      .doc :where(h1,h2,h3) { margin-top: 1.25em; }
+      a { color: #93c5fd; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="doc">${html || "<p>Unable to render this document.</p>"}</div>
+    </div>
+  </body>
+</html>`);
+    } catch (error) {
+      console.error("View material file error:", error);
+      res.status(500).send("Failed to render material");
+    }
+  },
+);
 
 // Get single material
 app.get("/api/materials/:id", authenticateOptionalToken, async (req, res) => {
@@ -4023,6 +4443,544 @@ app.get("/api/prayer-requests", authenticateToken, async (req, res) => {
   }
 });
 
+// ==================== PRAYER TEAM ENDPOINTS ====================
+
+app.get(
+  "/api/prayer-team/members",
+  authenticateOptionalToken,
+  async (req, res) => {
+    try {
+      const { limit = 50 } = req.query;
+      const parsedLimit = Math.min(
+        Math.max(Number.parseInt(limit, 10) || 50, 1),
+        200,
+      );
+
+      const [members] = await pool.execute(
+        `
+        SELECT
+          id,
+          name,
+          created_at
+        FROM prayer_team_applications
+        WHERE status = 'approved'
+        ORDER BY updated_at DESC, created_at DESC
+        LIMIT ${parsedLimit}
+      `,
+      );
+
+      res.json({
+        success: true,
+        members,
+      });
+    } catch (error) {
+      console.error("Get prayer team members error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch prayer team members",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.post(
+  "/api/prayer-team/applications",
+  authenticateOptionalToken,
+  async (req, res) => {
+    try {
+      const { name, email, whatsapp_number, message } = req.body || {};
+      const normalizedName = String(name || "").trim();
+      const normalizedEmail = String(email || "")
+        .trim()
+        .toLowerCase();
+      const normalizedWhatsappNumber = String(whatsapp_number || "").trim();
+      const normalizedMessage = String(message || "").trim();
+      const userId = req.user?.userId ?? null;
+
+      if (!normalizedName || !normalizedEmail || !normalizedWhatsappNumber) {
+        return res.status(400).json({
+          success: false,
+          error: "Name, email, and WhatsApp number are required",
+        });
+      }
+
+      const [existing] = await pool.execute(
+        `
+          SELECT id, status
+          FROM prayer_team_applications
+          WHERE LOWER(email) = ?
+          ORDER BY created_at DESC
+          LIMIT 1
+        `,
+        [normalizedEmail],
+      );
+
+      if (existing?.length) {
+        const currentStatus = String(existing[0].status || "").toLowerCase();
+        if (currentStatus === "pending") {
+          return res.status(409).json({
+            success: false,
+            error: "Your application is already pending approval",
+          });
+        }
+        if (currentStatus === "approved") {
+          return res.status(409).json({
+            success: false,
+            error: "You are already an approved prayer team member",
+          });
+        }
+      }
+
+      const [result] = await pool.execute(
+        `
+          INSERT INTO prayer_team_applications (
+            name,
+            email,
+            whatsapp_number,
+            message,
+            status,
+            user_id
+          )
+          VALUES (?, ?, ?, ?, 'pending', ?)
+        `,
+        [
+          normalizedName,
+          normalizedEmail,
+          normalizedWhatsappNumber,
+          normalizedMessage || null,
+          userId,
+        ],
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Prayer team application submitted successfully",
+        application_id: result.insertId,
+      });
+    } catch (error) {
+      console.error("Submit prayer team application error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to submit prayer team application",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.get("/api/prayer-team/me", authenticateToken, async (req, res) => {
+  try {
+    const application = await getPrayerTeamApplicationForUser(req.user);
+    const status = application
+      ? String(application.status || "pending")
+      : "none";
+    const approved = application
+      ? String(application.status || "").toLowerCase() === "approved"
+      : false;
+
+    res.json({
+      success: true,
+      status,
+      approved,
+      application: application
+        ? {
+            id: application.id,
+            status,
+            created_at: application.created_at,
+            updated_at: application.updated_at,
+          }
+        : null,
+    });
+  } catch (error) {
+    console.error("Get prayer team status error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch prayer team status",
+      details: error.message,
+    });
+  }
+});
+
+app.get("/api/prayer-team/threads", authenticateToken, async (req, res) => {
+  try {
+    if (!(await requirePrayerTeamApproval(req, res))) {
+      return;
+    }
+
+    const { limit = 50 } = req.query;
+    const parsedLimit = Math.min(
+      Math.max(Number.parseInt(limit, 10) || 50, 1),
+      200,
+    );
+
+    const [threads] = await pool.execute(
+      `
+        SELECT
+          id,
+          prayer_request_id,
+          title,
+          request_text,
+          created_at
+        FROM prayer_team_threads
+        ORDER BY created_at DESC
+        LIMIT ${parsedLimit}
+      `,
+    );
+
+    res.json({ success: true, threads });
+  } catch (error) {
+    console.error("Get prayer team threads error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to fetch prayer team threads",
+      details: error.message,
+    });
+  }
+});
+
+app.get(
+  "/api/prayer-team/threads/:id/messages",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!(await requirePrayerTeamApproval(req, res))) {
+        return;
+      }
+
+      const threadId = req.params.id;
+      const [messages] = await pool.execute(
+        `
+          SELECT
+            m.id,
+            m.thread_id,
+            m.user_id,
+            m.message_text,
+            m.voice_note_url,
+            m.voice_note_mime,
+            m.voice_note_size,
+            m.created_at,
+            u.username as user_name,
+            u.email as user_email
+          FROM prayer_team_messages m
+          LEFT JOIN users u ON m.user_id = u.id
+          WHERE m.thread_id = ?
+          ORDER BY m.created_at ASC
+        `,
+        [threadId],
+      );
+
+      res.json({ success: true, messages });
+    } catch (error) {
+      console.error("Get prayer team messages error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch prayer team messages",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.post(
+  "/api/prayer-team/threads/:id/messages",
+  authenticateToken,
+  prayerTeamVoiceUpload.single("voice_note"),
+  async (req, res) => {
+    try {
+      if (!(await requirePrayerTeamApproval(req, res))) {
+        return;
+      }
+
+      const threadId = req.params.id;
+      const messageText = String(req.body?.message_text || "").trim();
+      const voiceUrl = req.file
+        ? `/uploads/prayer-team/${req.file.filename}`
+        : null;
+      const voiceMime = req.file ? String(req.file.mimetype || "") : null;
+      const voiceSize = req.file ? Number(req.file.size || 0) : null;
+
+      if (!messageText && !voiceUrl) {
+        return res.status(400).json({
+          success: false,
+          error: "Message text or voice note is required",
+        });
+      }
+
+      const [result] = await pool.execute(
+        `
+          INSERT INTO prayer_team_messages (
+            thread_id,
+            user_id,
+            message_text,
+            voice_note_url,
+            voice_note_mime,
+            voice_note_size
+          )
+          VALUES (?, ?, ?, ?, ?, ?)
+        `,
+        [
+          threadId,
+          req.user.userId,
+          messageText || null,
+          voiceUrl,
+          voiceMime,
+          voiceSize,
+        ],
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Message sent",
+        message_id: result.insertId,
+      });
+    } catch (error) {
+      console.error("Post prayer team message error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to send message",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.delete(
+  "/api/prayer-team/messages/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!(await requirePrayerTeamApproval(req, res))) {
+        return;
+      }
+
+      const messageId = req.params.id;
+      const [rows] = await pool.execute(
+        `
+          SELECT id, user_id, voice_note_url
+          FROM prayer_team_messages
+          WHERE id = ?
+          LIMIT 1
+        `,
+        [messageId],
+      );
+
+      if (!rows?.length) {
+        return res.status(404).json({
+          success: false,
+          error: "Message not found",
+        });
+      }
+
+      const message = rows[0];
+      const isAdminRequest = isAdminUser(req.user);
+      const isOwner =
+        message.user_id && Number(message.user_id) === Number(req.user.userId);
+
+      if (!isAdminRequest && !isOwner) {
+        return res.status(403).json({
+          success: false,
+          error: "Not allowed to delete this message",
+        });
+      }
+
+      const voiceUrl = String(message.voice_note_url || "").trim();
+      if (voiceUrl) {
+        await removeStoredMaterialFile(voiceUrl);
+      }
+
+      await pool.execute("DELETE FROM prayer_team_messages WHERE id = ?", [
+        messageId,
+      ]);
+
+      res.json({ success: true, message: "Message deleted" });
+    } catch (error) {
+      console.error("Delete prayer team message error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete message",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.post(
+  "/api/admin/prayer-team/threads/from-prayer-request/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      const prayerRequestId = req.params.id;
+      const [prayerRows] = await pool.execute(
+        "SELECT id, name, request, created_at FROM prayer_requests WHERE id = ?",
+        [prayerRequestId],
+      );
+
+      if (!prayerRows?.length) {
+        return res.status(404).json({
+          success: false,
+          error: "Prayer request not found",
+        });
+      }
+
+      const prayer = prayerRows[0];
+      const [existing] = await pool.execute(
+        "SELECT id FROM prayer_team_threads WHERE prayer_request_id = ? LIMIT 1",
+        [prayerRequestId],
+      );
+
+      if (existing?.length) {
+        return res.json({
+          success: true,
+          thread_id: existing[0].id,
+          message: "Already shared",
+        });
+      }
+
+      const titleBase = String(prayer.name || "Member").trim() || "Member";
+      const title = `Prayer Request: ${titleBase}`;
+      const requestText = String(prayer.request || "").trim();
+
+      const [insertResult] = await pool.execute(
+        `
+          INSERT INTO prayer_team_threads (prayer_request_id, title, request_text, created_by)
+          VALUES (?, ?, ?, ?)
+        `,
+        [prayerRequestId, title, requestText, req.user.userId],
+      );
+
+      res.status(201).json({
+        success: true,
+        thread_id: insertResult.insertId,
+        message: "Shared to prayer team",
+      });
+    } catch (error) {
+      console.error("Share prayer request to prayer team error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to share prayer request",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.get(
+  "/api/admin/prayer-team/applications",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      const { status = "", search = "", page = 1, limit = 20 } = req.query;
+      const parsedPage = Math.max(Number.parseInt(page, 10) || 1, 1);
+      const parsedLimit = Math.min(
+        Math.max(Number.parseInt(limit, 10) || 20, 1),
+        200,
+      );
+      const offset = (parsedPage - 1) * parsedLimit;
+
+      let query = `
+        SELECT
+          pta.*,
+          u.username as user_name,
+          u.email as user_email,
+          DATE_FORMAT(pta.created_at, '%Y-%m-%d %H:%i:%s') as created_at
+        FROM prayer_team_applications pta
+        LEFT JOIN users u ON pta.user_id = u.id
+        WHERE 1=1
+      `;
+      const params = [];
+
+      if (status) {
+        query += " AND pta.status = ?";
+        params.push(status);
+      }
+
+      if (search) {
+        query += `
+          AND (
+            pta.name LIKE ?
+            OR pta.email LIKE ?
+            OR COALESCE(pta.whatsapp_number, '') LIKE ?
+            OR COALESCE(pta.message, '') LIKE ?
+          )
+        `;
+        params.push(`%${search}%`, `%${search}%`, `%${search}%`, `%${search}%`);
+      }
+
+      query += ` ORDER BY pta.created_at DESC LIMIT ${parsedLimit} OFFSET ${offset}`;
+
+      const [applications] = await pool.execute(query, params);
+
+      const [counts] = await pool.execute(`
+        SELECT status, COUNT(*) as count
+        FROM prayer_team_applications
+        GROUP BY status
+      `);
+
+      const statusCounts = {};
+      counts.forEach((item) => {
+        statusCounts[item.status] = item.count;
+      });
+
+      res.json({
+        success: true,
+        applications,
+        counts: statusCounts,
+        pagination: {
+          page: parsedPage,
+          limit: parsedLimit,
+          total: applications.length,
+        },
+      });
+    } catch (error) {
+      console.error("Get prayer team applications error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to fetch prayer team applications",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.put(
+  "/api/admin/prayer-team/applications/:id/status",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      const { status } = req.body || {};
+      const allowedStatuses = ["pending", "approved", "rejected"];
+      if (!allowedStatuses.includes(status)) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Invalid status" });
+      }
+
+      await pool.execute(
+        "UPDATE prayer_team_applications SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        [status, req.params.id],
+      );
+
+      res.json({ success: true, message: "Status updated" });
+    } catch (error) {
+      console.error("Update prayer team application status error:", error);
+      res.status(500).json({ success: false, error: error.message });
+    }
+  },
+);
+
 // ==================== COUNSELING REQUESTS ENDPOINTS ====================
 
 app.post("/api/counseling-requests", authenticateToken, async (req, res) => {
@@ -4912,34 +5870,48 @@ process.on("unhandledRejection", (reason, promise) => {
       console.log("✅ Created uploads directory");
     }
 
-    const server = app.listen(PORT, () => {
-      console.log(`✅ Server running on http://localhost:${PORT}`);
-      console.log(
-        `🚀 Admin Dashboard: http://localhost:${PORT}/admin-dashboard.html`,
-      );
-      console.log(`📊 API Base URL: http://localhost:${PORT}/api`);
-      console.log(`📁 Uploads: http://localhost:${PORT}/uploads`);
-      console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
-      console.log(
-        `Storage backend: ${
-          isSupabaseStorageConfigured()
-            ? `supabase (${SUPABASE_STORAGE_BUCKET})`
-            : "local /uploads"
-        }`,
-      );
-      console.log(`DB provider: ${DB_PROVIDER}`);
-      console.log("✨ Server is ready!");
-    });
+    const basePort = Number(PORT) || 5501;
+    const maxAttempts = 10;
+    let activePort = basePort;
+    let server = null;
 
-    server.on("error", (error) => {
-      console.error("🔴 Server error:", error);
-      if (error.code === "EADDRINUSE") {
-        console.log(
-          `Port ${PORT} is already in use. Trying ${Number(PORT) + 1}...`,
-        );
-        app.listen(Number(PORT) + 1);
+    for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+      try {
+        server = await new Promise((resolve, reject) => {
+          const instance = app.listen(activePort, () => resolve(instance));
+          instance.on("error", reject);
+        });
+        break;
+      } catch (error) {
+        if (error?.code !== "EADDRINUSE") {
+          throw error;
+        }
+        activePort += 1;
       }
-    });
+    }
+
+    if (!server) {
+      throw new Error(
+        `Unable to start server: all ports from ${basePort} to ${activePort} are in use`,
+      );
+    }
+
+    console.log(`✅ Server running on http://localhost:${activePort}`);
+    console.log(
+      `🚀 Admin Dashboard: http://localhost:${activePort}/admin-dashboard.html`,
+    );
+    console.log(`📊 API Base URL: http://localhost:${activePort}/api`);
+    console.log(`📁 Uploads: http://localhost:${activePort}/uploads`);
+    console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
+    console.log(
+      `Storage backend: ${
+        isSupabaseStorageConfigured()
+          ? `supabase (${SUPABASE_STORAGE_BUCKET})`
+          : "local /uploads"
+      }`,
+    );
+    console.log(`DB provider: ${DB_PROVIDER}`);
+    console.log("✨ Server is ready!");
   } catch (error) {
     console.error("🔴 Failed to start server:", error);
     process.exit(1);

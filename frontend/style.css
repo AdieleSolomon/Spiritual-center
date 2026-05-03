@@ -976,6 +976,309 @@ body.nav-open {
   font-size: 0.82rem;
 }
 
+.prayer-team-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.prayer-team-member {
+  padding: 14px;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(7, 23, 37, 0.6);
+}
+
+.prayer-team-member strong {
+  display: block;
+  font-size: 1rem;
+  color: #eef6ff;
+  margin-bottom: 6px;
+}
+
+.prayer-team-member p {
+  margin: 0;
+  color: #9db3c9;
+  font-size: 0.85rem;
+}
+
+.prayer-team-layout {
+  margin-top: 16px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 18px;
+  align-items: start;
+}
+
+.prayer-team-main {
+  display: grid;
+  gap: 18px;
+}
+
+.prayer-team-sidebar {
+  position: sticky;
+  top: 92px;
+}
+
+.prayer-team-chat {
+  margin-top: 12px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: #0b141a;
+  color: #ffffff;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  min-height: 560px;
+}
+
+.prayer-team-chat-header {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: #202c33;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.prayer-team-chat-title {
+  display: grid;
+  gap: 2px;
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-subtitle {
+  font-size: 0.78rem;
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-thread-select {
+  min-width: 220px;
+  max-width: 52%;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111b21;
+  color: #ffffff !important;
+  outline: none;
+}
+
+.prayer-team-chat-request {
+  margin: 10px 10px 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(24, 34, 41, 0.9);
+  color: #ffffff !important;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+
+.prayer-team-chat-request:empty {
+  display: none;
+}
+
+.prayer-team-chat-messages {
+  flex: 1;
+  overflow: auto;
+  padding: 14px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  background-color: #0b141a;
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px),
+    radial-gradient(rgba(0, 0, 0, 0.2) 1px, transparent 1px);
+  background-position:
+    0 0,
+    14px 14px;
+  background-size:
+    28px 28px,
+    28px 28px;
+}
+
+.prayer-team-chat-row {
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  justify-content: flex-start;
+}
+
+.prayer-team-chat-row.is-own {
+  justify-content: flex-end;
+}
+
+.prayer-team-chat-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #2a3942;
+  color: #e9edef;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  flex: 0 0 32px;
+}
+
+.prayer-team-chat-row.is-own .prayer-team-chat-avatar {
+  display: none;
+}
+
+.prayer-team-chat-bubble {
+  max-width: min(560px, 78%);
+  padding: 8px 10px 6px;
+  border-radius: 12px;
+  background: #202c33;
+  color: #ffffff !important;
+  position: relative;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.25);
+}
+
+.prayer-team-chat-row.is-own .prayer-team-chat-bubble {
+  background: #005c4b;
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-author {
+  margin: 0 0 4px;
+  font-size: 0.78rem;
+  font-weight: 650;
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-row.is-own .prayer-team-chat-author {
+  display: none;
+}
+
+.prayer-team-chat-text {
+  margin: 0;
+  color: #ffffff !important;
+  white-space: pre-line;
+  line-height: 1.5;
+}
+
+.prayer-team-chat-bubble p,
+.prayer-team-chat-bubble span,
+.prayer-team-chat-bubble div {
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-bubble audio {
+  width: 100%;
+  margin-top: 8px;
+}
+
+.prayer-team-chat-messages .field-hint {
+  color: #ffffff;
+}
+
+.prayer-team-chat-meta {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-end;
+  font-size: 0.72rem;
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-bar {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+  padding: 10px;
+  background: #202c33;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.prayer-team-chat-voice {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: #111b21;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  cursor: pointer;
+  flex: 0 0 40px;
+}
+
+.prayer-team-chat-voice.is-recording {
+  background: #d91b4a;
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #ffffff !important;
+}
+
+.prayer-team-chat-voice input {
+  display: none;
+}
+
+.prayer-team-chat-bar textarea {
+  flex: 1;
+  border-radius: 18px;
+  padding: 10px 12px;
+  min-height: 40px;
+  max-height: 140px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: #111b21;
+  color: #ffffff !important;
+  resize: none;
+  outline: none;
+  overflow: auto;
+}
+
+.prayer-team-chat-bar textarea::placeholder {
+  color: #ffffff !important;
+  opacity: 0.8;
+}
+
+.prayer-team-chat-send {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 0;
+  background: #00a884;
+  color: #071a1f;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: 0 0 40px;
+}
+
+.prayer-team-chat-send:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.prayer-team-chat-delete {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.22);
+  color: #ffffff !important;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: 0 0 32px;
+}
+
+.prayer-team-chat-delete:hover {
+  background: rgba(0, 0, 0, 0.34);
+}
+
+@media (max-width: 960px) {
+  .prayer-team-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .prayer-team-sidebar {
+    position: static;
+  }
+}
+
 .counseling-aside {
   display: grid;
   gap: 12px;
@@ -3912,7 +4215,9 @@ h3 {
     display: none;
   }
 
-  .landing-home .hero-pro-actions .btn:not(.hero-mobile-nav-only):not(.btn-youtube) {
+  .landing-home
+    .hero-pro-actions
+    .btn:not(.hero-mobile-nav-only):not(.btn-youtube) {
     width: 100%;
     justify-content: center;
   }
@@ -4203,7 +4508,9 @@ h3 {
     display: none;
   }
 
-  .landing-home .hero-pro-actions .btn:not(.hero-mobile-nav-only):not(.btn-youtube) {
+  .landing-home
+    .hero-pro-actions
+    .btn:not(.hero-mobile-nav-only):not(.btn-youtube) {
     width: 100%;
     justify-content: center;
   }

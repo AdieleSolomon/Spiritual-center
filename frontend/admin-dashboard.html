@@ -2554,6 +2554,14 @@
             </a>
           </li>
           <li>
+            <a href="#" class="nav-link" data-section="prayer-team">
+              <div class="nav-icon">
+                <i class="fas fa-people-group"></i>
+              </div>
+              <span class="nav-text">Prayer Team</span>
+            </a>
+          </li>
+          <li>
             <a href="#" class="nav-link" data-section="support">
               <div class="nav-icon">
                 <i class="fas fa-donate"></i>
@@ -3334,6 +3342,76 @@
           </div>
         </section>
 
+        <!-- Prayer Team Section -->
+        <section id="prayer-team" class="content-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <i class="fas fa-people-group"></i> Prayer Team
+            </h2>
+            <button class="btn btn-primary" onclick="loadPrayerTeamAdmin()">
+              <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+          </div>
+
+          <div class="request-intro-card">
+            <div>
+              <p class="request-intro-label">Prayer Desk</p>
+              <h3>Manage prayer team applications</h3>
+              <p>
+                Review applications, approve members, and keep the prayer team
+                list up to date.
+              </p>
+            </div>
+            <div class="request-intro-actions">
+              <i class="fas fa-user-check"></i>
+              <span>Approve with care</span>
+            </div>
+          </div>
+
+          <div class="request-panel">
+            <div class="request-panel-header">
+              <div>
+                <h3>Applications</h3>
+                <p>
+                  Approve applicants before they appear on the prayer team page.
+                </p>
+              </div>
+              <div class="table-search">
+                <i class="fas fa-search search-icon"></i>
+                <input
+                  type="text"
+                  id="searchPrayerTeamApplications"
+                  placeholder="Search applications..."
+                  class="form-control" />
+              </div>
+            </div>
+            <div class="materials-table-container request-table">
+              <div class="table-responsive">
+                <table class="materials-table">
+                  <thead>
+                    <tr>
+                      <th>Name</th>
+                      <th>Email</th>
+                      <th>WhatsApp</th>
+                      <th>Message</th>
+                      <th>Status</th>
+                      <th>Submitted</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody id="prayerTeamApplicationsBody">
+                    <tr>
+                      <td colspan="7" style="text-align: center; padding: 2rem">
+                        Loading prayer team applications...
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <!-- Support Section -->
         <section id="support" class="content-section">
           <div class="section-header">
@@ -3950,6 +4028,8 @@
       let filteredDevotionPostsAdmin = [];
       let dailyPromisesAdmin = [];
       let filteredDailyPromisesAdmin = [];
+      let prayerTeamApplications = [];
+      let filteredPrayerTeamApplications = [];
 
       // Get auth token (function to always get current value)
       function getAuthToken() {
@@ -4190,6 +4270,16 @@
           searchCounselingRequests.addEventListener(
             "input",
             debounce(filterCounselingRequests, 300),
+          );
+        }
+
+        const searchPrayerTeamApplications = document.getElementById(
+          "searchPrayerTeamApplications",
+        );
+        if (searchPrayerTeamApplications) {
+          searchPrayerTeamApplications.addEventListener(
+            "input",
+            debounce(filterPrayerTeamApplications, 300),
           );
         }
 
@@ -4490,6 +4580,9 @@
             case "requests":
               await loadRequests();
               break;
+            case "prayer-team":
+              await loadPrayerTeamAdmin();
+              break;
             case "support":
               await loadSupportData();
               break;
@@ -4519,6 +4612,7 @@
           analytics: "Analytics",
           users: "User Management",
           requests: "Member Requests",
+          "prayer-team": "Prayer Team",
           support: "Ministry Support",
           "devotion-posts": "Devotion Posts",
           settings: "Settings",
@@ -4967,8 +5061,8 @@
                         ${
                           material.file_url
                             ? `
-                            <button class="action-btn-small" onclick="downloadMaterial('${material.file_url}')" title="Download">
-                                <i class="fas fa-download"></i>
+                            <button class="action-btn-small" onclick="openMaterialFile('${escapeRequestJsString(material.id)}', '${escapeRequestJsString(material.file_name || "")}')" title="Open Document">
+                                <i class="fas fa-up-right-from-square"></i>
                             </button>
                         `
                             : ""
@@ -5045,7 +5139,26 @@
           return;
         }
 
-        window.open(resolvedUrl, "_blank", "noopener,noreferrer");
+        const anchor = document.createElement("a");
+        anchor.href = resolvedUrl;
+        anchor.target = "_blank";
+        anchor.rel = "noopener noreferrer";
+        anchor.click();
+      }
+
+      function openMaterialFile(materialId, fileName) {
+        const idValue = String(materialId ?? "").trim();
+        if (!idValue) {
+          showMessage("No file available to open", "error");
+          return;
+        }
+
+        const safeName = String(fileName || "").trim();
+        const viewUrl = `${API_BASE}/materials/${encodeURIComponent(idValue)}/view${
+          safeName ? `?name=${encodeURIComponent(safeName)}` : ""
+        }`;
+
+        window.open(viewUrl, "_blank", "noopener,noreferrer");
       }
 
       // Edit material
@@ -5458,8 +5571,31 @@
         }
       }
 
+      async function sharePrayerRequestToPrayerTeam(requestId) {
+        const targetId = String(requestId ?? "").trim();
+        if (!targetId) return;
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/admin/prayer-team/threads/from-prayer-request/${encodeURIComponent(
+              targetId,
+            )}`,
+            getFetchOptions("POST"),
+          );
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            throw new Error(data?.error || "Failed to share prayer request");
+          }
+
+          showMessage("Shared to prayer team.", "success");
+        } catch (error) {
+          showMessage("Failed to share: " + error.message, "error");
+        }
+      }
+
       window.handleWhatsAppFeedback = handleWhatsAppFeedback;
       window.updateRequestStatus = updateRequestStatus;
+      window.sharePrayerRequestToPrayerTeam = sharePrayerRequestToPrayerTeam;
 
       // Load submitted prayer and counseling requests
       async function loadRequests() {
@@ -5534,6 +5670,164 @@
         }
       }
 
+      async function loadPrayerTeamAdmin() {
+        try {
+          showLoading("prayer-team");
+
+          const response = await fetch(
+            `${API_BASE}/admin/prayer-team/applications?limit=200`,
+            getFetchOptions(),
+          );
+
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            throw new Error(
+              data?.error ||
+                `Failed to load prayer team applications (${response.status})`,
+            );
+          }
+
+          prayerTeamApplications = data.applications || [];
+          filteredPrayerTeamApplications = [...prayerTeamApplications];
+          renderPrayerTeamApplications();
+          hideLoading("prayer-team");
+        } catch (error) {
+          console.error("Error loading prayer team applications:", error);
+          showMessage(
+            "Failed to load prayer team applications: " + error.message,
+            "error",
+          );
+          hideLoading("prayer-team");
+        }
+      }
+
+      function renderPrayerTeamApplications() {
+        const body = document.getElementById("prayerTeamApplicationsBody");
+        if (!body) return;
+
+        if (!filteredPrayerTeamApplications.length) {
+          body.innerHTML = `
+            <tr>
+              <td colspan="7" style="text-align: center; color: var(--gray); padding: 2rem;">
+                No prayer team applications found.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        body.innerHTML = filteredPrayerTeamApplications
+          .map((application) => {
+            const status = String(
+              application.status || "pending",
+            ).toLowerCase();
+            const statusColorMap = {
+              pending: "var(--warning)",
+              approved: "var(--success)",
+              rejected: "var(--danger)",
+            };
+            const statusColor = statusColorMap[status] || "var(--gray)";
+            const fullMessage = String(application.message || "").trim();
+            const message = truncateRequestText(fullMessage, 160);
+
+            const idSafe = escapeRequestJsString(application.id);
+            const canApprove = status !== "approved";
+            const canReject = status !== "rejected";
+
+            return `
+              <tr>
+                <td>${escapeRequestHtml(application.name || "-")}</td>
+                <td>${escapeRequestHtml(application.email || "-")}</td>
+                <td>${escapeRequestHtml(application.whatsapp_number || "-")}</td>
+                <td title="${escapeRequestHtml(fullMessage)}">${escapeRequestHtml(message || "-")}</td>
+                <td><span style="color: ${statusColor}; text-transform: capitalize;">${escapeRequestHtml(status)}</span></td>
+                <td>${escapeRequestHtml(formatRequestDate(application.created_at))}</td>
+                <td>
+                  <div class="table-actions">
+                    ${
+                      canApprove
+                        ? `
+                    <button class="action-btn-small" onclick="updatePrayerTeamApplicationStatus('${idSafe}', 'approved')" title="Approve">
+                      <i class="fas fa-check"></i> Approve
+                    </button>
+                    `
+                        : ""
+                    }
+                    ${
+                      canReject
+                        ? `
+                    <button class="action-btn-small" onclick="updatePrayerTeamApplicationStatus('${idSafe}', 'rejected')" title="Reject">
+                      <i class="fas fa-xmark"></i> Reject
+                    </button>
+                    `
+                        : ""
+                    }
+                  </div>
+                </td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      async function updatePrayerTeamApplicationStatus(applicationId, status) {
+        const idValue = String(applicationId || "").trim();
+        if (!idValue) return;
+
+        const nextStatus = String(status || "").toLowerCase();
+        if (!["approved", "rejected", "pending"].includes(nextStatus)) {
+          showMessage("Invalid status", "error");
+          return;
+        }
+
+        const index = prayerTeamApplications.findIndex(
+          (item) => String(item.id) === idValue,
+        );
+        const filteredIndex = filteredPrayerTeamApplications.findIndex(
+          (item) => String(item.id) === idValue,
+        );
+        const previousStatus =
+          index >= 0 ? prayerTeamApplications[index].status : undefined;
+
+        if (index >= 0) {
+          prayerTeamApplications[index].status = nextStatus;
+        }
+        if (filteredIndex >= 0) {
+          filteredPrayerTeamApplications[filteredIndex].status = nextStatus;
+        }
+        renderPrayerTeamApplications();
+
+        try {
+          const response = await fetch(
+            `${API_BASE}/admin/prayer-team/applications/${encodeURIComponent(
+              idValue,
+            )}/status`,
+            getFetchOptions("PUT", { status: nextStatus }),
+          );
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.success) {
+            throw new Error(data?.error || "Failed to update status");
+          }
+
+          await loadPrayerTeamAdmin();
+          showMessage(`Status updated to ${nextStatus}`, "success");
+        } catch (error) {
+          if (index >= 0 && previousStatus !== undefined) {
+            prayerTeamApplications[index].status = previousStatus;
+          }
+          if (filteredIndex >= 0 && previousStatus !== undefined) {
+            filteredPrayerTeamApplications[filteredIndex].status =
+              previousStatus;
+          }
+          renderPrayerTeamApplications();
+          showMessage("Failed to update status: " + error.message, "error");
+        }
+      }
+
+      window.loadPrayerTeamAdmin = loadPrayerTeamAdmin;
+      window.updatePrayerTeamApplicationStatus =
+        updatePrayerTeamApplicationStatus;
+
       function renderPrayerRequests() {
         const body = document.getElementById("prayerRequestsBody");
         if (!body) return;
@@ -5587,6 +5881,9 @@
                   <div class="table-actions">
                     <button class="action-btn-small" onclick="handleWhatsAppFeedback('${requestIdSafe}', 'prayer', '${whatsappSafe}', '${nameSafe}')" title="Send WhatsApp Feedback">
                       <i class="fab fa-whatsapp"></i> Feedback
+                    </button>
+                    <button class="action-btn-small" onclick="sharePrayerRequestToPrayerTeam('${requestIdSafe}')" title="Share to Prayer Team">
+                      <i class="fas fa-people-group"></i>
                     </button>
                     ${
                       status === "pending"
@@ -5672,6 +5969,39 @@
             `;
           })
           .join("");
+      }
+
+      function filterPrayerTeamApplications() {
+        const searchInput = document.getElementById(
+          "searchPrayerTeamApplications",
+        );
+        if (!searchInput) return;
+
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        if (!searchTerm) {
+          filteredPrayerTeamApplications = [...prayerTeamApplications];
+          renderPrayerTeamApplications();
+          return;
+        }
+
+        filteredPrayerTeamApplications = prayerTeamApplications.filter(
+          (application) => {
+            const searchableText = [
+              application.name,
+              application.email,
+              application.whatsapp_number,
+              application.message,
+              application.status,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .toLowerCase();
+
+            return searchableText.includes(searchTerm);
+          },
+        );
+
+        renderPrayerTeamApplications();
       }
 
       function filterPrayerRequests() {

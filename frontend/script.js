@@ -375,6 +375,24 @@ const App = (() => {
       "prayerBookingAvailability",
     ),
     prayerBookingFocus: document.getElementById("prayerBookingFocus"),
+    prayerTeamContainer: document.getElementById("prayer-team-container"),
+    prayerTeamApplyCard: document.getElementById("prayerTeamApplyCard"),
+    prayerTeamForm: document.getElementById("prayerTeamForm"),
+    prayerTeamName: document.getElementById("prayerTeamName"),
+    prayerTeamEmail: document.getElementById("prayerTeamEmail"),
+    prayerTeamWhatsapp: document.getElementById("prayerTeamWhatsapp"),
+    prayerTeamMessage: document.getElementById("prayerTeamMessage"),
+    prayerTeamMembersList: document.getElementById("prayerTeamMembersList"),
+    prayerTeamChatCard: document.getElementById("prayerTeamChatCard"),
+    prayerTeamChatTitle: document.getElementById("prayerTeamChatTitle"),
+    prayerTeamThreadSelect: document.getElementById("prayerTeamThreadSelect"),
+    prayerTeamThreadRequest: document.getElementById("prayerTeamThreadRequest"),
+    prayerTeamMessages: document.getElementById("prayerTeamMessages"),
+    prayerTeamMessageForm: document.getElementById("prayerTeamMessageForm"),
+    prayerTeamMessageText: document.getElementById("prayerTeamMessageText"),
+    prayerTeamVoiceNote: document.getElementById("prayerTeamVoiceNote"),
+    prayerTeamRecordBtn: document.getElementById("prayerTeamRecordBtn"),
+    prayerTeamSendBtn: document.getElementById("prayerTeamSendBtn"),
     // Counseling Page
     counselingPageForm: document.getElementById("counselingForm"),
     counselingIntent: document.getElementById("counselingIntent"),
@@ -437,6 +455,7 @@ const App = (() => {
     setupRegisterForm();
     setupRecoverForm();
     setupPrayerPage();
+    setupPrayerTeamPage();
     setupCounselingPage();
     setupDailyPromise();
     setupDevotionPage();
@@ -1840,6 +1859,681 @@ const App = (() => {
     });
   }
 
+  function setupPrayerTeamPage() {
+    if (
+      !ui.prayerTeamForm &&
+      !ui.prayerTeamMembersList &&
+      !ui.prayerTeamThreadSelect
+    )
+      return;
+
+    wireSectionLoginButton("prayer-team.html");
+
+    let prayerTeamStatus = "none";
+    let prayerTeamApproved = false;
+    let prayerTeamThreads = [];
+    let activeThreadId = "";
+    let isSendingPrayerTeamMessage = false;
+    let isRecordingPrayerTeamVoice = false;
+    let prayerTeamMediaRecorder = null;
+    let prayerTeamRecordStream = null;
+    let prayerTeamRecordChunks = [];
+    let prayerTeamRecordTimerId = null;
+    let prayerTeamRecordStartedAt = 0;
+
+    const formatPrayerTeamDateTime = (value) => {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return String(value);
+      return date.toLocaleString();
+    };
+
+    const formatRecordingElapsed = (ms = 0) => {
+      const totalSeconds = Math.max(Math.floor(ms / 1000), 0);
+      const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+      const seconds = String(totalSeconds % 60).padStart(2, "0");
+      return `${minutes}:${seconds}`;
+    };
+
+    const setPrayerTeamChatControlsDisabled = (disabled) => {
+      if (ui.prayerTeamSendBtn) ui.prayerTeamSendBtn.disabled = disabled;
+      if (ui.prayerTeamMessageText)
+        ui.prayerTeamMessageText.disabled = disabled;
+      if (ui.prayerTeamThreadSelect)
+        ui.prayerTeamThreadSelect.disabled = disabled;
+    };
+
+    const setPrayerTeamRecordButtonState = (recording) => {
+      if (!ui.prayerTeamRecordBtn) return;
+      ui.prayerTeamRecordBtn.classList.toggle("is-recording", recording);
+      const icon = ui.prayerTeamRecordBtn.querySelector("i");
+      if (icon) {
+        icon.className = recording
+          ? "fa-solid fa-stop"
+          : "fa-solid fa-microphone";
+      }
+    };
+
+    const stopPrayerTeamRecordingStream = () => {
+      if (prayerTeamRecordTimerId) {
+        clearInterval(prayerTeamRecordTimerId);
+        prayerTeamRecordTimerId = null;
+      }
+      if (prayerTeamRecordStream) {
+        prayerTeamRecordStream.getTracks().forEach((t) => t.stop());
+        prayerTeamRecordStream = null;
+      }
+      if (ui.prayerTeamMessageText) {
+        ui.prayerTeamMessageText.placeholder = "Message";
+      }
+    };
+
+    const getPrayerTeamSupportedMimeType = () => {
+      const candidates = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+        "audio/ogg",
+      ];
+      for (const type of candidates) {
+        if (window.MediaRecorder?.isTypeSupported?.(type)) return type;
+      }
+      return "";
+    };
+
+    const sendPrayerTeamMessage = async ({ text = "", voiceFile = null }) => {
+      if (!prayerTeamApproved) {
+        notify("Only approved prayer team members can reply.", "error");
+        return;
+      }
+
+      if (!activeThreadId) {
+        notify("Please select a prayer request.", "error");
+        return;
+      }
+
+      const trimmedText = String(text || "").trim();
+      if (!trimmedText && !voiceFile) {
+        notify("Type a reply or attach a voice note.", "error");
+        return;
+      }
+
+      if (isSendingPrayerTeamMessage) return;
+      isSendingPrayerTeamMessage = true;
+      if (ui.prayerTeamSendBtn) ui.prayerTeamSendBtn.disabled = true;
+
+      try {
+        const formData = new FormData();
+        if (trimmedText) formData.append("message_text", trimmedText);
+        if (voiceFile) formData.append("voice_note", voiceFile);
+
+        const response = await fetch(
+          `${API_BASE}/prayer-team/threads/${encodeURIComponent(
+            activeThreadId,
+          )}/messages`,
+          {
+            method: "POST",
+            headers: { Authorization: `Bearer ${state.token}` },
+            body: formData,
+          },
+        );
+
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok || !data.success) {
+          throw new Error(data?.error || "Unable to send message.");
+        }
+
+        if (ui.prayerTeamMessageText) ui.prayerTeamMessageText.value = "";
+        if (ui.prayerTeamVoiceNote) ui.prayerTeamVoiceNote.value = "";
+        await loadMessagesForActiveThread();
+        notify("Message sent.", "success");
+      } catch (error) {
+        notify(error.message || "An error occurred.", "error");
+      } finally {
+        isSendingPrayerTeamMessage = false;
+        if (ui.prayerTeamSendBtn) ui.prayerTeamSendBtn.disabled = false;
+      }
+    };
+
+    const setLoginState = (isLoggedIn) => {
+      if (ui.loginWall)
+        ui.loginWall.style.display = isLoggedIn ? "none" : "block";
+      if (ui.prayerTeamContainer)
+        ui.prayerTeamContainer.style.display = "block";
+    };
+
+    const setApplicationVisibility = () => {
+      if (!ui.prayerTeamApplyCard) return;
+      const visible = Boolean(state.user) && !prayerTeamApproved;
+      ui.prayerTeamApplyCard.style.display = visible ? "block" : "none";
+    };
+
+    const setChatVisibility = () => {
+      if (!ui.prayerTeamChatCard) return;
+      ui.prayerTeamChatCard.style.display = prayerTeamApproved
+        ? "block"
+        : "none";
+    };
+
+    const renderMembers = (members = []) => {
+      if (!ui.prayerTeamMembersList) return;
+      ui.prayerTeamMembersList.innerHTML = "";
+
+      if (!members.length) {
+        const empty = document.createElement("p");
+        empty.className = "field-hint";
+        empty.textContent = "No approved prayer team members yet.";
+        ui.prayerTeamMembersList.appendChild(empty);
+        return;
+      }
+
+      members.forEach((member) => {
+        const card = document.createElement("div");
+        card.className = "prayer-team-member";
+
+        const title = document.createElement("strong");
+        title.textContent = String(member?.name || "Member");
+
+        const meta = document.createElement("p");
+        meta.textContent = "Prayer Team Member";
+
+        card.appendChild(title);
+        card.appendChild(meta);
+        ui.prayerTeamMembersList.appendChild(card);
+      });
+    };
+
+    const renderThreads = () => {
+      if (!ui.prayerTeamThreadSelect) return;
+      ui.prayerTeamThreadSelect.innerHTML = "";
+
+      if (!prayerTeamThreads.length) {
+        const opt = document.createElement("option");
+        opt.value = "";
+        opt.textContent = "No prayer requests shared yet";
+        ui.prayerTeamThreadSelect.appendChild(opt);
+        if (ui.prayerTeamThreadRequest) {
+          ui.prayerTeamThreadRequest.textContent = "";
+          ui.prayerTeamThreadRequest.style.display = "none";
+        }
+        if (ui.prayerTeamMessages) ui.prayerTeamMessages.innerHTML = "";
+        activeThreadId = "";
+        return;
+      }
+
+      const placeholder = document.createElement("option");
+      placeholder.value = "";
+      placeholder.textContent = "Select a prayer request...";
+      ui.prayerTeamThreadSelect.appendChild(placeholder);
+
+      prayerTeamThreads.forEach((thread) => {
+        const opt = document.createElement("option");
+        opt.value = String(thread.id);
+        opt.textContent = String(
+          thread.title || `Prayer Request #${thread.id}`,
+        );
+        ui.prayerTeamThreadSelect.appendChild(opt);
+      });
+
+      if (!activeThreadId) {
+        const firstThreadId = String(prayerTeamThreads[0]?.id || "");
+        activeThreadId = firstThreadId;
+        ui.prayerTeamThreadSelect.value = firstThreadId;
+      } else {
+        ui.prayerTeamThreadSelect.value = activeThreadId;
+      }
+
+      const selected = prayerTeamThreads.find(
+        (t) => String(t.id) === String(activeThreadId),
+      );
+      if (ui.prayerTeamChatTitle) {
+        ui.prayerTeamChatTitle.textContent = String(
+          selected?.title || "Prayer Team",
+        );
+      }
+      if (ui.prayerTeamThreadRequest) {
+        const requestText = String(selected?.request_text || "");
+        ui.prayerTeamThreadRequest.textContent = requestText;
+        ui.prayerTeamThreadRequest.style.display = requestText
+          ? "block"
+          : "none";
+      }
+    };
+
+    const renderMessages = (messages = []) => {
+      if (!ui.prayerTeamMessages) return;
+      ui.prayerTeamMessages.innerHTML = "";
+
+      if (!messages.length) {
+        const empty = document.createElement("p");
+        empty.className = "field-hint";
+        empty.textContent = "No replies yet. Be the first to pray.";
+        ui.prayerTeamMessages.appendChild(empty);
+        return;
+      }
+
+      const myEmail = String(state.user?.email || "")
+        .trim()
+        .toLowerCase();
+      const myRole = String(state.user?.role || "")
+        .trim()
+        .toLowerCase();
+      const canModerate = myRole === "admin" || myRole === "super_admin";
+
+      messages.forEach((msg) => {
+        const senderEmail = String(msg?.user_email || "")
+          .trim()
+          .toLowerCase();
+        const senderName = String(
+          msg?.user_name || msg?.user_email || "Member",
+        ).trim();
+        const isOwn = Boolean(
+          myEmail && senderEmail && myEmail === senderEmail,
+        );
+        const canDelete = canModerate || isOwn;
+
+        const row = document.createElement("div");
+        row.className = `prayer-team-chat-row${isOwn ? " is-own" : ""}`;
+
+        const avatar = document.createElement("div");
+        avatar.className = "prayer-team-chat-avatar";
+        avatar.textContent = (senderName.charAt(0) || "M").toUpperCase();
+
+        const bubble = document.createElement("div");
+        bubble.className = "prayer-team-chat-bubble";
+
+        const author = document.createElement("p");
+        author.className = "prayer-team-chat-author";
+        author.textContent = senderName;
+        bubble.appendChild(author);
+
+        const text = String(msg?.message_text || "").trim();
+        if (text) {
+          const p = document.createElement("p");
+          p.className = "prayer-team-chat-text";
+          p.textContent = text;
+          bubble.appendChild(p);
+        }
+
+        const voiceUrl = String(msg?.voice_note_url || "").trim();
+        if (voiceUrl) {
+          const audio = document.createElement("audio");
+          audio.controls = true;
+          audio.setAttribute("controlsList", "nodownload noplaybackrate");
+          audio.setAttribute("disablePictureInPicture", "");
+          audio.src = resolveFileUrl(voiceUrl);
+          bubble.appendChild(audio);
+        }
+
+        const meta = document.createElement("div");
+        meta.className = "prayer-team-chat-meta";
+        meta.textContent = formatPrayerTeamDateTime(msg?.created_at);
+        bubble.appendChild(meta);
+
+        row.appendChild(avatar);
+        row.appendChild(bubble);
+        if (canDelete) {
+          const deleteBtn = document.createElement("button");
+          deleteBtn.type = "button";
+          deleteBtn.className = "prayer-team-chat-delete";
+          deleteBtn.title = "Delete";
+          deleteBtn.innerHTML = '<i class="fa-solid fa-trash"></i>';
+          deleteBtn.addEventListener("click", async () => {
+            const confirmed = window.confirm(
+              "Delete this message? This cannot be undone.",
+            );
+            if (!confirmed) return;
+            try {
+              const response = await fetch(
+                `${API_BASE}/prayer-team/messages/${encodeURIComponent(
+                  String(msg?.id || ""),
+                )}`,
+                {
+                  method: "DELETE",
+                  headers: { Authorization: `Bearer ${state.token}` },
+                },
+              );
+              const data = await response.json().catch(() => ({}));
+              if (!response.ok || !data.success) {
+                throw new Error(data?.error || "Unable to delete message.");
+              }
+              await loadMessagesForActiveThread();
+              notify("Message deleted.", "success");
+            } catch (error) {
+              notify(error.message || "Unable to delete message.", "error");
+            }
+          });
+          row.appendChild(deleteBtn);
+        }
+        ui.prayerTeamMessages.appendChild(row);
+      });
+
+      ui.prayerTeamMessages.scrollTop = ui.prayerTeamMessages.scrollHeight;
+    };
+
+    const loadMembers = async () => {
+      try {
+        const headers = {};
+        if (state.token) {
+          headers.Authorization = `Bearer ${state.token}`;
+        }
+        const response = await fetch(
+          `${API_BASE}/prayer-team/members?limit=100`,
+          {
+            headers,
+          },
+        );
+        const data = await response
+          .json()
+          .catch(() => ({ error: "Unexpected server response format." }));
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to load prayer team members.");
+        }
+        renderMembers(Array.isArray(data?.members) ? data.members : []);
+      } catch (error) {
+        renderMembers([]);
+      }
+    };
+
+    const loadMyPrayerTeamStatus = async () => {
+      if (!state.token) {
+        prayerTeamStatus = "none";
+        prayerTeamApproved = false;
+        return;
+      }
+
+      const response = await fetch(`${API_BASE}/prayer-team/me`, {
+        headers: { Authorization: `Bearer ${state.token}` },
+      });
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected server response format." }));
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || "Unable to load prayer team status.");
+      }
+
+      prayerTeamStatus = String(data?.status || "none").toLowerCase();
+      prayerTeamApproved = Boolean(data?.approved);
+    };
+
+    const loadThreads = async () => {
+      if (!state.token) return;
+      const response = await fetch(
+        `${API_BASE}/prayer-team/threads?limit=100`,
+        {
+          headers: { Authorization: `Bearer ${state.token}` },
+        },
+      );
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected server response format." }));
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || "Unable to load prayer team threads.");
+      }
+      prayerTeamThreads = Array.isArray(data?.threads) ? data.threads : [];
+    };
+
+    const loadMessagesForActiveThread = async () => {
+      if (!state.token || !activeThreadId) return;
+      const response = await fetch(
+        `${API_BASE}/prayer-team/threads/${encodeURIComponent(activeThreadId)}/messages`,
+        { headers: { Authorization: `Bearer ${state.token}` } },
+      );
+      const data = await response
+        .json()
+        .catch(() => ({ error: "Unexpected server response format." }));
+      if (!response.ok || !data.success) {
+        throw new Error(data?.error || "Unable to load messages.");
+      }
+      renderMessages(Array.isArray(data?.messages) ? data.messages : []);
+    };
+
+    const initPrayerTeamAccess = async () => {
+      await loadMembers();
+
+      if (!state.token) {
+        setLoginState(false);
+        prayerTeamStatus = "none";
+        prayerTeamApproved = false;
+        setApplicationVisibility();
+        setChatVisibility();
+        return;
+      }
+
+      await hydrateSession();
+      if (!state.user) {
+        setLoginState(false);
+        prayerTeamStatus = "none";
+        prayerTeamApproved = false;
+        setApplicationVisibility();
+        setChatVisibility();
+        return;
+      }
+
+      setLoginState(true);
+
+      if (ui.prayerTeamName)
+        ui.prayerTeamName.value = state.user.username || "";
+      if (ui.prayerTeamEmail) ui.prayerTeamEmail.value = state.user.email || "";
+
+      await loadMyPrayerTeamStatus();
+      setApplicationVisibility();
+      setChatVisibility();
+
+      if (prayerTeamApproved) {
+        await loadThreads();
+        renderThreads();
+        if (activeThreadId) {
+          await loadMessagesForActiveThread();
+        }
+      }
+    };
+
+    initPrayerTeamAccess();
+
+    ui.prayerTeamThreadSelect?.addEventListener("change", async () => {
+      const selectedId = String(ui.prayerTeamThreadSelect?.value || "").trim();
+      activeThreadId = selectedId;
+      const selected = prayerTeamThreads.find(
+        (t) => String(t.id) === String(activeThreadId),
+      );
+      if (ui.prayerTeamChatTitle) {
+        ui.prayerTeamChatTitle.textContent = String(
+          selected?.title || "Prayer Team",
+        );
+      }
+      if (ui.prayerTeamThreadRequest) {
+        const requestText = String(selected?.request_text || "");
+        ui.prayerTeamThreadRequest.textContent = requestText;
+        ui.prayerTeamThreadRequest.style.display = requestText
+          ? "block"
+          : "none";
+      }
+      if (!activeThreadId) {
+        renderMessages([]);
+        return;
+      }
+      try {
+        await loadMessagesForActiveThread();
+      } catch {
+        renderMessages([]);
+      }
+    });
+
+    ui.prayerTeamForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const name = ui.prayerTeamName?.value.trim();
+      const email = ui.prayerTeamEmail?.value.trim();
+      const whatsapp_number = ui.prayerTeamWhatsapp?.value.trim();
+      const message = ui.prayerTeamMessage?.value.trim();
+
+      if (!name || !email || !whatsapp_number) {
+        notify("Please enter your name, email, and WhatsApp number.", "error");
+        return;
+      }
+
+      try {
+        const headers = { "Content-Type": "application/json" };
+        if (state.token) {
+          headers.Authorization = `Bearer ${state.token}`;
+        }
+
+        const response = await fetch(`${API_BASE}/prayer-team/applications`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ name, email, whatsapp_number, message }),
+        });
+
+        const data = await response.json();
+        if (!response.ok) {
+          throw new Error(data?.error || "Unable to submit application.");
+        }
+
+        ui.prayerTeamForm.reset();
+        if (state.user) {
+          if (ui.prayerTeamName)
+            ui.prayerTeamName.value = state.user.username || "";
+          if (ui.prayerTeamEmail)
+            ui.prayerTeamEmail.value = state.user.email || "";
+        }
+
+        notify("Application submitted successfully.", "success");
+        setSectionMessage(
+          "Your application has been sent and is awaiting admin approval.",
+          "success",
+        );
+        prayerTeamStatus = "pending";
+        prayerTeamApproved = false;
+        setApplicationVisibility();
+        setChatVisibility();
+      } catch (error) {
+        notify(error.message || "An error occurred.", "error");
+        setSectionMessage(error.message || "An error occurred.", "error");
+      }
+    });
+
+    ui.prayerTeamMessageForm?.addEventListener("submit", async (event) => {
+      event.preventDefault();
+
+      const text = String(ui.prayerTeamMessageText?.value || "").trim();
+      const file = ui.prayerTeamVoiceNote?.files?.[0] || null;
+      await sendPrayerTeamMessage({ text, voiceFile: file });
+    });
+
+    ui.prayerTeamMessageText?.addEventListener("input", () => {
+      if (!ui.prayerTeamMessageText) return;
+      ui.prayerTeamMessageText.style.height = "auto";
+      ui.prayerTeamMessageText.style.height = `${Math.min(
+        ui.prayerTeamMessageText.scrollHeight,
+        140,
+      )}px`;
+    });
+
+    ui.prayerTeamRecordBtn?.addEventListener("click", async () => {
+      if (!prayerTeamApproved) {
+        notify("Only approved prayer team members can reply.", "error");
+        return;
+      }
+      if (!activeThreadId) {
+        notify("Please select a prayer request.", "error");
+        return;
+      }
+
+      if (!navigator.mediaDevices?.getUserMedia || !window.MediaRecorder) {
+        if (ui.prayerTeamVoiceNote) {
+          ui.prayerTeamVoiceNote.click();
+          return;
+        }
+        notify(
+          "Voice recording is not supported on this device/browser.",
+          "error",
+        );
+        return;
+      }
+
+      if (isRecordingPrayerTeamVoice) {
+        try {
+          prayerTeamMediaRecorder?.stop();
+        } catch {}
+        return;
+      }
+
+      try {
+        prayerTeamRecordChunks = [];
+        prayerTeamRecordStream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
+        const mimeType = getPrayerTeamSupportedMimeType();
+        prayerTeamMediaRecorder = new MediaRecorder(
+          prayerTeamRecordStream,
+          mimeType ? { mimeType } : undefined,
+        );
+
+        prayerTeamMediaRecorder.addEventListener("dataavailable", (event) => {
+          if (event.data && event.data.size > 0) {
+            prayerTeamRecordChunks.push(event.data);
+          }
+        });
+
+        prayerTeamMediaRecorder.addEventListener("stop", async () => {
+          const chunks = prayerTeamRecordChunks.slice();
+          prayerTeamRecordChunks = [];
+          isRecordingPrayerTeamVoice = false;
+          setPrayerTeamRecordButtonState(false);
+          stopPrayerTeamRecordingStream();
+          setPrayerTeamChatControlsDisabled(false);
+
+          const blob = chunks.length
+            ? new Blob(chunks, {
+                type:
+                  prayerTeamMediaRecorder?.mimeType || mimeType || "audio/webm",
+              })
+            : null;
+
+          prayerTeamMediaRecorder = null;
+
+          if (!blob || !blob.size) {
+            notify("Voice note not recorded. Please try again.", "error");
+            return;
+          }
+
+          const ext = String(blob.type || "").includes("ogg") ? "ogg" : "webm";
+          const filename = `voice-note-${Date.now()}.${ext}`;
+          const file = new File([blob], filename, {
+            type: blob.type || "audio/webm",
+          });
+
+          const text = String(ui.prayerTeamMessageText?.value || "").trim();
+          await sendPrayerTeamMessage({ text, voiceFile: file });
+        });
+
+        prayerTeamMediaRecorder.start();
+        isRecordingPrayerTeamVoice = true;
+        prayerTeamRecordStartedAt = Date.now();
+        setPrayerTeamRecordButtonState(true);
+        setPrayerTeamChatControlsDisabled(true);
+
+        prayerTeamRecordTimerId = setInterval(() => {
+          if (!ui.prayerTeamMessageText) return;
+          const elapsed = Date.now() - prayerTeamRecordStartedAt;
+          ui.prayerTeamMessageText.placeholder = `Recording... ${formatRecordingElapsed(
+            elapsed,
+          )}`;
+        }, 250);
+      } catch (error) {
+        isRecordingPrayerTeamVoice = false;
+        setPrayerTeamRecordButtonState(false);
+        stopPrayerTeamRecordingStream();
+        setPrayerTeamChatControlsDisabled(false);
+        notify(
+          error?.message || "Microphone permission denied or recording failed.",
+          "error",
+        );
+      }
+    });
+  }
+
   function setupCounselingPage() {
     if (!ui.counselingPageForm) return;
 
@@ -2168,15 +2862,45 @@ const App = (() => {
   }
 
   function normalizeMaterials(materials = []) {
-    return materials.map((item) => ({
-      title: item.title || "Untitled Material",
-      description: item.description || "No description available.",
-      category: item.category || "resource",
-      type: item.type || "file",
-      link: resolveFileUrl(item.file_url),
-      fileUrl: item.file_url || "",
-      youtubeUrl: item.youtube_url || item.youtubeUrl || "",
-    }));
+    return materials.map((item) => {
+      const id = item.id;
+      const fileName = (() => {
+        const explicit = String(item.file_name || "").trim();
+        if (explicit) return explicit;
+
+        const fileUrl = String(item.file_url || "").trim();
+        if (!fileUrl) return "";
+
+        const normalized = fileUrl.replace(/\\/g, "/");
+        const match = normalized.match(/\/([^\/?#]+)(?:[?#]|$)/);
+        if (!match?.[1]) return "";
+
+        try {
+          return decodeURIComponent(match[1]);
+        } catch {
+          return match[1];
+        }
+      })();
+
+      const viewPath = id
+        ? `${API_BASE}/materials/${encodeURIComponent(id)}/view`
+        : "";
+      const openLink = viewPath
+        ? `${viewPath}${fileName ? `?name=${encodeURIComponent(fileName)}` : ""}`
+        : resolveFileUrl(item.file_url);
+
+      return {
+        id,
+        title: item.title || "Untitled Material",
+        description: item.description || "No description available.",
+        category: item.category || "resource",
+        type: item.type || "file",
+        link: openLink,
+        fileUrl: item.file_url || "",
+        fileName,
+        youtubeUrl: item.youtube_url || item.youtubeUrl || "",
+      };
+    });
   }
 
   async function loadResources() {
@@ -2528,6 +3252,50 @@ const App = (() => {
     return `${BACKEND_ORIGIN}/${normalizedPath}`;
   }
 
+  function getUrlFileExtension(url = "") {
+    const text = String(url || "").trim();
+    const match = text.match(/\.([a-z0-9]+)(?:[?#]|$)/i);
+    return (match?.[1] || "").toLowerCase();
+  }
+
+  function isLocalhostUrl(url = "") {
+    try {
+      const parsed = new URL(String(url || "").trim());
+      return (
+        parsed.hostname === "localhost" ||
+        parsed.hostname === "127.0.0.1" ||
+        parsed.hostname === "0.0.0.0"
+      );
+    } catch {
+      return true;
+    }
+  }
+
+  function resolveDocumentOpenUrl(url = "") {
+    const resolved = String(url || "").trim();
+    if (!resolved || resolved === "#contact") return resolved;
+
+    const ext = getUrlFileExtension(resolved);
+    const requiresViewer = [
+      "pdf",
+      "doc",
+      "docx",
+      "ppt",
+      "pptx",
+      "xls",
+      "xlsx",
+    ].includes(ext);
+    if (!requiresViewer) {
+      return resolved;
+    }
+
+    if (isLocalhostUrl(resolved)) {
+      return resolved;
+    }
+
+    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(resolved)}`;
+  }
+
   function getMediaKind(resource) {
     const typeToken = String(resource.type || "").toLowerCase();
     const categoryToken = String(resource.category || "").toLowerCase();
@@ -2671,8 +3439,11 @@ const App = (() => {
         const type = sanitize(item.type || "file");
         const title = sanitize(item.title || "Resource");
         const description = sanitize(item.description || "");
-        const href = sanitize(item.link || "#");
+        const rawHref = String(item.link || "#");
         const mediaKind = getMediaKind(item);
+        const openHref =
+          mediaKind === "document" ? resolveDocumentOpenUrl(rawHref) : rawHref;
+        const href = sanitize(openHref);
         const hasMediaSource = href !== "#contact";
         const mediaPreview = renderMediaPreview(mediaKind, href, title);
         const youtubeUrl = sanitize(resolveYoutubeUrl(item.youtubeUrl || ""));
