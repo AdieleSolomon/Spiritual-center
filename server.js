@@ -4258,6 +4258,128 @@ app.post("/api/admin/daily-promise", authenticateToken, async (req, res) => {
   }
 });
 
+app.get("/api/admin/daily-promises", authenticateToken, async (req, res) => {
+  try {
+    if (!requireAdminAccess(req, res)) {
+      return;
+    }
+
+    const rawLimit = parseInt(req.query.limit, 10);
+    const safeLimit = Number.isFinite(rawLimit) ? rawLimit : 50;
+    const clampedLimit = Math.min(Math.max(safeLimit, 1), 200);
+
+    const [rows] = await pool.execute(
+      `SELECT * FROM daily_promises ORDER BY created_at DESC LIMIT ${clampedLimit}`,
+    );
+
+    res.json({
+      success: true,
+      promises: rows || [],
+    });
+  } catch (error) {
+    console.error("Admin get daily promises error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get daily promises",
+      details: error.message,
+    });
+  }
+});
+
+app.put(
+  "/api/admin/daily-promises/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      const promiseId = Number(req.params.id);
+      if (!Number.isFinite(promiseId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid promise id",
+        });
+      }
+
+      const promise_text = String(req.body.promise_text || "").trim();
+      const author = String(req.body.author || "").trim() || null;
+
+      if (!promise_text) {
+        return res.status(400).json({
+          success: false,
+          error: "Promise text is required",
+        });
+      }
+
+      const [result] = await pool.execute(
+        "UPDATE daily_promises SET promise_text = ?, author = ? WHERE id = ?",
+        [promise_text, author, promiseId],
+      );
+
+      const affected = Number(result?.affectedRows ?? 0);
+      if (affected === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Daily promise not found",
+        });
+      }
+
+      res.json({ success: true, message: "Daily promise updated" });
+    } catch (error) {
+      console.error("Update daily promise error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update daily promise",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.delete(
+  "/api/admin/daily-promises/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      const promiseId = Number(req.params.id);
+      if (!Number.isFinite(promiseId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid promise id",
+        });
+      }
+
+      const [result] = await pool.execute(
+        "DELETE FROM daily_promises WHERE id = ?",
+        [promiseId],
+      );
+
+      const affected = Number(result?.affectedRows ?? 0);
+      if (affected === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Daily promise not found",
+        });
+      }
+
+      res.json({ success: true, message: "Daily promise deleted" });
+    } catch (error) {
+      console.error("Delete daily promise error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete daily promise",
+        details: error.message,
+      });
+    }
+  },
+);
+
 app.get("/api/daily-promise/latest", async (req, res) => {
   try {
     const [rows] = await pool.execute(
@@ -4357,6 +4479,135 @@ app.post("/api/admin/devotion-posts", authenticateToken, async (req, res) => {
     });
   }
 });
+
+app.get("/api/admin/devotion-posts", authenticateToken, async (req, res) => {
+  try {
+    if (!requireAdminAccess(req, res)) {
+      return;
+    }
+
+    await ensureDevotionTables();
+
+    const rawLimit = parseInt(req.query.limit, 10);
+    const safeLimit = Number.isFinite(rawLimit) ? rawLimit : 50;
+    const clampedLimit = Math.min(Math.max(safeLimit, 1), 200);
+
+    const [rows] = await pool.execute(
+      `SELECT * FROM devotion_posts ORDER BY created_at DESC LIMIT ${clampedLimit}`,
+    );
+
+    res.json({
+      success: true,
+      posts: rows || [],
+    });
+  } catch (error) {
+    console.error("Admin get devotion posts error:", error);
+    res.status(500).json({
+      success: false,
+      error: "Failed to get devotion posts",
+      details: error.message,
+    });
+  }
+});
+
+app.put(
+  "/api/admin/devotion-posts/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      await ensureDevotionTables();
+
+      const devotionId = Number(req.params.id);
+      if (!Number.isFinite(devotionId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid devotion id",
+        });
+      }
+
+      const devotion_text = String(req.body.devotion_text || "").trim();
+      const title = String(req.body.title || "").trim() || null;
+      const author = String(req.body.author || "").trim() || null;
+
+      if (!devotion_text) {
+        return res.status(400).json({
+          success: false,
+          error: "Devotion text is required",
+        });
+      }
+
+      const [result] = await pool.execute(
+        "UPDATE devotion_posts SET title = ?, devotion_text = ?, author = ? WHERE id = ?",
+        [title, devotion_text, author, devotionId],
+      );
+
+      const affected = Number(result?.affectedRows ?? 0);
+      if (affected === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Devotion post not found",
+        });
+      }
+
+      res.json({ success: true, message: "Devotion post updated" });
+    } catch (error) {
+      console.error("Update devotion post error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to update devotion post",
+        details: error.message,
+      });
+    }
+  },
+);
+
+app.delete(
+  "/api/admin/devotion-posts/:id",
+  authenticateToken,
+  async (req, res) => {
+    try {
+      if (!requireAdminAccess(req, res)) {
+        return;
+      }
+
+      await ensureDevotionTables();
+
+      const devotionId = Number(req.params.id);
+      if (!Number.isFinite(devotionId)) {
+        return res.status(400).json({
+          success: false,
+          error: "Invalid devotion id",
+        });
+      }
+
+      const [result] = await pool.execute(
+        "DELETE FROM devotion_posts WHERE id = ?",
+        [devotionId],
+      );
+
+      const affected = Number(result?.affectedRows ?? 0);
+      if (affected === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Devotion post not found",
+        });
+      }
+
+      res.json({ success: true, message: "Devotion post deleted" });
+    } catch (error) {
+      console.error("Delete devotion post error:", error);
+      res.status(500).json({
+        success: false,
+        error: "Failed to delete devotion post",
+        details: error.message,
+      });
+    }
+  },
+);
 
 app.get("/api/devotion-posts", async (req, res) => {
   try {
