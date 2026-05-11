@@ -76,6 +76,8 @@ const App = (() => {
   const DAILY_PROMISE_COLLAPSE_MIN_CHARS = 260;
   const RESOURCE_PAGE_SIZE = 6;
   const RESOURCE_MAX_LIMIT = 100;
+  const MATERIALS_RETRY_BASE_MS = 2500;
+  const MATERIALS_RETRY_MAX_MS = 15000;
   const ALL_MATERIALS_PAGE_SIZE = 24;
   const COMMUNITY_PAGE = "community.html";
   const COMMUNITY_READING_THREAD_ID = 1;
@@ -439,6 +441,7 @@ const App = (() => {
     setupGoogleAnalytics();
     setupGoogleMap();
     setYear();
+    placeResourcesBeforeFeed();
     setupDailyBibleReading();
     setupScrollHeader();
     setupMobileNav();
@@ -472,6 +475,14 @@ const App = (() => {
   function setYear() {
     if (ui.year) {
       ui.year.textContent = String(new Date().getFullYear());
+    }
+  }
+
+  function placeResourcesBeforeFeed() {
+    const resources = document.getElementById("content");
+    const feed = document.getElementById("posts-feed");
+    if (resources?.parentElement && feed?.parentElement === resources.parentElement) {
+      feed.parentElement.insertBefore(resources, feed);
     }
   }
 
@@ -871,9 +882,6 @@ const App = (() => {
         </a>
         <a href="counseling.html" class="mobile-nav-link" data-protected-section>
           <i class="fa-solid fa-user-doctor"></i> Counseling
-        </a>
-        <a href="index-youth.html" class="mobile-nav-link">
-          <i class="fa-solid fa-right-left"></i> Youth Version
         </a>
         <a
           href="https://www.youtube.com/channel/UCFp25-UmkyXpp6oBRxJZ3oQ"
@@ -2819,11 +2827,7 @@ const App = (() => {
 
   function redirectToAuthEntryPage(targetPath = "") {
     const redirectTarget = normalizeInternalRedirect(targetPath);
-    const entryPage = window.location.pathname
-      .toLowerCase()
-      .endsWith("index-youth.html")
-      ? "index-youth.html"
-      : "index.html";
+    const entryPage = "index.html";
 
     const params = new URLSearchParams({ openAuth: "login" });
     if (redirectTarget) {
@@ -2859,6 +2863,43 @@ const App = (() => {
       .json()
       .catch(() => ({ error: "Unexpected server response format." }));
     return { response, data };
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  async function fetchMaterialsPageWithRetry(params = {}, token = null, onRetry) {
+    let attempt = 0;
+
+    while (true) {
+      attempt += 1;
+
+      try {
+        const result = await fetchMaterialsPage(params, token);
+        if (result.response.status === 401 || result.response.status === 403) {
+          return result;
+        }
+
+        if (result.response.ok && result.data?.success === true) {
+          return result;
+        }
+
+        throw new Error(
+          result.data?.error ||
+            `Materials request failed (${result.response.status})`,
+        );
+      } catch (error) {
+        const retryDelay = Math.min(
+          MATERIALS_RETRY_BASE_MS * attempt,
+          MATERIALS_RETRY_MAX_MS,
+        );
+        onRetry?.(attempt, error, retryDelay);
+        await sleep(retryDelay);
+      }
+    }
   }
 
   function normalizeMaterials(materials = []) {
@@ -2910,17 +2951,29 @@ const App = (() => {
     ui.resourceGrid.innerHTML = "";
 
     try {
-      let { response, data } = await fetchMaterialsPage(
+      let { response, data } = await fetchMaterialsPageWithRetry(
         { limit: RESOURCE_MAX_LIMIT, page: 1 },
         state.token || null,
+        (attempt) => {
+          setResourceNotice(
+            `Materials are still loading. Waking the server and retrying (${attempt})...`,
+            "warning",
+          );
+        },
       );
 
       if ((response.status === 401 || response.status === 403) && state.token) {
         clearSession();
         updateAuthUI();
-        ({ response, data } = await fetchMaterialsPage(
+        ({ response, data } = await fetchMaterialsPageWithRetry(
           { limit: RESOURCE_MAX_LIMIT, page: 1 },
           null,
+          (attempt) => {
+            setResourceNotice(
+              `Materials are still loading. Waking the server and retrying (${attempt})...`,
+              "warning",
+            );
+          },
         ));
       }
 
@@ -3177,15 +3230,30 @@ const App = (() => {
     };
 
     try {
-      let { response, data } = await fetchMaterialsPage(
+      let { response, data } = await fetchMaterialsPageWithRetry(
         requestParams,
         state.token || null,
+        (attempt) => {
+          setAllMaterialsNotice(
+            `Materials are still loading. Waking the server and retrying (${attempt})...`,
+            "warning",
+          );
+        },
       );
 
       if ((response.status === 401 || response.status === 403) && state.token) {
         clearSession();
         updateAuthUI();
-        ({ response, data } = await fetchMaterialsPage(requestParams, null));
+        ({ response, data } = await fetchMaterialsPageWithRetry(
+          requestParams,
+          null,
+          (attempt) => {
+            setAllMaterialsNotice(
+              `Materials are still loading. Waking the server and retrying (${attempt})...`,
+              "warning",
+            );
+          },
+        ));
       }
 
       if (response.status === 401 || response.status === 403) {
@@ -3274,26 +3342,7 @@ const App = (() => {
   function resolveDocumentOpenUrl(url = "") {
     const resolved = String(url || "").trim();
     if (!resolved || resolved === "#contact") return resolved;
-
-    const ext = getUrlFileExtension(resolved);
-    const requiresViewer = [
-      "pdf",
-      "doc",
-      "docx",
-      "ppt",
-      "pptx",
-      "xls",
-      "xlsx",
-    ].includes(ext);
-    if (!requiresViewer) {
-      return resolved;
-    }
-
-    if (isLocalhostUrl(resolved)) {
-      return resolved;
-    }
-
-    return `https://docs.google.com/gview?embedded=1&url=${encodeURIComponent(resolved)}`;
+    return resolved;
   }
 
   function getMediaKind(resource) {
